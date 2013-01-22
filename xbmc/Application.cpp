@@ -3084,6 +3084,8 @@ bool CApplication::ProcessGamepad(float frameTime)
 bool CApplication::ProcessRemote(float frameTime)
 {
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
+  if (!m_AppFocused)
+    return false;
   if (g_RemoteControl.GetButton())
   {
     CKey key(g_RemoteControl.GetButton(), g_RemoteControl.GetHoldTime());
