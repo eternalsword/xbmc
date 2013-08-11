@@ -1,23 +1,23 @@
 /*
-*      Copyright (C) 2005-2012 Team XBMC
-*      http://www.xbmc.org
-*
-*  This Program is free software; you can redistribute it and/or modify
-*  it under the terms of the GNU General Public License as published by
-*  the Free Software Foundation; either version 2, or (at your option)
-*  any later version.
-*
-*  This Program is distributed in the hope that it will be useful,
-*  but WITHOUT ANY WARRANTY; without even the implied warranty of
-*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-*  GNU General Public License for more details.
-*
-*  You should have received a copy of the GNU General Public License
-*  along with XBMC; see the file COPYING.  If not, see
-*  <http://www.gnu.org/licenses/>.
-*
-*  Parts of this code taken from Guido Vollbeding <http://sylvana.net/jpegcrop/exif_orientation.html>
-*
+*      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
+ *
+ *  This Program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2, or (at your option)
+ *  any later version.
+ *
+ *  This Program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with XBMC; see the file COPYING.  If not, see
+ *  <http://www.gnu.org/licenses/>.
+ *
+ *  Parts of this code taken from Guido Vollbeding <http://sylvana.net/jpegcrop/exif_orientation.html>
+ *
 */
 
 #include "lib/libexif/libexif.h"
@@ -237,6 +237,7 @@ CJpegIO::CJpegIO()
   m_inputBuff = NULL;
   m_texturePath = "";
   memset(&m_cinfo, 0, sizeof(m_cinfo));
+  m_thumbnailbuffer = NULL;
 }
 
 CJpegIO::~CJpegIO()
@@ -247,7 +248,9 @@ CJpegIO::~CJpegIO()
 void CJpegIO::Close()
 {
   free(m_inputBuff);
+  m_inputBuff = NULL;
   m_inputBuffSize = 0;
+  ReleaseThumbnailBuffer();
 }
 
 bool CJpegIO::Open(const CStdString &texturePath, unsigned int minx, unsigned int miny, bool read)
@@ -723,4 +726,117 @@ unsigned int CJpegIO::GetExifOrientation(unsigned char* exif_data, unsigned int 
   }
 
   return orientation;//done
+}
+
+bool CJpegIO::LoadImageFromMemory(unsigned char* buffer, unsigned int bufSize, unsigned int width, unsigned int height)
+{
+  return Read(buffer, bufSize, width, height);
+}
+
+bool CJpegIO::CreateThumbnailFromSurface(unsigned char* bufferin, unsigned int width, unsigned int height, unsigned int format, unsigned int pitch, const CStdString& destFile, 
+                                         unsigned char* &bufferout, unsigned int &bufferoutSize)
+{
+  //Encode raw data from buffer, save to destbuffer
+  struct jpeg_compress_struct cinfo;
+  struct my_error_mgr jerr;
+  JSAMPROW row_pointer[1];
+  long unsigned int outBufSize = width * height;
+  unsigned char* src = bufferin;
+  unsigned char* rgbbuf, *src2, *dst2;
+
+  if(bufferin == NULL)
+  {
+    CLog::Log(LOGERROR, "JpegIO::CreateThumbnailFromSurface no buffer");
+    return false;
+  }
+
+  m_thumbnailbuffer = (unsigned char*) malloc(outBufSize); //Initial buffer. Grows as-needed.
+  if (m_thumbnailbuffer == NULL)
+  {
+    CLog::Log(LOGERROR, "JpegIO::CreateThumbnailFromSurface error allocating memory for image buffer");
+    return false;
+  }
+
+  if(format == XB_FMT_RGB8)
+  {
+    rgbbuf = bufferin;
+  }
+  else if(format == XB_FMT_A8R8G8B8)
+  {
+    // create a copy for bgra -> rgb.
+    rgbbuf = new unsigned char [(width * height * 3)];
+    unsigned char* dst = rgbbuf;
+    for (unsigned int y = 0; y < height; y++)
+    {
+      dst2 = dst;
+      src2 = src;
+      for (unsigned int x = 0; x < width; x++, src2 += 4)
+      {
+        *dst2++ = src2[2];
+        *dst2++ = src2[1];
+        *dst2++ = src2[0];
+      }
+      dst += width * 3;
+      src += pitch;
+    }
+  }
+  else
+  {
+    CLog::Log(LOGWARNING, "JpegIO::CreateThumbnailFromSurface Unsupported format");
+    free(m_thumbnailbuffer);
+    return false;
+  }
+
+  cinfo.err = jpeg_std_error(&jerr.pub);
+  jerr.pub.error_exit = jpeg_error_exit;
+  jpeg_create_compress(&cinfo);
+
+  if (setjmp(jerr.setjmp_buffer))
+  {
+    jpeg_destroy_compress(&cinfo);
+    free(m_thumbnailbuffer);
+    if(format != XB_FMT_RGB8)
+      delete [] rgbbuf;
+    return false;
+  }
+  else
+  {
+#if JPEG_LIB_VERSION < 80
+    x_jpeg_mem_dest(&cinfo, &m_thumbnailbuffer, &outBufSize);
+#else
+    jpeg_mem_dest(&cinfo, &m_thumbnailbuffer, &outBufSize);
+#endif
+    cinfo.image_width = width;
+    cinfo.image_height = height;
+    cinfo.input_components = 3;
+    cinfo.in_color_space = JCS_RGB;
+    jpeg_set_defaults(&cinfo);
+    jpeg_set_quality(&cinfo, 90, TRUE);
+    jpeg_start_compress(&cinfo, TRUE);
+
+    while (cinfo.next_scanline < cinfo.image_height)
+    {
+      row_pointer[0] = &rgbbuf[cinfo.next_scanline * width * 3];
+      jpeg_write_scanlines(&cinfo, row_pointer, 1);
+    }
+
+    jpeg_finish_compress(&cinfo);
+    jpeg_destroy_compress(&cinfo);
+  }
+  if(format != XB_FMT_RGB8)
+    delete [] rgbbuf;
+
+  bufferout = m_thumbnailbuffer;
+  bufferoutSize = outBufSize;
+
+  return true;
+}
+
+void CJpegIO::ReleaseThumbnailBuffer()
+{
+  if(m_thumbnailbuffer != NULL)
+  {
+    free(m_thumbnailbuffer);
+    m_thumbnailbuffer = NULL;
+  }
 }

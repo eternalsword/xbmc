@@ -1,7 +1,7 @@
 #pragma once
 /*
- *      Copyright (C) 2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2012-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,14 +19,18 @@
  *
  */
 
+#include <map>
+
+#include "addons/include/xbmc_pvr_types.h"
+#include "settings/ISettingCallback.h"
+#include "threads/Event.h"
 #include "threads/Thread.h"
 #include "utils/JobManager.h"
-#include "threads/Event.h"
-#include "addons/include/xbmc_pvr_types.h"
-#include <map>
 
 class CGUIDialogProgressBarHandle;
 class CStopWatch;
+class CAction;
+class CFileItemList;
 
 namespace EPG
 {
@@ -57,6 +61,20 @@ namespace PVR
     ManagerStateStarted
   };
 
+  enum PlaybackType
+  {
+    PlaybackTypeAny = 0,
+    PlaybackTypeTv,
+    PlaybackTypeRadio
+  };
+
+  enum ChannelStartLast
+  {
+    START_LAST_CHANNEL_OFF  = 0,
+    START_LAST_CHANNEL_MIN,
+    START_LAST_CHANNEL_ON
+  };
+
   #define g_PVRManager       CPVRManager::Get()
   #define g_PVRChannelGroups g_PVRManager.ChannelGroups()
   #define g_PVRTimers        g_PVRManager.Timers()
@@ -65,7 +83,7 @@ namespace PVR
 
   typedef boost::shared_ptr<PVR::CPVRChannelGroup> CPVRChannelGroupPtr;
 
-  class CPVRManager : private CThread
+  class CPVRManager : public ISettingCallback, private CThread
   {
     friend class CPVRClients;
 
@@ -86,6 +104,9 @@ namespace PVR
      * @return The PVRManager instance.
      */
     static CPVRManager &Get(void);
+
+    virtual void OnSettingChanged(const CSetting *setting);
+    virtual void OnSettingAction(const CSetting *setting);
 
     /*!
      * @brief Get the channel groups container.
@@ -389,6 +410,13 @@ namespace PVR
     bool StartPlayback(const CPVRChannel *channel, bool bPreview = false);
 
     /*!
+     * @brief Start playback of the last used channel, and if it fails use first channel in the current channelgroup.
+     * @param type The type of playback to be started (any, radio, tv). See PlaybackType enum
+     * @return True if playback was started, false otherwise.
+     */
+    bool StartPlayback(PlaybackType type = PlaybackTypeAny);
+
+    /*!
      * @brief Update the current playing file in the guiinfomanager and application.
      */
     void UpdateCurrentFile(void);
@@ -472,6 +500,15 @@ namespace PVR
      * @return True when loaded, false otherwise
      */
     bool WaitUntilInitialised(void);
+
+    /*!
+     * @brief Handle PVR specific cActions
+     * @param action The action to process
+     * @return True if action could be handled, false otherwise.
+     */
+    bool OnAction(const CAction &action);
+
+    static void SettingOptionsPvrStartLastChannelFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current);
 
   protected:
     /*!

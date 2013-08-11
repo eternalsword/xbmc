@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2011-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,8 +23,12 @@
 
 #include "WinSystemEGL.h"
 #include "filesystem/SpecialProtocol.h"
+#include "guilib/GraphicContext.h"
+#include "settings/DisplaySettings.h"
+#include "guilib/IDirtyRegionSolver.h"
+#include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
-#include "settings/GUISettings.h"
+#include "settings/DisplaySettings.h"
 #include "utils/log.h"
 #include "EGLWrapper.h"
 #include "EGLQuirks.h"
@@ -43,7 +47,7 @@ CWinSystemEGL::CWinSystemEGL() : CWinSystemBase()
   m_config            = NULL;
 
   m_egl               = NULL;
-  m_iVSyncMode        = false;
+  m_iVSyncMode        = 0;
 }
 
 CWinSystemEGL::~CWinSystemEGL()
@@ -93,6 +97,12 @@ bool CWinSystemEGL::InitWindowSystem()
     return false;
   }
 
+  EGLint surface_type = EGL_WINDOW_BIT;
+  // for the non-trivial dirty region modes, we need the EGL buffer to be preserved across updates
+  if (g_advancedSettings.m_guiAlgorithmDirtyRegions == DIRTYREGION_SOLVER_COST_REDUCTION ||
+      g_advancedSettings.m_guiAlgorithmDirtyRegions == DIRTYREGION_SOLVER_UNION)
+    surface_type |= EGL_SWAP_BEHAVIOR_PRESERVED_BIT;
+
   EGLint configAttrs [] = {
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
@@ -102,7 +112,7 @@ bool CWinSystemEGL::InitWindowSystem()
         EGL_STENCIL_SIZE,    0,
         EGL_SAMPLE_BUFFERS,  0,
         EGL_SAMPLES,         0,
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
+        EGL_SURFACE_TYPE,    surface_type,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         EGL_NONE
   };
@@ -190,6 +200,14 @@ bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
     return false;
   }
 
+  // for the non-trivial dirty region modes, we need the EGL buffer to be preserved across updates
+  if (g_advancedSettings.m_guiAlgorithmDirtyRegions == DIRTYREGION_SOLVER_COST_REDUCTION ||
+      g_advancedSettings.m_guiAlgorithmDirtyRegions == DIRTYREGION_SOLVER_UNION)
+  {
+    if (!m_egl->SurfaceAttrib(m_display, m_surface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED))
+      CLog::Log(LOGDEBUG, "%s: Could not set EGL_SWAP_BEHAVIOR",__FUNCTION__);
+  }
+
   m_bWindowCreated = true;
 
   return true;
@@ -235,7 +253,8 @@ bool CWinSystemEGL::CreateNewWindow(const CStdString& name, bool fullScreen, RES
   if ((m_bWindowCreated && m_egl && m_egl->GetNativeResolution(&current_resolution)) &&
     current_resolution.iWidth == res.iWidth && current_resolution.iHeight == res.iHeight &&
     current_resolution.iScreenWidth == res.iScreenWidth && current_resolution.iScreenHeight == res.iScreenHeight &&
-    m_bFullScreen == fullScreen && current_resolution.fRefreshRate == res.fRefreshRate)
+    m_bFullScreen == fullScreen && current_resolution.fRefreshRate == res.fRefreshRate &&
+    (current_resolution.dwFlags & D3DPRESENTFLAG_MODEMASK) == (res.dwFlags & D3DPRESENTFLAG_MODEMASK))
   {
     CLog::Log(LOGDEBUG, "CWinSystemEGL::CreateNewWindow: No need to create a new window");
     return true;
@@ -319,15 +338,14 @@ void CWinSystemEGL::UpdateResolutions()
   {
     // if this is a new setting,
     // create a new empty setting to fill in.
-    if ((int)g_settings.m_ResInfo.size() <= res_index)
+    if ((int)CDisplaySettings::Get().ResolutionInfoSize() <= res_index)
     {
       RESOLUTION_INFO res;
-
-      g_settings.m_ResInfo.push_back(res);
+      CDisplaySettings::Get().AddResolutionInfo(res);
     }
 
     g_graphicsContext.ResetOverscan(resolutions[i]);
-    g_settings.m_ResInfo[res_index] = resolutions[i];
+    CDisplaySettings::Get().GetResolutionInfo(res_index) = resolutions[i];
 
     CLog::Log(LOGNOTICE, "Found resolution %d x %d for display %d with %d x %d%s @ %f Hz\n",
       resolutions[i].iWidth,
@@ -342,6 +360,7 @@ void CWinSystemEGL::UpdateResolutions()
        resDesktop.iHeight == resolutions[i].iHeight &&
        resDesktop.iScreenWidth == resolutions[i].iScreenWidth &&
        resDesktop.iScreenHeight == resolutions[i].iScreenHeight &&
+       (resDesktop.dwFlags & D3DPRESENTFLAG_MODEMASK) == (resolutions[i].dwFlags & D3DPRESENTFLAG_MODEMASK) &&
        resDesktop.fRefreshRate == resolutions[i].fRefreshRate)
     {
       ResDesktop = res_index;
@@ -359,9 +378,9 @@ void CWinSystemEGL::UpdateResolutions()
       resDesktop.fRefreshRate,
       (int)ResDesktop, (int)RES_DESKTOP);
 
-    RESOLUTION_INFO desktop = g_settings.m_ResInfo[RES_DESKTOP];
-    g_settings.m_ResInfo[RES_DESKTOP] = g_settings.m_ResInfo[ResDesktop];
-    g_settings.m_ResInfo[ResDesktop] = desktop;
+    RESOLUTION_INFO desktop = CDisplaySettings::Get().GetResolutionInfo(RES_DESKTOP);
+    CDisplaySettings::Get().GetResolutionInfo(RES_DESKTOP) = CDisplaySettings::Get().GetResolutionInfo(ResDesktop);
+    CDisplaySettings::Get().GetResolutionInfo(ResDesktop) = desktop;
   }
 }
 
@@ -384,9 +403,12 @@ bool CWinSystemEGL::PresentRenderImpl(const CDirtyRegionList &dirty)
 
 void CWinSystemEGL::SetVSyncImpl(bool enable)
 {
-  m_iVSyncMode = enable;
-  if (!m_egl->SetVSync(m_display, m_iVSyncMode))
+  m_iVSyncMode = enable ? 10:0;
+  if (!m_egl->SetVSync(m_display, enable))
+  {
+    m_iVSyncMode = 0;
     CLog::Log(LOGERROR, "%s,Could not set egl vsync", __FUNCTION__);
+  }
 }
 
 void CWinSystemEGL::ShowOSMouse(bool show)
@@ -438,39 +460,26 @@ EGLContext CWinSystemEGL::GetEGLContext()
   return m_context;
 }
 
+EGLConfig CWinSystemEGL::GetEGLConfig()
+{
+  return m_config;
+}
+
 // the logic in this function should match whether CBaseRenderer::FindClosestResolution picks a 3D mode
 bool CWinSystemEGL::Support3D(int width, int height, uint32_t mode) const
 {
-  RESOLUTION_INFO &curr = g_settings.m_ResInfo[g_graphicsContext.GetVideoResolution()];
+  RESOLUTION_INFO &curr = CDisplaySettings::Get().GetResolutionInfo(g_graphicsContext.GetVideoResolution());
 
   // if we are using automatic hdmi mode switching
-  if (g_guiSettings.GetInt("videoplayer.adjustrefreshrate") != ADJUST_REFRESHRATE_OFF)
+  if (CSettings::Get().GetInt("videoplayer.adjustrefreshrate") != ADJUST_REFRESHRATE_OFF)
   {
     int searchWidth = curr.iScreenWidth;
     int searchHeight = curr.iScreenHeight;
 
-    // work out current non-3D resolution (in case we are currently in 3D mode)
-    if (curr.dwFlags & D3DPRESENTFLAG_MODE3DSBS)
-    {
-      searchWidth *= 2;
-    }
-    else if (curr.dwFlags & D3DPRESENTFLAG_MODE3DTB)
-    {
-      searchHeight *= 2;
-    }
-    // work out resolution if we switch to 3D mode
-    if (mode & D3DPRESENTFLAG_MODE3DSBS)
-    {
-      searchWidth /= 2;
-    }
-    else if (mode & D3DPRESENTFLAG_MODE3DTB)
-    {
-      searchHeight /= 2;
-    }
     // only search the custom resolutions
-    for (unsigned int i = (int)RES_DESKTOP; i < g_settings.m_ResInfo.size(); i++)
+    for (unsigned int i = (int)RES_DESKTOP; i < CDisplaySettings::Get().ResolutionInfoSize(); i++)
     {
-      RESOLUTION_INFO res = g_settings.m_ResInfo[i];
+      RESOLUTION_INFO res = CDisplaySettings::Get().GetResolutionInfo(i);
       if(res.iScreenWidth == searchWidth && res.iScreenHeight == searchHeight && (res.dwFlags & mode))
         return true;
     }

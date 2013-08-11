@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,12 +21,10 @@
 #include "VideoInfoTag.h"
 #include "utils/XMLUtils.h"
 #include "guilib/LocalizeStrings.h"
-#include "settings/GUISettings.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
-#include "utils/CharsetConverter.h"
 #include "TextureCache.h"
 #include "filesystem/File.h"
 
@@ -588,7 +586,7 @@ void CVideoInfoTag::ParseNative(const TiXmlElement* movie, bool prioritise)
   XMLUtils::GetString(movie, "plot", m_strPlot);
   XMLUtils::GetString(movie, "tagline", m_strTagLine);
   CStdString runtime;
-  if (XMLUtils::GetString(movie, "runtime", runtime))
+  if (XMLUtils::GetString(movie, "runtime", runtime) && !runtime.empty())
     m_duration = GetDurationFromMinuteString(runtime);
   XMLUtils::GetString(movie, "mpaa", m_strMPAARating);
   XMLUtils::GetInt(movie, "playcount", m_playCount);

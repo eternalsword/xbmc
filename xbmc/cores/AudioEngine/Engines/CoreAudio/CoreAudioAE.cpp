@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2011-2012 Team XBMC
+ *      Copyright (C) 2011-2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,10 +24,10 @@
 
 #include "CoreAudioAEStream.h"
 #include "CoreAudioAESound.h"
+#include "Application.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
-#include "settings/GUISettings.h"
-#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/EndianSwap.h"
 #include "utils/log.h"
@@ -37,6 +37,49 @@
 
 #define DELAY_FRAME_TIME  20
 #define BUFFERSIZE        16416
+
+// on darwin when the devicelist changes
+// reinit by calling opencoreaudio with the last engine parameters 
+// (this will fallback to default
+// device when our current output device vanishes
+// and on the other hand will go back to that device
+// if it re-appears).
+#if defined(TARGET_DARWIN_OSX)
+OSStatus deviceChangedCB( AudioObjectID                       inObjectID,
+                          UInt32                              inNumberAddresses,
+                          const AudioObjectPropertyAddress    inAddresses[],
+                          void*                               inClientData)
+{
+  CCoreAudioAE *pEngine = (CCoreAudioAE *)inClientData;
+  if (pEngine->GetHAL())
+  {
+    pEngine->AudioDevicesChanged();
+    CLog::Log(LOGDEBUG, "CCoreAudioAE - audiodevicelist changed!");
+  }
+  return noErr;
+}
+
+void RegisterDeviceChangedCB(bool bRegister, void *ref)
+{
+  OSStatus ret = noErr;
+  const AudioObjectPropertyAddress inAdr = 
+  {  
+    kAudioHardwarePropertyDevices,
+    kAudioObjectPropertyScopeGlobal,
+    kAudioObjectPropertyElementMaster 
+  };
+  
+  if (bRegister)
+    ret = AudioObjectAddPropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
+  else
+    ret = AudioObjectRemovePropertyListener(kAudioObjectSystemObject, &inAdr, deviceChangedCB, ref);
+
+  if (ret != noErr)
+    CLog::Log(LOGERROR, "CCoreAudioAE::Deinitialize - error %s a listener callback for device changes!", bRegister?"attaching":"removing");   
+}
+#else//ios
+void RegisterDeviceChangedCB(bool bRegister, void *ref){}
+#endif
 
 CCoreAudioAE::CCoreAudioAE() :
   m_Initialized        (false         ),
@@ -56,10 +99,13 @@ CCoreAudioAE::CCoreAudioAE() :
   m_softSuspendTimer   (0             )
 {
   HAL = new CCoreAudioAEHAL;
+  
+  RegisterDeviceChangedCB(true, this);
 }
 
 CCoreAudioAE::~CCoreAudioAE()
 {
+  RegisterDeviceChangedCB(false, this);
   Shutdown();
 }
 
@@ -93,6 +139,24 @@ void CCoreAudioAE::Shutdown()
   HAL = NULL;
 }
 
+void CCoreAudioAE::AudioDevicesChanged()
+{
+  if (!m_Initialized)
+    return;
+
+  // give CA a bit time to realise that maybe the 
+  // default device might have changed now - else
+  // OpenCoreAudio might open the old default device
+  // again (yeah that really is the case - duh)
+  Sleep(500);
+  CSingleLock engineLock(m_engineLock);
+
+  // re-check initialized since it can have changed when we waited and grabbed the lock
+  if (!m_Initialized)
+    return;
+  OpenCoreAudio(m_lastSampleRate, COREAUDIO_IS_RAW(m_lastStreamFormat), m_lastStreamFormat);
+}
+
 bool CCoreAudioAE::Initialize()
 {
   CSingleLock engineLock(m_engineLock);
@@ -102,6 +166,8 @@ bool CCoreAudioAE::Initialize()
   Deinitialize();
 
   bool ret = OpenCoreAudio(44100, false, AE_FMT_FLOAT);
+  m_lastSampleRate = 44100;
+  m_lastStreamFormat = AE_FMT_FLOAT;
 
   Start();
 
@@ -111,7 +177,7 @@ bool CCoreAudioAE::Initialize()
 bool CCoreAudioAE::OpenCoreAudio(unsigned int sampleRate, bool forceRaw,
   enum AEDataFormat rawDataFormat)
 {
-
+  unsigned int maxChannelCountInStreams = 0;
   // remove any deleted streams
   CSingleLock streamLock(m_streamLock);
   for (StreamList::iterator itt = m_streams.begin(); itt != m_streams.end();)
@@ -128,6 +194,10 @@ bool CCoreAudioAE::OpenCoreAudio(unsigned int sampleRate, bool forceRaw,
       // close all converter
       stream->CloseConverter();
     }
+
+    if (stream->GetChannelCount() > maxChannelCountInStreams)
+        maxChannelCountInStreams = stream->GetChannelCount();
+
     ++itt;
   }
 
@@ -144,12 +214,12 @@ bool CCoreAudioAE::OpenCoreAudio(unsigned int sampleRate, bool forceRaw,
   if (m_rawPassthrough)
     CLog::Log(LOGINFO, "CCoreAudioAE::OpenCoreAudio - RAW passthrough enabled");
 
-  std::string m_outputDevice =  g_guiSettings.GetString("audiooutput.audiodevice");
+  std::string m_outputDevice =  CSettings::Get().GetString("audiooutput.audiodevice");
 
   // on iOS devices we set fixed to two channels.
   m_stdChLayout = AE_CH_LAYOUT_2_0;
 #if defined(TARGET_DARWIN_OSX)
-  switch (g_guiSettings.GetInt("audiooutput.channels"))
+  switch (CSettings::Get().GetInt("audiooutput.channels"))
   {
     default:
     case  0: m_stdChLayout = AE_CH_LAYOUT_2_0; break; /* do not allow 1_0 output */
@@ -166,7 +236,7 @@ bool CCoreAudioAE::OpenCoreAudio(unsigned int sampleRate, bool forceRaw,
   }
 #endif
   // force optical/coax to 2.0 output channels
-  if (!m_rawPassthrough && g_guiSettings.GetInt("audiooutput.mode") == AUDIO_IEC958)
+  if (!m_rawPassthrough && CSettings::Get().GetInt("audiooutput.mode") == AUDIO_IEC958)
     m_stdChLayout = AE_CH_LAYOUT_2_0;
 
   // setup the desired format
@@ -201,7 +271,16 @@ bool CCoreAudioAE::OpenCoreAudio(unsigned int sampleRate, bool forceRaw,
         m_format.m_dataFormat   = AE_FMT_S16NE;
         break;
       case AE_FMT_LPCM:
-        m_format.m_channelLayout = CAEChannelInfo(AE_CH_LAYOUT_7_1);
+        // audio midi setup can be setup to 2.0 or 7.1
+        // if we have the number of max channels from streams we use that for
+        // selecting either 2.0 or 7.1 setup depending on that.
+        // This allows DPII modes on amps for enhancing stereo sound
+        // (when switching to 7.1 - all 8 channels will be pushed out preventing most amps
+        // to switch to DPII mode)
+        if (maxChannelCountInStreams == 1 || maxChannelCountInStreams == 2)
+          m_format.m_channelLayout = CAEChannelInfo(AE_CH_LAYOUT_2_0);
+        else
+          m_format.m_channelLayout = CAEChannelInfo(AE_CH_LAYOUT_7_1);
         m_format.m_sampleRate   = sampleRate;
         m_format.m_dataFormat   = AE_FMT_FLOAT;
         break;
@@ -432,7 +511,11 @@ IAEStream* CCoreAudioAE::MakeStream(enum AEDataFormat dataFormat,
   // if we are suspended we don't
   // want anyone to mess with us
   if (m_isSuspended && !m_softSuspend)
+#if defined(TARGET_DARWIN_IOS) && !defined(TARGET_DARWIN_IOS_ATV)
+    Resume();
+#else
     return NULL;
+#endif
 
   CAEChannelInfo channelInfo(channelLayout);
   CLog::Log(LOGINFO, "CCoreAudioAE::MakeStream - %s, %u, %u, %s",
@@ -635,6 +718,7 @@ void CCoreAudioAE::MixSounds(float *buffer, unsigned int samples)
 
 void CCoreAudioAE::GarbageCollect()
 {
+#if defined(TARGET_DARWIN_OSX)
   if (g_advancedSettings.m_streamSilence)
     return;
   
@@ -664,6 +748,7 @@ void CCoreAudioAE::GarbageCollect()
     Suspend();// locks m_engineLock internally
     CLog::Log(LOGDEBUG, "CCoreAudioAE::GarbageCollect - Release CA HAL.");
   }
+#endif // TARGET_DARWIN_OSX
 }
 
 void CCoreAudioAE::EnumerateOutputDevices(AEDeviceList &devices, bool passthrough)

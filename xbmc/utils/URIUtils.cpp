@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2005-2012 Team XBMC
- *      http://www.xbmc.org
+ *      Copyright (C) 2005-2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +27,8 @@
 #include "filesystem/SpecialProtocol.h"
 #include "filesystem/StackDirectory.h"
 #include "network/DNSNameCache.h"
-#include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/MediaSettings.h"
 #include "URL.h"
 #include "StringUtils.h"
 
@@ -38,14 +38,6 @@
 using namespace std;
 using namespace XFILE;
 
-CStdString URIUtils::GetParentFolderURI(const CStdString& uri, bool preserveFileNameInPath)
-{
-  if (preserveFileNameInPath)
-    return AddFileToFolder(GetParentPath(uri), GetFileName(uri));
-  else
-    return GetParentPath(uri);
-}
-
 bool URIUtils::IsInPath(const CStdString &uri, const CStdString &baseURI)
 {
   CStdString uriPath = CSpecialProtocol::TranslatePath(uri);
@@ -54,28 +46,64 @@ bool URIUtils::IsInPath(const CStdString &uri, const CStdString &baseURI)
 }
 
 /* returns filename extension including period of filename */
-const CStdString URIUtils::GetExtension(const CStdString& strFileName)
+CStdString URIUtils::GetExtension(const CStdString& strFileName)
 {
-  if(IsURL(strFileName))
+  if (IsURL(strFileName))
   {
     CURL url(strFileName);
     return GetExtension(url.GetFileName());
   }
 
-  int period = strFileName.find_last_of('.');
-  if(period >= 0)
-  {
-    if( strFileName.find_first_of('/', period+1) != string::npos ) return "";
-    if( strFileName.find_first_of('\\', period+1) != string::npos ) return "";
-    return strFileName.substr(period);
-  }
-  else
-    return "";
+  size_t period = strFileName.find_last_of("./\\");
+  if (period == string::npos || strFileName[period] != '.')
+    return CStdString();
+
+  return strFileName.substr(period);
 }
 
-void URIUtils::GetExtension(const CStdString& strFile, CStdString& strExtension)
+bool URIUtils::HasExtension(const CStdString& strFileName)
 {
-  strExtension = GetExtension(strFile);
+  if (IsURL(strFileName))
+  {
+    CURL url(strFileName);
+    return HasExtension(url.GetFileName());
+  }
+
+  size_t iPeriod = strFileName.find_last_of("./\\");
+  return iPeriod != string::npos && strFileName[iPeriod] == '.';
+}
+
+bool URIUtils::HasExtension(const CStdString& strFileName, const CStdString& strExtensions)
+{
+  if (IsURL(strFileName))
+  {
+    CURL url(strFileName);
+    return HasExtension(url.GetFileName(), strExtensions);
+  }
+
+  // Search backwards so that '.' can be used as a search terminator.
+  CStdString::const_reverse_iterator itExtensions = strExtensions.rbegin();
+  while (itExtensions != strExtensions.rend())
+  {
+    // Iterate backwards over strFileName untill we hit a '.' or a mismatch
+    for (CStdString::const_reverse_iterator itFileName = strFileName.rbegin();
+         itFileName != strFileName.rend(), itExtensions != strExtensions.rend(),
+         tolower(*itFileName) == *itExtensions;
+         ++itFileName, ++itExtensions)
+    {
+      if (*itExtensions == '.')
+        return true; // Match
+    }
+
+    // No match. Look for more extensions to try.
+    while (itExtensions != strExtensions.rend() && *itExtensions != '|')
+      ++itExtensions;
+
+    while (itExtensions != strExtensions.rend() && *itExtensions == '|')
+      ++itExtensions;
+  }
+
+  return false;
 }
 
 void URIUtils::RemoveExtension(CStdString& strFileName)
@@ -94,15 +122,14 @@ void URIUtils::RemoveExtension(CStdString& strFileName)
   // Extension found
   if (iPos > 0)
   {
-    CStdString strExtension;
-    GetExtension(strFileName, strExtension);
+    CStdString strExtension = GetExtension(strFileName);
     strExtension.ToLower();
     strExtension += "|";
 
     CStdString strFileMask;
-    strFileMask = g_settings.m_pictureExtensions;
-    strFileMask += "|" + g_settings.m_musicExtensions;
-    strFileMask += "|" + g_settings.m_videoExtensions;
+    strFileMask = g_advancedSettings.m_pictureExtensions;
+    strFileMask += "|" + g_advancedSettings.m_musicExtensions;
+    strFileMask += "|" + g_advancedSettings.m_videoExtensions;
 #if defined(TARGET_DARWIN)
     strFileMask += "|.py|.xml|.milk|.xpr|.xbt|.cdg|.app|.applescript|.workflow";
 #else
@@ -126,8 +153,7 @@ CStdString URIUtils::ReplaceExtension(const CStdString& strFile,
   }
 
   CStdString strChangedFile;
-  CStdString strExtension;
-  GetExtension(strFile, strExtension);
+  CStdString strExtension = GetExtension(strFile);
   if ( strExtension.size() )
   {
     strChangedFile = strFile.substr(0, strFile.size() - strExtension.size()) ;
@@ -345,7 +371,7 @@ bool URIUtils::GetParentPath(const CStdString& strPath, CStdString& strParent)
   }
 
   int iPos = strFile.ReverseFind('/');
-#ifndef _LINUX
+#ifndef TARGET_POSIX
   if (iPos < 0)
   {
     iPos = strFile.ReverseFind('\\');
@@ -417,9 +443,9 @@ bool URIUtils::IsRemote(const CStdString& strFile)
 
 bool URIUtils::IsOnDVD(const CStdString& strFile)
 {
-#ifdef _WIN32
+#ifdef TARGET_WINDOWS
   if (strFile.Mid(1,1) == ":")
-    return (GetDriveType(strFile.Left(2)) == DRIVE_CDROM);
+    return (GetDriveType(strFile.Left(3)) == DRIVE_CDROM);
 #endif
 
   if (strFile.Left(4).CompareNoCase("dvd:") == 0)
@@ -525,7 +551,7 @@ bool URIUtils::IsDVD(const CStdString& strFile)
   if (strFileLow.Find("video_ts.ifo") != -1 && IsOnDVD(strFile))
     return true;
 
-#if defined(_WIN32)
+#if defined(TARGET_WINDOWS)
   if (strFile.Left(6).Equals("dvd://"))
     return true;
 
@@ -550,8 +576,7 @@ bool URIUtils::IsStack(const CStdString& strFile)
 
 bool URIUtils::IsRAR(const CStdString& strFile)
 {
-  CStdString strExtension;
-  GetExtension(strFile,strExtension);
+  CStdString strExtension = GetExtension(strFile);
 
   if (strExtension.Equals(".001") && strFile.Mid(strFile.length()-7,7).CompareNoCase(".ts.001"))
     return true;
@@ -593,39 +618,17 @@ bool URIUtils::IsInRAR(const CStdString& strFile)
 
 bool URIUtils::IsAPK(const CStdString& strFile)
 {
-  CStdString strExtension;
-  GetExtension(strFile,strExtension);
-
-  if (strExtension.CompareNoCase(".apk") == 0)
-    return true;
-
-  return false;
+  return HasExtension(strFile, ".apk");
 }
 
 bool URIUtils::IsZIP(const CStdString& strFile) // also checks for comic books!
 {
-  CStdString strExtension;
-  GetExtension(strFile,strExtension);
-
-  if (strExtension.CompareNoCase(".zip") == 0)
-    return true;
-
-  if (strExtension.CompareNoCase(".cbz") == 0)
-    return true;
-
-  return false;
+  return HasExtension(strFile, ".zip|.cbz");
 }
 
 bool URIUtils::IsArchive(const CStdString& strFile)
 {
-  CStdString extension;
-  GetExtension(strFile, extension);
-
-  return (extension.CompareNoCase(".zip") == 0 ||
-          extension.CompareNoCase(".rar") == 0 ||
-          extension.CompareNoCase(".apk") == 0 ||
-          extension.CompareNoCase(".cbz") == 0 ||
-          extension.CompareNoCase(".cbr") == 0);
+  return HasExtension(strFile, ".zip|.rar|.apk|.cbz|.cbr");
 }
 
 bool URIUtils::IsSpecial(const CStdString& strFile)
@@ -696,6 +699,17 @@ bool URIUtils::IsFTP(const CStdString& strFile)
 
   return strFile2.Left(4).Equals("ftp:")  ||
          strFile2.Left(5).Equals("ftps:");
+}
+
+bool URIUtils::IsDAV(const CStdString& strFile)
+{
+  CStdString strFile2(strFile);
+
+  if (IsStack(strFile))
+    strFile2 = CStackDirectory::GetFirstStackedFile(strFile);
+
+  return strFile2.Left(4).Equals("dav:")  ||
+         strFile2.Left(5).Equals("davs:");
 }
 
 bool URIUtils::IsInternetStream(const CURL& url, bool bStrictCheck /* = false */)
@@ -829,11 +843,6 @@ bool URIUtils::IsVideoDb(const CStdString& strFile)
   return strFile.Left(8).Equals("videodb:");
 }
 
-bool URIUtils::IsLastFM(const CStdString& strFile)
-{
-  return strFile.Left(7).Equals("lastfm:");
-}
-
 bool URIUtils::IsBluray(const CStdString& strFile)
 {
   return strFile.Left(7).Equals("bluray:");
@@ -842,6 +851,12 @@ bool URIUtils::IsBluray(const CStdString& strFile)
 bool URIUtils::IsAndroidApp(const CStdString &path)
 {
   return path.Left(11).Equals("androidapp:");
+}
+
+bool URIUtils::IsLibraryFolder(const CStdString& strFile)
+{
+  CURL url(strFile);
+  return url.GetProtocol().Equals("library");
 }
 
 bool URIUtils::IsDOSPath(const CStdString &path)
@@ -880,9 +895,15 @@ void URIUtils::AddSlashAtEnd(CStdString& strFolder)
   }
 }
 
-bool URIUtils::HasSlashAtEnd(const CStdString& strFile)
+bool URIUtils::HasSlashAtEnd(const CStdString& strFile, bool checkURL /* = false */)
 {
   if (strFile.size() == 0) return false;
+  if (checkURL && IsURL(strFile))
+  {
+    CURL url(strFile);
+    CStdString file = url.GetFileName();
+    return file.IsEmpty() || HasSlashAtEnd(file, false);
+  }
   char kar = strFile.c_str()[strFile.size() - 1];
 
   if (kar == '/' || kar == '\\')
@@ -920,24 +941,21 @@ bool URIUtils::CompareWithoutSlashAtEnd(const CStdString& strPath1, const CStdSt
   return strc1.Equals(strc2);
 }
 
-void URIUtils::AddFileToFolder(const CStdString& strFolder, 
-                                const CStdString& strFile,
-                                CStdString& strResult)
+CStdString URIUtils::AddFileToFolder(const CStdString& strFolder, 
+                                const CStdString& strFile)
 {
   if (IsURL(strFolder))
   {
     CURL url(strFolder);
     if (url.GetFileName() != strFolder)
     {
-      AddFileToFolder(url.GetFileName(), strFile, strResult);
-      url.SetFileName(strResult);
-      strResult = url.Get();
-      return;
+      url.SetFileName(AddFileToFolder(url.GetFileName(), strFile));
+      return url.Get();
     }
   }
 
-  strResult = strFolder;
-  if(!strResult.IsEmpty())
+  CStdString strResult = strFolder;
+  if (!strResult.IsEmpty())
     AddSlashAtEnd(strResult);
 
   // Remove any slash at the start of the file
@@ -951,6 +969,8 @@ void URIUtils::AddFileToFolder(const CStdString& strFolder,
     strResult.Replace('\\', '/');
   else
     strResult.Replace('/', '\\');
+
+  return strResult;
 }
 
 CStdString URIUtils::GetDirectory(const CStdString &filePath)
