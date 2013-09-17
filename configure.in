@@ -2,9 +2,11 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.7], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.8], [http://trac.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
+m4_include([m4/ax_prog_cc_for_build.m4])
+m4_include([m4/ax_prog_cxx_for_build.m4])
 m4_include([m4/ax_python_devel.m4])
 m4_include([m4/xbmc_arch.m4])
 
@@ -116,6 +118,10 @@ missing_headers="Could not find some required headers. Please see the README for
 missing_program="Could not find a required program. Please see the README for your platform."
 xrandr_not_found="== Could not find libXRandR. SDL will be used for resolution support. =="
 xrandr_disabled="== XRandR support disabled. SDL will be used for resolution support. =="
+waveform_enabled="== WAVEFORM enabled =="
+waveform_disabled="== WAVEFORM disabled =="
+spectrum_enabled="== SPECTRUM enabled =="
+spectrum_disabled="== SPECTRUM disabled =="
 goom_enabled="== GOOM enabled. =="
 goom_disabled="== GOOM disabled. =="
 alsa_disabled="== ALSA support disabled. =="
@@ -299,6 +305,18 @@ AC_ARG_ENABLE([xrandr],
   [enable XRandR support (default is yes)])],
   [use_xrandr=$enableval],
   [use_xrandr=yes])
+
+AC_ARG_ENABLE([waveform],
+  [AS_HELP_STRING([--enable-waveform],
+  [enable Waveform visualisation (default is yes)])],
+  [use_waveform=$enableval],
+  [use_waveform=yes])
+
+AC_ARG_ENABLE([spectrum],
+  [AS_HELP_STRING([--enable-spectrum],
+  [enable Spectrum visualisation (default is yes)])],
+  [use_spectrum=$enableval],
+  [use_spectrum=yes])
 
 AC_ARG_ENABLE([goom],
   [AS_HELP_STRING([--enable-goom],
@@ -563,13 +581,15 @@ if test "x$host_vendor" != "xapple"; then
 fi
 
 # Checks for programs.
-PASSED_CXXFLAGS=$CXXFLAGS # Hack to override autoconf default values
-AC_PROG_CXX
-CXXFLAGS="$PASSED_CXXFLAGS $DEFAULT_COMPILE_FLAGS"
 PASSED_CFLAGS=$CFLAGS # Hack to override autoconf default values
 AC_PROG_CC
-AC_PROG_LIBTOOL
+AX_PROG_CC_FOR_BUILD
 CFLAGS="$PASSED_CFLAGS $DEFAULT_COMPILE_FLAGS"
+PASSED_CXXFLAGS=$CXXFLAGS # Hack to override autoconf default values
+AC_PROG_CXX
+AX_PROG_CXX_FOR_BUILD
+CXXFLAGS="$PASSED_CXXFLAGS $DEFAULT_COMPILE_FLAGS"
+AC_PROG_LIBTOOL
 AC_PROG_AWK
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
@@ -617,7 +637,6 @@ case $host in
      use_dvdcss=no
      use_gles=yes
      use_cpu=cortex-a8
-     use_texturepacker_native=yes
      ARCH="arm-osx"
      use_arch="arm"
      PYTHON_VERSION="2.6"
@@ -629,7 +648,6 @@ case $host in
   *86*-apple-darwin*)
      use_joystick=no
      use_vtbdecoder=no
-     use_texturepacker_native=yes
      ARCH="x86-osx"
      ;;
   powerpc-apple-darwin*)
@@ -646,7 +664,6 @@ case $host in
      ARCH="powerpc64-linux"
      ;;
   arm*-*-linux-gnu*)
-     use_texturepacker=no
      ARCH="arm"
      use_arch="arm"
      ffmpeg_target_os=linux
@@ -675,7 +692,7 @@ case $host in
 esac
 AC_SUBST([ARCH])
 
-check_sdl_arch=[`file $USE_TEXTUREPACKER_NATIVE_ROOT/lib/libSDL_image.dylib | awk '{print $NF}'`]
+check_sdl_arch=[`file $NATIVE_ROOT/lib/libSDL_image.dylib | awk '{print $NF}'`]
 if test "x$check_sdl_arch" = "xi386" ; then
   DARWIN_NATIVE_ARCH=-m32
 elif test "x$check_sdl_arch" = "xx86_64" ; then
@@ -685,7 +702,6 @@ AC_SUBST([DARWIN_NATIVE_ARCH])
 
 if test "$target_platform" = "target_android" ; then
   USE_ANDROID=1
-  use_texturepacker_native=yes
   webserver_checkdepends=yes
   CFLAGS="$CFLAGS -Wno-psabi"
   CXXFLAGS="$CXXFLAGS -Wno-psabi"
@@ -696,8 +712,6 @@ case $use_platform in
   raspberry-pi)
      target_platform=target_raspberry_pi
      use_neon=no
-     use_texturepacker=yes
-     use_texturepacker_native=yes
      use_arch="arm"
      use_cpu=arm1176jzf-s
      use_hardcoded_tables="yes"
@@ -1304,6 +1318,24 @@ else
   fi
 fi
 
+# WAVEFORM
+if test "$use_waveform" = "yes"; then
+  AC_MSG_NOTICE($waveform_enabled)
+    DISABLE_WAVEFORM=0
+else
+  AC_MSG_NOTICE($waveform_disabled)
+  DISABLE_WAVEFORM=1
+fi
+
+# SPECTRUM
+if test "$use_spectrum" = "yes"; then
+  AC_MSG_NOTICE($spectrum_enabled)
+    DISABLE_SPECTRUM=0
+else
+  AC_MSG_NOTICE($spectrum_disabled)
+  DISABLE_SPECTRUM=1
+fi
+
 # GOOM
 if test "$host_vendor" = "apple" ; then
   AC_MSG_NOTICE($goom_disabled)
@@ -1827,7 +1859,7 @@ AC_DEFINE(YAJL_MAJOR, 1, [yajl version 1])
 # additional internal players
 case $add_players in
   *amlplayer*)
-      AC_CHECK_HEADER([amlplayer/amports/amstream.h],, AC_MSG_ERROR($missing_headers))
+      AC_CHECK_HEADER([amplayer/player_error.h],, AC_MSG_ERROR($missing_headers))
       XB_ADD_PLAYER([AMLPLAYER], [amlplayer])
       ;;
   *omxplayer*)
@@ -1838,7 +1870,7 @@ esac
 # additional internal codecs
 case $add_codecs in
   *amcodec*)
-      AC_CHECK_HEADER([amlplayer/codec_error.h],, AC_MSG_ERROR($missing_headers))
+      AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
       XB_ADD_CODEC([LIBAMCODEC], [amcodec])
       ;;
   *libstagefright*)
@@ -1922,6 +1954,15 @@ AC_C_BIGENDIAN
 
 if test "$cross_compiling" = "yes"; then
   final_message="$final_message\n  Crosscomp.:\tYes"
+  if [[ -d "$NATIVE_ROOT" ]]; then
+    CFLAGS_FOR_BUILD="$CFLAGS_FOR_BUILD -I$NATIVE_ROOT/include"
+    CXXFLAGS_FOR_BUILD="$CXXFLAGS_FOR_BUILD -I$NATIVE_ROOT/include"
+    LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -L$NATIVE_ROOT/lib"
+    if test "$host_vendor" != "apple" ; then
+      LDFLAGS_FOR_BUILD="$LDFLAGS_FOR_BUILD -Wl,-rpath=$NATIVE_ROOT/lib"
+    fi
+    final_message="$final_message\n  Native Root:\t$NATIVE_ROOT"
+  fi
 else
   final_message="$final_message\n  Crosscomp.:\tNo"
 fi
@@ -2005,6 +2046,18 @@ else
   USE_XRANDR=0
 fi
 
+if test "$use_waveform" = "yes"; then
+  final_message="$final_message\n  Waveform:\tYes"
+else
+  final_message="$final_message\n  Waveform:\tNo"
+fi
+
+if test "$use_spectrum" = "yes"; then
+  final_message="$final_message\n  Spectrum:\tYes"
+else
+  final_message="$final_message\n  Spectrum:\tNo"
+fi
+
 if test "$use_goom" = "yes"; then
   final_message="$final_message\n  GOOM:\t\tYes"
 else
@@ -2047,16 +2100,9 @@ else
   final_message="$final_message\n  Bluray:\tNo"
 fi
 
-USE_TEXTUREPACKER_NATIVE=0
 if test "x$use_texturepacker" != "xno"; then
   final_message="$final_message\n  TexturePacker:Yes"
   USE_TEXTUREPACKER=1
-  if test "x$use_texturepacker_native" = "xyes"; then
-    USE_TEXTUREPACKER_NATIVE=1
-    if [[ ! -d "$USE_TEXTUREPACKER_NATIVE_ROOT" ]]; then 
-      USE_TEXTUREPACKER_NATIVE_ROOT= 
-    fi
-  fi
 else
   final_message="$final_message\n  TexturePacker:No"
   USE_TEXTUREPACKER=0
@@ -2421,8 +2467,15 @@ AC_SUBST(CFLAGS)
 AC_SUBST(CXXFLAGS)
 AC_SUBST(INCLUDES)
 AC_SUBST(LDFLAGS)
+AC_SUBST(CXX_FOR_BUILD)
+AC_SUBST(CC_FOR_BUILD)
+AC_SUBST(CFLAGS_FOR_BUILD)
+AC_SUBST(CXXFLAGS_FOR_BUILD)
+AC_SUBST(LDFLAGS_FOR_BUILD)
 AC_SUBST(SDL_DEFINES)
 AC_SUBST(BUILD_DVDCSS)
+AC_SUBST(DISABLE_WAVEFORM)
+AC_SUBST(DISABLE_SPECTRUM)
 AC_SUBST(DISABLE_GOOM)
 AC_SUBST(DISABLE_RSXS)
 AC_SUBST(DISABLE_FISHBMC)
@@ -2459,8 +2512,6 @@ AC_SUBST(USE_PULSE)
 AC_SUBST(USE_XRANDR)
 AC_SUBST(USE_ALSA)
 AC_SUBST(USE_TEXTUREPACKER)
-AC_SUBST(USE_TEXTUREPACKER_NATIVE)
-AC_SUBST(USE_TEXTUREPACKER_NATIVE_ROOT)
 AC_SUBST(USE_AIRTUNES)
 AC_SUBST(USE_LIBUDEV)
 AC_SUBST(USE_LIBUSB)

@@ -578,10 +578,17 @@ CStdString CURL::GetWithoutUserDetails() const
 
   if (m_strHostName != "")
   {
+    CStdString strHostName;
+
     if (URIUtils::ProtocolHasParentInHostname(m_strProtocol))
-      strURL += CURL(m_strHostName).GetWithoutUserDetails();
+      strHostName = CURL(m_strHostName).GetWithoutUserDetails();
     else
-      strURL += m_strHostName;
+      strHostName = m_strHostName;
+
+    if (URIUtils::ProtocolHasEncodedHostname(m_strProtocol))
+      strURL += URLEncodeInline(strHostName);
+    else
+      strURL += strHostName;
 
     if ( HasPort() )
     {
@@ -854,6 +861,6 @@ void CURL::SetProtocolOption(const CStdString &key, const CStdString &value)
 
 void CURL::RemoveProtocolOption(const CStdString &key)
 {
-  m_options.RemoveOption(key);
+  m_protocolOptions.RemoveOption(key);
   m_strProtocolOptions = m_protocolOptions.GetOptionsString(false);
 }
