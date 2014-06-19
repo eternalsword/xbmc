@@ -38,6 +38,7 @@
 #include "FileItem.h"
 #include "guilib/GUIDialog.h"
 #include "guilib/Key.h"
+#include "guilib/GUIKeyboardFactory.h"
 #include "GUIInfoManager.h"
 #include "utils/Splash.h"
 #include "cores/IPlayer.h"
@@ -411,7 +412,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
           else
             URIUtils::CreateArchivePath(strPath, "rar", pMsg->strParam.c_str(), "");
 
-          CUtil::GetRecursiveListing(strPath, items, g_advancedSettings.m_pictureExtensions);
+          CUtil::GetRecursiveListing(strPath, items, g_advancedSettings.m_pictureExtensions, XFILE::DIR_FLAG_NO_FILE_DIRS);
           if (items.Size() > 0)
           {
             pSlideShow->Reset();
@@ -753,7 +754,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       {
         if (pMsg->lpVoid)
         {
-          vector<CStdString> *infoLabels = (vector<CStdString> *)pMsg->lpVoid;
+          vector<string> *infoLabels = (vector<string> *)pMsg->lpVoid;
           for (unsigned int i = 0; i < pMsg->params.size(); i++)
             infoLabels->push_back(g_infoManager.GetLabel(g_infoManager.TranslateString(pMsg->params[i])));
         }
@@ -1209,7 +1210,7 @@ void CApplicationMessenger::DoModal(CGUIDialog *pDialog, int iWindowID, const CS
   SendMessage(tMsg, true);
 }
 
-void CApplicationMessenger::ExecOS(const CStdString command, bool waitExit)
+void CApplicationMessenger::ExecOS(const CStdString &command, bool waitExit)
 {
   ThreadMessage tMsg = {TMSG_EXECUTE_OS};
   tMsg.strParam = command;
@@ -1238,7 +1239,7 @@ void CApplicationMessenger::Close(CGUIWindow *window, bool forceClose, bool wait
   SendMessage(tMsg, waitResult);
 }
 
-void CApplicationMessenger::ActivateWindow(int windowID, const vector<CStdString> &params, bool swappingWindows)
+void CApplicationMessenger::ActivateWindow(int windowID, const vector<string> &params, bool swappingWindows)
 {
   ThreadMessage tMsg = {TMSG_GUI_ACTIVATE_WINDOW, (unsigned int)windowID, swappingWindows ? 1u : 0u};
   tMsg.params = params;
@@ -1261,9 +1262,24 @@ void CApplicationMessenger::SendGUIMessage(const CGUIMessage &message, int windo
   SendMessage(tMsg, waitResult);
 }
 
-vector<CStdString> CApplicationMessenger::GetInfoLabels(const vector<CStdString> &properties)
+void CApplicationMessenger::SendText(const std::string &aTextString, bool closeKeyboard /* = false */)
 {
-  vector<CStdString> infoLabels;
+  if (CGUIKeyboardFactory::SendTextToActiveKeyboard(aTextString, closeKeyboard))
+    return;
+
+  CGUIWindow *window = g_windowManager.GetWindow(g_windowManager.GetFocusedWindow());
+  if (!window)
+    return;
+
+  CGUIMessage msg(GUI_MSG_SET_TEXT, 0, 0);
+  msg.SetLabel(aTextString);
+  msg.SetParam1(closeKeyboard ? 1 : 0);
+  SendGUIMessage(msg, window->GetID());
+}
+
+vector<string> CApplicationMessenger::GetInfoLabels(const vector<string> &properties)
+{
+  vector<string> infoLabels;
 
   ThreadMessage tMsg = {TMSG_GUI_INFOLABEL};
   tMsg.params = properties;
@@ -1272,7 +1288,7 @@ vector<CStdString> CApplicationMessenger::GetInfoLabels(const vector<CStdString>
   return infoLabels;
 }
 
-vector<bool> CApplicationMessenger::GetInfoBooleans(const vector<CStdString> &properties)
+vector<bool> CApplicationMessenger::GetInfoBooleans(const vector<string> &properties)
 {
   vector<bool> infoLabels;
 
@@ -1357,7 +1373,7 @@ void CApplicationMessenger::LoadProfile(unsigned int idx)
   SendMessage(tMsg, false);
 }
 
-void CApplicationMessenger::StartAndroidActivity(const vector<CStdString> &params)
+void CApplicationMessenger::StartAndroidActivity(const vector<string> &params)
 {
   ThreadMessage tMsg = {TMSG_START_ANDROID_ACTIVITY};
   tMsg.params = params;

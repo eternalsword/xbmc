@@ -509,6 +509,10 @@ msgctxt "#167"
 msgid "Cancel file operations"
 msgstr "Fayl jarayonlarini bekor qilish"
 
+msgctxt "#168"
+msgid "%s- %s"
+msgstr "%s- %s"
+
 msgctxt "#169"
 msgid "Resolution"
 msgstr "Ekran o'lchamlari"
@@ -789,21 +793,17 @@ msgctxt "#249"
 msgid "Music"
 msgstr "Musiqa"
 
-msgctxt "#250"
-msgid "Visualization"
-msgstr "Vizualizatsiya"
-
 msgctxt "#251"
 msgid "Select destination directory"
 msgstr "Mo'ljal direktoriyasini tanlash"
 
-msgctxt "#252"
-msgid "Output stereo to all speakers"
-msgstr "Stereo hamma karnaylarga chiqarish"
-
 msgctxt "#253"
 msgid "Number of channels"
 msgstr "Kanallar soni"
+
+msgctxt "#254"
+msgid "DTS capable receiver"
+msgstr "DTS qo'llab-quvvatlaydigan priyomnik"
 
 msgctxt "#255"
 msgid "CDDB"
@@ -941,6 +941,18 @@ msgctxt "#298"
 msgid "Bookmarks"
 msgstr "Xatcho'plar"
 
+msgctxt "#300"
+msgid "MP1 capable receiver"
+msgstr "MP1 qo'llab-quvvatlaydigan priyomnik"
+
+msgctxt "#301"
+msgid "MP2 capable receiver"
+msgstr "MP2 qo'llab-quvvatlaydigan priyomnik"
+
+msgctxt "#302"
+msgid "MP3 capable receiver"
+msgstr "MP3 qo'llab-quvvatlaydigan priyomnik"
+
 msgctxt "#303"
 msgid "Delay"
 msgstr "Kechiktirish"
@@ -949,9 +961,9 @@ msgctxt "#304"
 msgid "Language"
 msgstr "Til"
 
-msgctxt "#309"
-msgid "User Interface language"
-msgstr "Foydalanuvchi interfeysi tili"
+msgctxt "#305"
+msgid "Enabled"
+msgstr "Yoqilgan"
 
 msgctxt "#312"
 msgid "(0=auto)"
@@ -1049,18 +1061,6 @@ msgctxt "#335"
 msgid "Start"
 msgstr "Boshlash"
 
-msgctxt "#337"
-msgid "Audio output"
-msgstr "Audio chiqarish"
-
-msgctxt "#338"
-msgid "Analog"
-msgstr "Analog"
-
-msgctxt "#339"
-msgid "Optical/Coax"
-msgstr "Optik/Coax"
-
 msgctxt "#340"
 msgid "Various artists"
 msgstr "Har xil artistlar"
@@ -1080,6 +1080,14 @@ msgstr "Aktyorlar"
 msgctxt "#345"
 msgid "Year"
 msgstr "Yil"
+
+msgctxt "#347"
+msgid "DTS-HD capable receiver"
+msgstr "DTS-HD qo'llab-quvvatlaydigan priyomnik"
+
+msgctxt "#349"
+msgid "TrueHD capable receiver"
+msgstr "TrueHD qo'llab-quvvatlaydigan priyomnik"
 
 msgctxt "#350"
 msgid "Programs"
@@ -1136,6 +1144,10 @@ msgstr "Sarlavha"
 msgctxt "#370"
 msgid "Thunderstorms"
 msgstr "Momaqaldiroq"
+
+msgctxt "#371"
+msgid "Partly"
+msgstr "Qisman"
 
 msgctxt "#375"
 msgid "Snow"
@@ -1225,10 +1237,6 @@ msgctxt "#419"
 msgid "High"
 msgstr "Yuqori"
 
-msgctxt "#420"
-msgid "HDMI"
-msgstr "HDMI"
-
 msgctxt "#422"
 msgid "Delete album info"
 msgstr "Albom ma'lumotini o'chirish"
@@ -1281,10 +1289,6 @@ msgctxt "#439"
 msgid "Cache"
 msgstr "Kesh"
 
-msgctxt "#440"
-msgid "Harddisk"
-msgstr "Qattiq disk"
-
 msgctxt "#441"
 msgid "UDF"
 msgstr "UDF"
@@ -1309,9 +1313,41 @@ msgctxt "#446"
 msgid "DVD"
 msgstr "DVD"
 
+msgctxt "#449"
+msgid "Enabled"
+msgstr "Yoqilgan"
+
+msgctxt "#450"
+msgid "Columns"
+msgstr "Ustunlar"
+
+msgctxt "#451"
+msgid "Row 1 address"
+msgstr "Satr 1 manzil"
+
+msgctxt "#452"
+msgid "Row 2 address"
+msgstr "Satr 2 manzil"
+
+msgctxt "#453"
+msgid "Row 3 address"
+msgstr "Satr 3 manzil"
+
+msgctxt "#454"
+msgid "Row 4 address"
+msgstr "Satr 4 manzil"
+
+msgctxt "#455"
+msgid "Rows"
+msgstr "Satrlar"
+
 msgctxt "#456"
 msgid "Mode"
 msgstr "Usul"
+
+msgctxt "#460"
+msgid "Audio stream"
+msgstr "Audio oqim"
 
 msgctxt "#461"
 msgid "[active]"
@@ -1328,6 +1364,10 @@ msgstr "Ravshanlik"
 msgctxt "#465"
 msgid "Contrast"
 msgstr "Kontrast"
+
+msgctxt "#466"
+msgid "Gamma"
+msgstr "Gamma"
 
 msgctxt "#467"
 msgid "Type"
@@ -1392,6 +1432,14 @@ msgstr "Avtomatik ravishda keyingi qo'shiqni ijro ettirish"
 msgctxt "#493"
 msgid "Advanced options (Experts Only!)"
 msgstr "Qo'shimcha parametrlar (Ekspertlar uchun!)"
+
+msgctxt "#496"
+msgid "Calibration"
+msgstr "Kalibrlash"
+
+msgctxt "#497"
+msgid "Show file extensions"
+msgstr "Fayl kengaytmalarini ko'rsatish"
 
 msgctxt "#498"
 msgid "Sort by: Type"
@@ -1601,6 +1649,10 @@ msgctxt "#574"
 msgid "Country"
 msgstr "Davlat"
 
+msgctxt "#580"
+msgid "Sort direction"
+msgstr "Saralash yo'nalishi"
+
 msgctxt "#581"
 msgid "Sort method"
 msgstr "Saralash usuli"
@@ -1608,6 +1660,10 @@ msgstr "Saralash usuli"
 msgctxt "#582"
 msgid "View mode"
 msgstr "Ko'rish usuli"
+
+msgctxt "#584"
+msgid "Ascending"
+msgstr "O‘sish tartibida"
 
 msgctxt "#586"
 msgid "Edit playlist"
@@ -2345,6 +2401,26 @@ msgctxt "#12005"
 msgid "Fullscreen video"
 msgstr "To'liq ekran video"
 
+msgctxt "#12009"
+msgid "Rebuild index..."
+msgstr "Indeksni qayta qurish..."
+
+msgctxt "#12010"
+msgid "Return to music window"
+msgstr "Musiqa oynasiga qaytish"
+
+msgctxt "#12011"
+msgid "Return to videos window"
+msgstr "Video oynasiga qaytish"
+
+msgctxt "#12021"
+msgid "Start from beginning"
+msgstr "Boshidan boshlash"
+
+msgctxt "#12022"
+msgid "Resume from %s"
+msgstr "%s'dan davom ettirish"
+
 msgctxt "#12310"
 msgid "0"
 msgstr "0"
@@ -2393,9 +2469,21 @@ msgctxt "#12322"
 msgid "*"
 msgstr "*"
 
+msgctxt "#12325"
+msgid "Locked! Enter code..."
+msgstr "Bloklangan! Kodni kiriting..."
+
 msgctxt "#12326"
 msgid "Enter password"
 msgstr "Maxfiy so'zni kiriting"
+
+msgctxt "#12327"
+msgid "Enter master code"
+msgstr "Bosh kodni kiritish"
+
+msgctxt "#12328"
+msgid "Enter unlock code"
+msgstr "Blokdan chiqarish kodini kiritish"
 
 msgctxt "#12329"
 msgid "or press C to cancel"
@@ -2601,10 +2689,6 @@ msgctxt "#13346"
 msgid "Movie information"
 msgstr "Film ma'lumoti"
 
-msgctxt "#13350"
-msgid "Now playing..."
-msgstr "Ijro ettirilmoqda..."
-
 msgctxt "#13351"
 msgid "Album information"
 msgstr "Albom ma'lumoti"
@@ -2672,14 +2756,6 @@ msgstr "Ko'rish parametrlari"
 msgctxt "#14022"
 msgid "Library"
 msgstr "To'plam"
-
-msgctxt "#14028"
-msgid "Internet"
-msgstr "Internet"
-
-msgctxt "#14032"
-msgid "Internet"
-msgstr "Internet"
 
 msgctxt "#14036"
 msgid "Services"
@@ -3137,10 +3213,6 @@ msgctxt "#19117"
 msgid "Search for channels"
 msgstr "Kanallarni qidirish"
 
-msgctxt "#19119"
-msgid "On which server you want to search?"
-msgstr "Qaysi serverda qidirmoqchisiz?"
-
 msgctxt "#19120"
 msgid "Client number"
 msgstr "Mijoz raqami"
@@ -3505,10 +3577,6 @@ msgctxt "#19645"
 msgid "Tourism/Travel"
 msgstr "Sayohat/Safar"
 
-msgctxt "#19648"
-msgid "Fitness &amp; Health"
-msgstr "Fitnes va Sog'liq"
-
 msgctxt "#19649"
 msgid "Cooking"
 msgstr "Pazandalik"
@@ -3516,10 +3584,6 @@ msgstr "Pazandalik"
 msgctxt "#19661"
 msgid "Original Language"
 msgstr "Asl til"
-
-msgctxt "#19662"
-msgid "Black &amp; White"
-msgstr "Qora va oq"
 
 msgctxt "#19676"
 msgid "Drama"
@@ -3905,10 +3969,6 @@ msgctxt "#24009"
 msgid "Script"
 msgstr "Skript"
 
-msgctxt "#24010"
-msgid "Visualization"
-msgstr "Vizualizatsiya"
-
 msgctxt "#24012"
 msgid "Subtitles"
 msgstr "Subtitrlar"
@@ -3992,6 +4052,10 @@ msgstr "%s kun"
 msgctxt "#33063"
 msgid "Options"
 msgstr "Parametrlar"
+
+msgctxt "#34100"
+msgid "Number of channels"
+msgstr "Kanallar soni"
 
 msgctxt "#34101"
 msgid "2.0"
@@ -4093,14 +4157,6 @@ msgctxt "#36030"
 msgid "Connection lost"
 msgstr "Aloqa uzilgan"
 
-msgctxt "#36031"
-msgid "This user does not have permissions to open the CEC adapter"
-msgstr "Ushbu foydalanuvchida CEC adapterini ochishga huquqlar yo'q"
-
-msgctxt "#36032"
-msgid "The port is busy. Only one program can access the CEC adapter"
-msgstr "Port band. Faqat bitta dastur uchun CEC adapteriga ruxsat etilgan"
-
 msgctxt "#36033"
 msgid "Pause playback when switching to another source"
 msgstr "Boshqa manbaga o'tkazganda ijro ettirishni to'xtatish"
@@ -4132,3 +4188,7 @@ msgstr "Qo'llab-quvvatlanmaydigan libCEC interfeysi versiyasi. %x XBMC qo'llab-q
 msgctxt "#36041"
 msgid "* Item folder"
 msgstr "* Element jildi"
+
+msgctxt "#36428"
+msgid "Record"
+msgstr "Yozish"

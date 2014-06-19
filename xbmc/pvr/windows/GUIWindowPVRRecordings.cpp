@@ -70,21 +70,8 @@ CStdString CGUIWindowPVRRecordings::GetResumeString(const CFileItem& item)
 
     // First try to find the resume position on the back-end, if that fails use video database
     int positionInSeconds = item.GetPVRRecordingInfoTag()->GetLastPlayedPosition();
-    // If the back-end does report a saved position then make sure there is a corresponding resume bookmark
-    if (positionInSeconds > 0)
-    {
-      CBookmark bookmark;
-      bookmark.timeInSeconds = positionInSeconds;
-      bookmark.totalTimeInSeconds = (double)item.GetPVRRecordingInfoTag()->GetDuration();
-      CVideoDatabase db;
-      if (db.Open())
-      {
-        CStdString itemPath(item.GetPVRRecordingInfoTag()->m_strFileNameAndPath);
-        db.AddBookMarkToFile(itemPath, bookmark, CBookmark::RESUME);
-        db.Close();
-      }
-    }
-    else if (positionInSeconds < 0)
+    // If the back-end does report a saved position it will be picked up by FileItem
+    if (positionInSeconds < 0)
     {
       CVideoDatabase db;
       if (db.Open())
@@ -99,7 +86,7 @@ CStdString CGUIWindowPVRRecordings::GetResumeString(const CFileItem& item)
 
     // Suppress resume from 0
     if (positionInSeconds > 0)
-      resumeString.Format(g_localizeStrings.Get(12022).c_str(), StringUtils::SecondsToTimeString(positionInSeconds).c_str());
+      resumeString = StringUtils::Format(g_localizeStrings.Get(12022).c_str(), StringUtils::SecondsToTimeString(positionInSeconds).c_str());
   }
   return resumeString;
 }
@@ -116,7 +103,7 @@ void CGUIWindowPVRRecordings::GetContextButtons(int itemNumber, CContextButtons 
     buttons.Add(CONTEXT_BUTTON_FIND, 19003);      /* Find similar program */
     buttons.Add(CONTEXT_BUTTON_PLAY_ITEM, 12021); /* Play this recording */
     CStdString resumeString = GetResumeString(*pItem);
-    if (!resumeString.IsEmpty())
+    if (!resumeString.empty())
     {
       buttons.Add(CONTEXT_BUTTON_RESUME_ITEM, resumeString);
     }
@@ -164,13 +151,11 @@ bool CGUIWindowPVRRecordings::OnAction(const CAction &action)
       action.GetID() == ACTION_NAV_BACK)
   {
     if (m_parent->m_vecItems->GetPath() != "pvr://recordings/")
+    {
       m_parent->GoParentFolder();
-    else if (action.GetID() == ACTION_NAV_BACK)
-      g_windowManager.PreviousWindow();
-
-    return true;
+      return true;
+    }
   }
-
   return CGUIWindowPVRCommon::OnAction(action);
 }
 
@@ -204,7 +189,7 @@ void CGUIWindowPVRRecordings::UpdateData(bool bUpdateSelectedFile /* = true */)
   CSingleLock graphicsLock(g_graphicsContext);
 
   m_iSelected = m_parent->m_viewControl.GetSelectedItem();
-  if (m_parent->m_vecItems->GetPath().Left(17) != "pvr://recordings/")
+  if (!StringUtils::StartsWith(m_parent->m_vecItems->GetPath(), "pvr://recordings/"))
     m_strSelectedPath = "pvr://recordings/";
   else
     m_strSelectedPath = m_parent->m_vecItems->GetPath();
@@ -277,7 +262,7 @@ bool CGUIWindowPVRRecordings::OnClickList(CGUIMessage &message)
     {
       int choice = CONTEXT_BUTTON_PLAY_ITEM;
       CStdString resumeString = GetResumeString(*pItem);
-      if (!resumeString.IsEmpty())
+      if (!resumeString.empty())
       {
         CContextButtons choices;
         choices.Add(CONTEXT_BUTTON_RESUME_ITEM, resumeString);
@@ -404,6 +389,9 @@ bool CGUIWindowPVRRecordings::OnContextButtonMarkWatched(const CFileItemPtr &ite
 
 void CGUIWindowPVRRecordings::BeforeUpdate(const CStdString &strDirectory)
 {
+  // set items path to current directory
+  m_parent->m_vecItems->SetPath(strDirectory);
+
   if (m_thumbLoader.IsLoading())
     m_thumbLoader.StopThread();
 }

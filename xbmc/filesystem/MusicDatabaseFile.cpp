@@ -56,6 +56,7 @@ CStdString CMusicDatabaseFile::TranslateUrl(const CURL& url)
   if (!musicDatabase.GetSong(idSong, song))
     return "";
 
+  StringUtils::ToLower(strExtension);
   if (!URIUtils::HasExtension(song.strFileName, strExtension))
     return "";
 
@@ -69,7 +70,7 @@ bool CMusicDatabaseFile::Open(const CURL& url)
 
 bool CMusicDatabaseFile::Exists(const CURL& url)
 {
-  return !TranslateUrl(url).IsEmpty();
+  return !TranslateUrl(url).empty();
 }
 
 int CMusicDatabaseFile::Stat(const CURL& url, struct __stat64* buffer)

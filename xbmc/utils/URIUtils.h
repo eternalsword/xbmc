@@ -31,8 +31,11 @@ public:
   static bool IsInPath(const CStdString &uri, const CStdString &baseURI);
 
   static CStdString GetDirectory(const CStdString &strFilePath);
+
+  static const CStdString GetFileName(const CURL& url);
   static const CStdString GetFileName(const CStdString& strFileNameAndPath);
 
+  static CStdString GetExtension(const CURL& url);
   static CStdString GetExtension(const CStdString& strFileName);
 
   /*!
@@ -55,18 +58,32 @@ public:
    \sa GetExtension
    */
   static bool HasExtension(const CStdString& strFileName, const CStdString& strExtensions);
+  static bool HasExtension(const CURL& url, const CStdString& strExtensions);
 
   static void RemoveExtension(CStdString& strFileName);
   static CStdString ReplaceExtension(const CStdString& strFile,
                                      const CStdString& strNewExtension);
   static void Split(const CStdString& strFileNameAndPath, 
                     CStdString& strPath, CStdString& strFileName);
-  static CStdStringArray SplitPath(const CStdString& strPath);
+  static void Split(const std::string& strFileNameAndPath, 
+                    std::string& strPath, std::string& strFileName);
+  static std::vector<std::string> SplitPath(const CStdString& strPath);
 
   static void GetCommonPath(CStdString& strPath, const CStdString& strPath2);
   static CStdString GetParentPath(const CStdString& strPath);
   static bool GetParentPath(const CStdString& strPath, CStdString& strParent);
-  static CStdString SubstitutePath(const CStdString& strPath);
+
+  /* \brief Change the base path of a URL: fromPath/fromFile -> toPath/toFile
+    Handles changes in path separator and filename URL encoding if necessary to derive toFile.
+    \param fromPath the base path of the original URL
+    \param fromFile the filename portion of the original URL
+    \param toPath the base path of the resulting URL
+    \return the full path.
+   */
+  static std::string ChangeBasePath(const std::string &fromPath, const std::string &fromFile, const std::string &toPath);
+
+  static CURL SubstitutePath(const CURL& url, bool reverse = false);
+  static CStdString SubstitutePath(const CStdString& strPath, bool reverse = false);
 
   static bool IsAddonsPath(const CStdString& strFile);
   static bool IsSourcesPath(const CStdString& strFile);
@@ -82,6 +99,7 @@ public:
   static bool IsHTSP(const CStdString& strFile);
   static bool IsInArchive(const CStdString& strFile);
   static bool IsInRAR(const CStdString& strFile);
+  static bool IsInternetStream(const std::string& path, bool bStrictCheck = false);
   static bool IsInternetStream(const CURL& url, bool bStrictCheck = false);
   static bool IsInAPK(const CStdString& strFile);
   static bool IsInZIP(const CStdString& strFile);
@@ -95,6 +113,7 @@ public:
   static bool IsAfp(const CStdString& strFile);    
   static bool IsOnDVD(const CStdString& strFile);
   static bool IsOnLAN(const CStdString& strFile);
+  static bool IsHostOnLAN(const CStdString& hostName, bool offLineCheck = false);
   static bool IsPlugin(const CStdString& strFile);
   static bool IsScript(const CStdString& strFile);
   static bool IsRAR(const CStdString& strFile);
@@ -113,11 +132,30 @@ public:
   static bool IsBluray(const CStdString& strFile);
   static bool IsAndroidApp(const CStdString& strFile);
   static bool IsLibraryFolder(const CStdString& strFile);
+  static bool IsLibraryContent(const std::string& strFile);
 
-  static void AddSlashAtEnd(CStdString& strFolder);
-  static bool HasSlashAtEnd(const CStdString& strFile, bool checkURL = false);
-  static void RemoveSlashAtEnd(CStdString& strFolder);
+  static void AddSlashAtEnd(std::string& strFolder);
+  static bool HasSlashAtEnd(const std::string& strFile, bool checkURL = false);
+  static void RemoveSlashAtEnd(std::string& strFolder);
   static bool CompareWithoutSlashAtEnd(const CStdString& strPath1, const CStdString& strPath2);
+  static std::string FixSlashesAndDups(const std::string& path, const char slashCharacter = '/', const size_t startFrom = 0);
+  /**
+   * Convert path to form without duplicated slashes and without relative directories
+   * Strip duplicated slashes
+   * Resolve and remove relative directories ("/../" and "/./")
+   * Will ignore slashes with other direction than specified
+   * Will not resolve path starting from relative directory
+   * @warning Don't use with "protocol://path"-style URLs
+   * @param path string to process
+   * @param slashCharacter character to use as directory delimiter
+   * @return transformed path
+   */
+  static std::string CanonicalizePath(const std::string& path, const char slashCharacter = '\\');
+
+  static CURL CreateArchivePath(const std::string& type,
+                                const CURL& archiveUrl,
+                                const std::string& pathInArchive = "",
+                                const std::string& password = "");
 
   static void CreateArchivePath(CStdString& strUrlPath,
                                 const CStdString& strType,

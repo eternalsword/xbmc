@@ -58,6 +58,11 @@ CScreenshotSurface::CScreenshotSurface()
   m_buffer = NULL;
 }
 
+CScreenshotSurface::~CScreenshotSurface()
+{
+  delete m_buffer;
+}
+
 bool CScreenshotSurface::capture()
 {
 #if defined(TARGET_RASPBERRY_PI)
@@ -193,6 +198,7 @@ void CScreenShot::TakeScreenshot(const CStdString &filename, bool sync)
       CLog::Log(LOGERROR, "Unable to write screenshot %s", filename.c_str());
 
     delete [] surface.m_buffer;
+    surface.m_buffer = NULL;
   }
   else
   {
@@ -207,6 +213,7 @@ void CScreenShot::TakeScreenshot(const CStdString &filename, bool sync)
     //buffer is deleted from CThumbnailWriter
     CThumbnailWriter* thumbnailwriter = new CThumbnailWriter(surface.m_buffer, surface.m_width, surface.m_height, surface.m_stride, filename);
     CJobManager::GetInstance().AddJob(thumbnailwriter, NULL);
+    surface.m_buffer = NULL;
   }
 }
 
@@ -229,7 +236,7 @@ void CScreenShot::TakeScreenshot()
     }
   }
 
-  if (strDir.IsEmpty())
+  if (strDir.empty())
   {
     strDir = "special://temp/";
     if (!savingScreenshots)
@@ -241,11 +248,11 @@ void CScreenShot::TakeScreenshot()
   }
   URIUtils::RemoveSlashAtEnd(strDir);
 
-  if (!strDir.IsEmpty())
+  if (!strDir.empty())
   {
     CStdString file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(strDir, "screenshot%03d.png"), 999);
 
-    if (!file.IsEmpty())
+    if (!file.empty())
     {
       TakeScreenshot(file, false);
       if (savingScreenshots)
@@ -263,12 +270,12 @@ void CScreenShot::TakeScreenshot()
           }
         }
 
-        if (!newDir.IsEmpty())
+        if (!newDir.empty())
         {
           for (unsigned int i = 0; i < screenShots.size(); i++)
           {
             CStdString file = CUtil::GetNextFilename(URIUtils::AddFileToFolder(newDir, "screenshot%03d.png"), 999);
-            CFile::Cache(screenShots[i], file);
+            CFile::Copy(screenShots[i], file);
           }
           screenShots.clear();
         }

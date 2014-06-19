@@ -25,7 +25,7 @@
  */
 
 #include "guilib/GUIListItem.h"
-#include "utils/Archive.h"
+#include "utils/IArchivable.h"
 #include "utils/ISerializable.h"
 #include "utils/ISortable.h"
 #include "XBDateTime.h"
@@ -91,8 +91,10 @@ public:
   CFileItem(const CFileItem& item);
   CFileItem(const CGUIListItem& item);
   CFileItem(const CStdString& strLabel);
+  CFileItem(const CURL& path, bool bIsFolder);
   CFileItem(const CStdString& strPath, bool bIsFolder);
   CFileItem(const CSong& song);
+  CFileItem(const CURL &path, const CAlbum& album);
   CFileItem(const CStdString &path, const CAlbum& album);
   CFileItem(const CArtist& artist);
   CFileItem(const CGenre& genre);
@@ -106,18 +108,33 @@ public:
   virtual ~CFileItem(void);
   virtual CGUIListItem *Clone() const { return new CFileItem(*this); };
 
+  const CURL GetURL() const;
+  void SetURL(const CURL& url);
   const CStdString &GetPath() const { return m_strPath; };
   void SetPath(const CStdString &path) { m_strPath = path; };
 
+  /*! \brief reset class to it's default values as per construction.
+   Free's all allocated memory.
+   \sa Initialize
+   */
   void Reset();
   const CFileItem& operator=(const CFileItem& item);
   virtual void Archive(CArchive& ar);
   virtual void Serialize(CVariant& value) const;
-  virtual void ToSortable(SortItem &sortable);
+  virtual void ToSortable(SortItem &sortable, Field field) const;
+  void ToSortable(SortItem &sortable, const Fields &fields) const;
   virtual bool IsFileItem() const { return true; };
 
   bool Exists(bool bUseCache = true) const;
   
+  /*!
+   \brief Check whether an item is an optical media folder or its parent. 
+    This will return the non-empty path to the playable entry point of the media
+    one or two levels down (VIDEO_TS.IFO for DVDs or index.bdmv for BDs). 
+    The returned path will be empty if folder does not meet this criterion.
+   \return non-empty string if item is optical media folder, empty otherwise. 
+   */
+  std::string GetOpticalMediaPath() const;
   /*!
    \brief Check whether an item is a video item. Note that this returns true for
     anything with a video info tag, so that may include eg. folders.
@@ -286,6 +303,18 @@ public:
     return m_pvrTimerInfoTag;
   }
 
+  /*!
+   \brief Test if this item has a valid resume point set.
+   \return True if this item has a resume point and it is set, false otherwise.
+   */
+  bool IsResumePointSet() const;
+
+  /*!
+   \brief Return the current resume time.
+   \return The time in seconds from the start to resume playing from.
+   */
+  double GetCurrentResumeTime() const;
+
   inline bool HasPictureInfoTag() const
   {
     return m_pictureInfoTag != NULL;
@@ -322,6 +351,12 @@ public:
    \sa GetLocalArt
    */
   CStdString FindLocalArt(const std::string &artFile, bool useFolder) const;
+
+  /*! \brief Whether or not to skip searching for local art.
+   \return true if local art should be skipped for this item, false otherwise.
+   \sa GetLocalArt, FindLocalArt
+   */
+  bool SkipLocalArt() const;
 
   // Gets the .tbn file associated with this item
   CStdString GetTBNFile() const;
@@ -427,6 +462,12 @@ public:
   int m_iBadPwdCount;
 
 private:
+  /*! \brief initialize all members of this class (not CGUIListItem members) to default values.
+   Called from constructors, and from Reset()
+   \sa Reset, CGUIListItem
+   */
+  void Initialize();
+
   CStdString m_strPath;            ///< complete path to item
 
   SortSpecial m_specialSort;

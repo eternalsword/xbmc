@@ -46,14 +46,14 @@ public:
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions &options);
   virtual bool QueueNextFile(const CFileItem &file);
   virtual void OnNothingToQueueNotify();
-  virtual bool CloseFile();
+  virtual bool CloseFile(bool reopen = false);
   virtual bool IsPlaying() const;
   virtual void Pause();
   virtual bool IsPaused() const;
   virtual bool HasVideo() const { return false; }
   virtual bool HasAudio() const { return true; }
   virtual bool CanSeek();
-  virtual void Seek(bool bPlus = true, bool bLargeStep = false);
+  virtual void Seek(bool bPlus = true, bool bLargeStep = false, bool bChapterOverride = false);
   virtual void SeekPercentage(float fPercent = 0.0f);
   virtual float GetPercentage();
   virtual void SetVolume(float volume);
@@ -65,8 +65,6 @@ public:
   virtual int GetCacheLevel() const;
   virtual int64_t GetTotalTime();
   virtual void GetAudioStreamInfo(int index, SPlayerAudioStreamInfo &info);
-  virtual int GetBitsPerSample();
-  virtual int GetSampleRate();
   virtual int64_t GetTime();
   virtual void SeekTime(int64_t iTime = 0);
   virtual bool SkipNext();
@@ -120,6 +118,7 @@ private:
     float             m_volume;              /* the initial volume level to set the stream to on creation */
 
     bool              m_isSlaved;            /* true if the stream has been slaved to another */
+    bool              m_waitOnDrain;         /* wait for stream being drained in AE */
   } StreamInfo;
 
   typedef std::list<StreamInfo*> StreamList;
@@ -142,14 +141,15 @@ private:
   StreamList          m_finishing;           /* finishing streams */
   int                 m_jobCounter;
   CEvent              m_jobEvent;
+  bool                m_continueStream;
 
   bool QueueNextFileEx(const CFileItem &file, bool fadeIn = true, bool job = false);
   void SoftStart(bool wait = false);
   void SoftStop(bool wait = false, bool close = true);
   void CloseAllStreams(bool fade = true);
-  void ProcessStreams(double &delay, double &buffer);
+  void ProcessStreams(double &freeBufferTime);
   bool PrepareStream(StreamInfo *si);
-  bool ProcessStream(StreamInfo *si, double &delay, double &buffer);
+  bool ProcessStream(StreamInfo *si, double &freeBufferTime);
   bool QueueData(StreamInfo *si);
   int64_t GetTotalTime64();
   void UpdateCrossfadeTime(const CFileItem& file);

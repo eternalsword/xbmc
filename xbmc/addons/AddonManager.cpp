@@ -85,15 +85,15 @@ AddonPtr CAddonMgr::Factory(const cp_extension_t *props)
       return AddonPtr(new CPluginSource(props));
     case ADDON_SCRIPT_LIBRARY:
     case ADDON_SCRIPT_LYRICS:
-    case ADDON_SCRIPT_SUBTITLES:
     case ADDON_SCRIPT_MODULE:
+    case ADDON_SUBTITLE_MODULE:
     case ADDON_WEB_INTERFACE:
       return AddonPtr(new CAddon(props));
     case ADDON_SCRIPT_WEATHER:
       {
         // Eden (API v2.0) broke old weather add-ons
         AddonPtr result(new CAddon(props));
-        AddonVersion ver1 = AddonVersion(GetXbmcApiVersionDependency(result));
+        AddonVersion ver1 = result->GetDependencyVersion("xbmc.python");
         AddonVersion ver2 = AddonVersion("2.0");
         if (ver1 < ver2)
         {
@@ -286,6 +286,15 @@ bool CAddonMgr::Init()
   }
 
   FindAddons();
+
+  VECADDONS repos;
+  if (GetAddons(ADDON_REPOSITORY, repos))
+  {
+    VECADDONS::iterator it = repos.begin();
+    for (;it != repos.end(); ++it)
+      CLog::Log(LOGNOTICE, "ADDONS: Using repository %s", (*it)->ID().c_str());
+  }
+
   return true;
 }
 
@@ -296,6 +305,7 @@ void CAddonMgr::DeInit()
   delete m_cpluff;
   m_cpluff = NULL;
   m_database.Close();
+  m_disabled.clear();
 }
 
 bool CAddonMgr::HasAddons(const TYPE &type, bool enabled /*= true*/)
@@ -308,7 +318,7 @@ bool CAddonMgr::HasAddons(const TYPE &type, bool enabled /*= true*/)
 
 bool CAddonMgr::GetAllAddons(VECADDONS &addons, bool enabled /*= true*/, bool allowRepos /* = false */)
 {
-  for (int i = ADDON_UNKNOWN+1; i < ADDON_VIZ_LIBRARY; ++i)
+  for (int i = ADDON_UNKNOWN+1; i < ADDON_MAX; ++i)
   {
     if (!allowRepos && ADDON_REPOSITORY == (TYPE)i)
       continue;
@@ -362,13 +372,13 @@ bool CAddonMgr::ReloadSettings(const CStdString &id)
   return false;
 }
 
-bool CAddonMgr::GetAllOutdatedAddons(VECADDONS &addons, bool enabled /*= true*/)
+bool CAddonMgr::GetAllOutdatedAddons(VECADDONS &addons, bool getLocalVersion /*= false*/)
 {
   CSingleLock lock(m_critSection);
-  for (int i = ADDON_UNKNOWN+1; i < ADDON_VIZ_LIBRARY; ++i)
+  for (int i = ADDON_UNKNOWN+1; i < ADDON_MAX; ++i)
   {
     VECADDONS temp;
-    if (CAddonMgr::Get().GetAddons((TYPE)i, temp, enabled))
+    if (CAddonMgr::Get().GetAddons((TYPE)i, temp, true))
     {
       AddonPtr repoAddon;
       for (unsigned int j = 0; j < temp.size(); j++)
@@ -386,24 +396,30 @@ bool CAddonMgr::GetAllOutdatedAddons(VECADDONS &addons, bool enabled /*= true*/)
 
         if (temp[j]->Version() < repoAddon->Version() &&
             !m_database.IsAddonBlacklisted(temp[j]->ID(),
-                                           repoAddon->Version().c_str()))
+                                           repoAddon->Version().asString().c_str()))
+        {
+          if (getLocalVersion)
+            repoAddon->Props().version = temp[j]->Version();
           addons.push_back(repoAddon);
+        }
       }
     }
   }
   return !addons.empty();
 }
 
-bool CAddonMgr::HasOutdatedAddons(bool enabled /*= true*/)
+bool CAddonMgr::HasOutdatedAddons()
 {
   VECADDONS dummy;
-  return GetAllOutdatedAddons(dummy,enabled);
+  return GetAllOutdatedAddons(dummy);
 }
 
 bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* = true */)
 {
   CSingleLock lock(m_critSection);
   addons.clear();
+  if (!m_cp_context)
+    return false;
   cp_status_t status;
   int num;
   CStdString ext_point(TranslateType(type));
@@ -411,7 +427,7 @@ bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* =
   for(int i=0; i <num; i++)
   {
     const cp_extension_t *props = exts[i];
-    if (m_database.IsAddonDisabled(props->plugin->identifier) != enabled)
+    if (IsAddonDisabled(props->plugin->identifier) != enabled)
     {
       // get a pointer to a running pvrclient if it's already started, or we won't be able to change settings
       if (TranslateType(props->ext_point_id) == ADDON_PVRDLL &&
@@ -448,7 +464,7 @@ bool CAddonMgr::GetAddon(const CStdString &str, AddonPtr &addon, const TYPE &typ
 
     if (addon && addon.get())
     {
-      if (enabledOnly && m_database.IsAddonDisabled(addon->ID()))
+      if (enabledOnly && IsAddonDisabled(addon->ID()))
         return false;
 
       if (addon->Type() == ADDON_PVRDLL && g_PVRManager.IsStarted())
@@ -566,6 +582,31 @@ void CAddonMgr::RemoveAddon(const CStdString& ID)
   }
 }
 
+bool CAddonMgr::DisableAddon(const std::string& ID, bool disable)
+{
+  CSingleLock lock(m_critSection);
+  if (m_database.DisableAddon(ID, disable))
+  {
+    m_disabled[ID] = disable;
+    return true;
+  }
+
+  return false;
+}
+
+bool CAddonMgr::IsAddonDisabled(const std::string& ID)
+{
+  CSingleLock lock(m_critSection);
+  std::map<std::string, bool>::const_iterator it = m_disabled.find(ID);
+  if (it != m_disabled.end())
+    return it->second;
+
+  bool ret = m_database.IsAddonDisabled(ID);
+  m_disabled.insert(pair<std::string, bool>(ID, ret));
+
+  return ret;
+}
+
 const char *CAddonMgr::GetTranslatedString(const cp_cfg_element_t *root, const char *tag)
 {
   if (!root)
@@ -578,7 +619,7 @@ const char *CAddonMgr::GetTranslatedString(const cp_cfg_element_t *root, const c
     if (strcmp(tag, child.name) == 0)
     { // see if we have a "lang" attribute
       const char *lang = m_cpluff->lookup_cfg_value((cp_cfg_element_t*)&child, "@lang");
-      if (lang && 0 == strcmp(lang,g_langInfo.GetDVDAudioLanguage().c_str()))
+      if (lang && 0 == strcmp(lang,g_langInfo.GetLanguageLocale(true).c_str()))
         return child.value;
       if (!lang || 0 == strcmp(lang, "en"))
         eng = &child;
@@ -597,8 +638,8 @@ AddonPtr CAddonMgr::AddonFromProps(AddonProps& addonProps)
     case ADDON_SCRIPT_LIBRARY:
     case ADDON_SCRIPT_LYRICS:
     case ADDON_SCRIPT_WEATHER:
-    case ADDON_SCRIPT_SUBTITLES:
     case ADDON_SCRIPT_MODULE:
+    case ADDON_SUBTITLE_MODULE:
     case ADDON_WEB_INTERFACE:
       return AddonPtr(new CAddon(addonProps));
     case ADDON_SERVICE:
@@ -642,31 +683,31 @@ bool CAddonMgr::PlatformSupportsAddon(const cp_plugin_info_t *plugin) const
   if (!metadata)
     return false;
 
-  vector<CStdString> platforms;
+  vector<std::string> platforms;
   if (CAddonMgr::Get().GetExtList(metadata->configuration, "platform", platforms))
   {
-    for (unsigned int i = 0; i < platforms.size(); ++i)
+    for (vector<std::string>::const_iterator platform = platforms.begin(); platform != platforms.end(); ++platform)
     {
-      if (platforms[i] == "all")
+      if (*platform == "all")
         return true;
 #if defined(TARGET_ANDROID)
-      if (platforms[i] == "android")
+      if (*platform == "android")
 #elif defined(TARGET_LINUX) || defined(TARGET_FREEBSD)
-      if (platforms[i] == "linux")
+      if (*platform == "linux")
 #elif defined(TARGET_WINDOWS) && defined(HAS_SDL_OPENGL)
-      if (platforms[i] == "wingl")
+      if (*platform == "wingl")
 #elif defined(TARGET_WINDOWS) && defined(HAS_DX)
-      if (platforms[i] == "windx")
+      if (*platform == "windx")
 #elif defined(TARGET_DARWIN_OSX)
 // Remove this after Frodo and add an architecture filter
 // in addition to platform.
 #if defined(__x86_64__)
-      if (platforms[i] == "osx64" || platforms[i] == "osx")
+      if (*platform == "osx64" || *platform == "osx")
 #else
-      if (platforms[i] == "osx32" || platforms[i] == "osx")
+      if (*platform == "osx32" || *platform == "osx")
 #endif
 #elif defined(TARGET_DARWIN_IOS)
-      if (platforms[i] == "ios")
+      if (*platform == "ios")
 #endif
         return true;
     }
@@ -718,14 +759,15 @@ CStdString CAddonMgr::GetExtValue(cp_cfg_element_t *base, const char *path)
   else return CStdString();
 }
 
-bool CAddonMgr::GetExtList(cp_cfg_element_t *base, const char *path, vector<CStdString> &result) const
+bool CAddonMgr::GetExtList(cp_cfg_element_t *base, const char *path, vector<std::string> &result) const
 {
+  result.clear();
   if (!base || !path)
     return false;
   CStdString all = m_cpluff->lookup_cfg_value(base, path);
-  if (all.IsEmpty())
+  if (all.empty())
     return false;
-  StringUtils::SplitString(all, " ", result);
+  StringUtils::Tokenize(all, result, " ");
   return true;
 }
 

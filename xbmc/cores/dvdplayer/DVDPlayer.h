@@ -39,6 +39,8 @@
 #include "Edl.h"
 #include "FileItem.h"
 #include "threads/SingleLock.h"
+#include "utils/StreamDetails.h"
+#include "threads/SystemClock.h"
 
 
 class CDVDInputStream;
@@ -171,7 +173,7 @@ public:
   CDVDPlayer(IPlayerCallback& callback);
   virtual ~CDVDPlayer();
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions &options);
-  virtual bool CloseFile();
+  virtual bool CloseFile(bool reopen = false);
   virtual bool IsPlaying() const;
   virtual void Pause();
   virtual bool IsPaused() const;
@@ -179,7 +181,7 @@ public:
   virtual bool HasAudio() const;
   virtual bool IsPassthrough() const;
   virtual bool CanSeek();
-  virtual void Seek(bool bPlus, bool bLargeStep);
+  virtual void Seek(bool bPlus, bool bLargeStep, bool bChapterOverride);
   virtual bool SeekScene(bool bPlus = true);
   virtual void SeekPercentage(float iPercent);
   virtual float GetPercentage();
@@ -230,12 +232,8 @@ public:
 
   virtual int GetSourceBitrate();
   virtual void GetVideoStreamInfo(SPlayerVideoStreamInfo &info);
-  virtual int GetPictureWidth();
-  virtual int GetPictureHeight();
   virtual bool GetStreamDetails(CStreamDetails &details);
   virtual void GetAudioStreamInfo(int index, SPlayerAudioStreamInfo &info);
-
-  virtual bool GetCurrentSubtitle(CStdString& strSubtitle);
 
   virtual CStdString GetPlayerState();
   virtual bool SetPlayerState(CStdString state);
@@ -261,25 +259,25 @@ public:
 protected:
   friend class CSelectionStreams;
 
-  class StreamLock : public CSingleLock
-  {
-  public:
-    inline StreamLock(CDVDPlayer* cdvdplayer) : CSingleLock(cdvdplayer->m_critStreamSection) {}
-  };
-
   virtual void OnStartup();
   virtual void OnExit();
   virtual void Process();
 
-  bool OpenAudioStream(int iStream, int source, bool reset = true);
-  bool OpenVideoStream(int iStream, int source, bool reset = true);
-  bool OpenSubtitleStream(int iStream, int source);
-  bool OpenTeletextStream(int iStream, int source);
-  bool CloseAudioStream(bool bWaitForBuffers);
-  bool CloseVideoStream(bool bWaitForBuffers);
-  bool CloseSubtitleStream(bool bKeepOverlays);
-  bool CloseTeletextStream(bool bWaitForBuffers);
+  bool OpenStream(CCurrentStream& current, int iStream, int source, bool reset = true);
+  bool OpenStreamPlayer(CCurrentStream& current, CDVDStreamInfo& hint, bool reset);
+  bool OpenAudioStream(CDVDStreamInfo& hint, bool reset = true);
+  bool OpenVideoStream(CDVDStreamInfo& hint, bool reset = true);
+  bool OpenSubtitleStream(CDVDStreamInfo& hint);
+  bool OpenTeletextStream(CDVDStreamInfo& hint);
 
+  /** \brief Switches forced subtitles to forced subtitles matching the language of the current audio track.
+  *          If these are not available, subtitles are disabled.
+  *   \return true if the subtitles were changed, false otherwise.
+  */
+  bool AdaptForcedSubtitles();
+  bool CloseStream(CCurrentStream& current, bool bWaitForBuffers);
+
+  bool CheckIsCurrent(CCurrentStream& current, CDemuxStream* stream, DemuxPacket* pkg);
   void ProcessPacket(CDemuxStream* pStream, DemuxPacket* pPacket);
   void ProcessAudioData(CDemuxStream* pStream, DemuxPacket* pPacket);
   void ProcessVideoData(CDemuxStream* pStream, DemuxPacket* pPacket);
@@ -289,6 +287,7 @@ protected:
   bool ShowPVRChannelInfo();
 
   int  AddSubtitleFile(const std::string& filename, const std::string& subfilename = "", CDemuxStream::EFlags flags = CDemuxStream::FLAG_NONE);
+  void SetSubtitleVisibleInternal(bool bVisible);
 
   /**
    * one of the DVD_PLAYSPEED defines
@@ -314,15 +313,18 @@ protected:
   void CheckAutoSceneSkip();
   void CheckContinuity(CCurrentStream& current, DemuxPacket* pPacket);
   bool CheckSceneSkip(CCurrentStream& current);
-  bool CheckPlayerInit(CCurrentStream& current, unsigned int source);
+  bool CheckPlayerInit(CCurrentStream& current);
   bool CheckStartCaching(CCurrentStream& current);
   void UpdateCorrection(DemuxPacket* pkt, double correction);
   void UpdateTimestamps(CCurrentStream& current, DemuxPacket* pPacket);
+  IDVDStreamPlayer* GetStreamPlayer(unsigned int player);
   void SendPlayerMessage(CDVDMsg* pMsg, unsigned int target);
 
   bool ReadPacket(DemuxPacket*& packet, CDemuxStream*& stream);
   bool IsValidStream(CCurrentStream& stream);
   bool IsBetterStream(CCurrentStream& current, CDemuxStream* stream);
+  void CheckBetterStream(CCurrentStream& current, CDemuxStream* stream);
+  void CheckStreamChanges(CCurrentStream& current, CDemuxStream* stream);
   bool CheckDelayedChannelEntry(void);
 
   bool OpenInputStream();
@@ -331,6 +333,7 @@ protected:
 
   void UpdateApplication(double timeout);
   void UpdatePlayState(double timeout);
+  void UpdateClockMaster();
   double m_UpdateApplication;
 
   bool m_bAbortRequest;
@@ -339,7 +342,7 @@ protected:
   std::string  m_mimetype;  // hold a hint to what content file contains (mime type)
   ECacheState  m_caching;
   CFileItem    m_item;
-  unsigned int m_iChannelEntryTimeOut;
+  XbmcThreads::EndTime m_ChannelEntryTimeOut;
 
 
   CCurrentStream m_CurrentAudio;
@@ -372,8 +375,6 @@ protected:
   CDVDInputStream* m_pInputStream;  // input stream for current playing file
   CDVDDemux* m_pDemuxer;            // demuxer for current playing file
   CDVDDemux* m_pSubtitleDemuxer;
-
-  CStdString m_lastSub;
 
   struct SDVDInfo
   {
@@ -464,7 +465,6 @@ protected:
   CCriticalSection m_StateSection;
 
   CEvent m_ready;
-  CCriticalSection m_critStreamSection; // need to have this lock when switching streams (audio / video)
 
   CEdl m_Edl;
 
@@ -491,4 +491,6 @@ protected:
 
   bool m_HasVideo;
   bool m_HasAudio;
+
+  bool m_DemuxerPausePending;
 };

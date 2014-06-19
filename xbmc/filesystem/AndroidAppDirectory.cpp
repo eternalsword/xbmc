@@ -28,6 +28,7 @@
 #include "utils/URIUtils.h"
 #include <vector>
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 
 using namespace XFILE;
@@ -41,9 +42,8 @@ CAndroidAppDirectory::~CAndroidAppDirectory(void)
 {
 }
 
-bool CAndroidAppDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CAndroidAppDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CURL url(strPath);
   CStdString dirname = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(dirname);
   CLog::Log(LOGDEBUG, "CAndroidAppDirectory::GetDirectory: %s",dirname.c_str()); 
@@ -62,8 +62,7 @@ bool CAndroidAppDirectory::GetDirectory(const CStdString& strPath, CFileItemList
         continue;
       CFileItemPtr pItem(new CFileItem(applications[i].packageName));
       pItem->m_bIsFolder = false;
-      CStdString path;
-      path.Format("androidapp://%s/%s/%s", url.GetHostName(), dirname,  applications[i].packageName);
+      CStdString path = StringUtils::Format("androidapp://%s/%s/%s", url.GetHostName().c_str(), dirname.c_str(),  applications[i].packageName.c_str());
       pItem->SetPath(path);
       pItem->SetLabel(applications[i].packageLabel);
       pItem->SetArt("thumb", path+".png");
@@ -72,14 +71,8 @@ bool CAndroidAppDirectory::GetDirectory(const CStdString& strPath, CFileItemList
     return true;
   }
 
-  CLog::Log(LOGERROR, "CAndroidAppDirectory::GetDirectory Failed to open %s",strPath.c_str());
+  CLog::Log(LOGERROR, "CAndroidAppDirectory::GetDirectory Failed to open %s", url.Get().c_str());
   return false;
-}
-
-bool CAndroidAppDirectory::IsAllowed(const CStdString& strFile) const
-{
-  // Entries are virtual, so we want them all.
-  return true;
 }
 
 #endif

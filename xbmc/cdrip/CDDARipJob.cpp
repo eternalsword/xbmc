@@ -19,6 +19,7 @@
  */
 
 #include "CDDARipJob.h"
+#include "system.h"
 #ifdef HAVE_LIBMP3LAME
 #include "EncoderLame.h"
 #endif
@@ -70,7 +71,7 @@ bool CCDDARipJob::DoWork()
   if (file.IsRemote())
     m_output = SetupTempFile();
   
-  if (m_output.IsEmpty())
+  if (m_output.empty())
   {
     CLog::Log(LOGERROR, "CCDDARipper: Error opening file");
     return false;
@@ -89,12 +90,11 @@ bool CCDDARipJob::DoWork()
   CGUIDialogExtendedProgressBar* pDlgProgress = 
       (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
   CGUIDialogProgressBarHandle* handle = pDlgProgress->GetHandle(g_localizeStrings.Get(605));
-  CStdString strLine0;
+
   int iTrack = atoi(m_input.substr(13, m_input.size() - 13 - 5).c_str());
-  strLine0.Format("%02i. %s - %s", iTrack,
-                  StringUtils::Join(m_tag.GetArtist(),
-                              g_advancedSettings.m_musicItemSeparator).c_str(),
-                  m_tag.GetTitle().c_str());
+  CStdString strLine0 = StringUtils::Format("%02i. %s - %s", iTrack,
+                                            StringUtils::Join(m_tag.GetArtist(), g_advancedSettings.m_musicItemSeparator).c_str(),
+                                            m_tag.GetTitle().c_str());
   handle->SetText(strLine0);
 
   // start ripping
@@ -108,7 +108,7 @@ bool CCDDARipJob::DoWork()
     if (percent > oldpercent)
     {
       oldpercent = percent;
-      handle->SetPercentage(percent);
+      handle->SetPercentage(static_cast<float>(percent));
     }
   }
 
@@ -120,7 +120,7 @@ bool CCDDARipJob::DoWork()
   if (file.IsRemote() && !cancelled && result == 2)
   {
     // copy the ripped track to the share
-    if (!CFile::Cache(m_output, file.GetPath()))
+    if (!CFile::Copy(m_output, file.GetPath()))
     {
       CLog::Log(LOGERROR, "CDDARipper: Error copying file from %s to %s", 
                 m_output.c_str(), file.GetPath().c_str());
@@ -172,7 +172,7 @@ int CCDDARipJob::RipChunk(CFile& reader, CEncoder* encoder, int& percent)
   int encres=encoder->Encode(result, stream);
 
   // Get progress indication
-  percent = reader.GetPosition()*100/reader.GetLength();
+  percent = static_cast<int>(reader.GetPosition()*100/reader.GetLength());
 
   if (reader.GetPosition() == reader.GetLength())
     return 2;
@@ -212,8 +212,7 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
     return NULL;
 
   // we have to set the tags before we init the Encoder
-  CStdString strTrack;
-  strTrack.Format("%i", strtol(m_input.substr(13, m_input.size() - 13 - 5).c_str(),NULL,10));
+  CStdString strTrack = StringUtils::Format("%i", strtol(m_input.substr(13, m_input.size() - 13 - 5).c_str(),NULL,10));
 
   encoder->SetComment("Ripped with XBMC");
   encoder->SetArtist(StringUtils::Join(m_tag.GetArtist(),
@@ -225,7 +224,7 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
   encoder->SetGenre(StringUtils::Join(m_tag.GetGenre(),
                                       g_advancedSettings.m_musicItemSeparator));
   encoder->SetTrack(strTrack);
-  encoder->SetTrackLength(reader.GetLength());
+  encoder->SetTrackLength(static_cast<int>(reader.GetLength()));
   encoder->SetYear(m_tag.GetYearString());
 
   // init encoder

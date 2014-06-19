@@ -31,6 +31,7 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/Texture.h"
 #include "windowing/X11/XRandR.h"
+#include "utils/StringUtils.h"
 #include <vector>
 
 using namespace std;
@@ -158,7 +159,7 @@ bool CWinSystemX11GLES::CreateNewWindow(const CStdString& name, bool fullScreen,
 	return false;
 
   CTexture iconTexture;
-  iconTexture.LoadFromFile("special://xbmc/media/icon.png");
+  iconTexture.LoadFromFile("special://xbmc/media/icon256x256.png");
 
   SDL_WM_SetIcon(SDL_CreateRGBSurfaceFrom(iconTexture.GetPixels(), iconTexture.GetWidth(), iconTexture.GetHeight(), BPP, iconTexture.GetPitch(), 0xff0000, 0x00ff00, 0x0000ff, 0xff000000L), NULL);
   SDL_WM_SetCaption("XBMC Media Center", NULL);
@@ -304,7 +305,7 @@ void CWinSystemX11GLES::UpdateResolutions()
 
       CLog::Log(LOGINFO, "Pixel Ratio: %f", res.fPixelRatio);
 
-      res.strMode.Format("%s: %s @ %.2fHz", out.name.c_str(), mode.name.c_str(), mode.hz);
+      res.strMode      = StringUtils::Format("%s: %s @ %.2fHz", out.name.c_str(), mode.name.c_str(), mode.hz);
       res.strOutput    = out.name;
       res.strId        = mode.id;
       res.iSubtitles   = (int)(0.95*mode.h);

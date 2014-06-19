@@ -23,6 +23,7 @@
 #include "settings/Settings.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#include "system.h"
 #ifdef HAS_PYTHON
 #include "interfaces/python/XBPython.h"
 #endif
@@ -67,17 +68,17 @@ static const TypeMapping types[] =
    {"xbmc.metadata.scraper.movies",      ADDON_SCRAPER_MOVIES,      24007, "DefaultAddonMovieInfo.png" },
    {"xbmc.metadata.scraper.musicvideos", ADDON_SCRAPER_MUSICVIDEOS, 24015, "DefaultAddonMusicVideoInfo.png" },
    {"xbmc.metadata.scraper.tvshows",     ADDON_SCRAPER_TVSHOWS,     24014, "DefaultAddonTvInfo.png" },
-   {"xbmc.metadata.scraper.library",     ADDON_SCRAPER_LIBRARY,         0, "" },
+   {"xbmc.metadata.scraper.library",     ADDON_SCRAPER_LIBRARY,     24083, "" },
    {"xbmc.ui.screensaver",               ADDON_SCREENSAVER,         24008, "DefaultAddonScreensaver.png" },
    {"xbmc.player.musicviz",              ADDON_VIZ,                 24010, "DefaultAddonVisualization.png" },
-   {"visualization-library",             ADDON_VIZ_LIBRARY,             0, "" },
+   {"visualization-library",             ADDON_VIZ_LIBRARY,         24084, "" },
    {"xbmc.python.pluginsource",          ADDON_PLUGIN,              24005, "" },
    {"xbmc.python.script",                ADDON_SCRIPT,              24009, "" },
    {"xbmc.python.weather",               ADDON_SCRIPT_WEATHER,      24027, "DefaultAddonWeather.png" },
-   {"xbmc.python.subtitles",             ADDON_SCRIPT_SUBTITLES,    24012, "DefaultAddonSubtitles.png" },
    {"xbmc.python.lyrics",                ADDON_SCRIPT_LYRICS,       24013, "DefaultAddonLyrics.png" },
-   {"xbmc.python.library",               ADDON_SCRIPT_LIBRARY,      24014, "" },
-   {"xbmc.python.module",                ADDON_SCRIPT_MODULE,           0, "" },
+   {"xbmc.python.library",               ADDON_SCRIPT_LIBRARY,      24081, "" },
+   {"xbmc.python.module",                ADDON_SCRIPT_MODULE,       24082, "" },
+   {"xbmc.subtitle.module",              ADDON_SUBTITLE_MODULE,     24012, "DefaultAddonSubtitles.png" },
    {"xbmc.gui.skin",                     ADDON_SKIN,                  166, "DefaultAddonSkin.png" },
    {"xbmc.gui.webinterface",             ADDON_WEB_INTERFACE,         199, "DefaultAddonWebSkin.png" },
    {"xbmc.addon.repository",             ADDON_REPOSITORY,          24011, "DefaultAddonRepository.png" },
@@ -130,13 +131,15 @@ const CStdString GetIcon(const ADDON::TYPE& type)
   { \
     CStdString fan=CAddonMgr::Get().GetExtValue(metadata->configuration, x); \
     if (fan.Equals("true")) \
-      y.Empty(); \
+      y.clear(); \
   }
+
+#define SS(x) (x) ? x : ""
 
 AddonProps::AddonProps(const cp_extension_t *ext)
   : id(ext->plugin->identifier)
-  , version(ext->plugin->version)
-  , minversion(ext->plugin->abi_bw_compatibility)
+  , version(SS(ext->plugin->version))
+  , minversion(SS(ext->plugin->abi_bw_compatibility))
   , name(ext->plugin->name)
   , path(ext->plugin->plugin_path)
   , author(ext->plugin->provider_name)
@@ -158,7 +161,7 @@ AddonProps::AddonProps(const cp_extension_t *ext)
     license = CAddonMgr::Get().GetExtValue(metadata->configuration, "license");
     CStdString language;
     language = CAddonMgr::Get().GetExtValue(metadata->configuration, "language");
-    if (!language.IsEmpty())
+    if (!language.empty())
       extrainfo.insert(make_pair("language",language));
     broken = CAddonMgr::Get().GetExtValue(metadata->configuration, "broken");
     EMPTY_IF("nofanart",fanart)
@@ -170,8 +173,8 @@ AddonProps::AddonProps(const cp_extension_t *ext)
 
 AddonProps::AddonProps(const cp_plugin_info_t *plugin)
   : id(plugin->identifier)
-  , version(plugin->version)
-  , minversion(plugin->abi_bw_compatibility)
+  , version(SS(plugin->version))
+  , minversion(SS(plugin->abi_bw_compatibility))
   , name(plugin->name)
   , path(plugin->plugin_path)
   , author(plugin->provider_name)
@@ -184,8 +187,8 @@ void AddonProps::Serialize(CVariant &variant) const
 {
   variant["addonid"] = id;
   variant["type"] = TranslateType(type);
-  variant["version"] = version.c_str();
-  variant["minversion"] = minversion.c_str();
+  variant["version"] = version.asString();
+  variant["minversion"] = minversion.asString();
   variant["name"] = name;
   variant["license"] = license;
   variant["summary"] = summary;
@@ -214,7 +217,7 @@ void AddonProps::Serialize(CVariant &variant) const
   {
     CVariant dep(CVariant::VariantTypeObject);
     dep["addonid"] = it->first;
-    dep["version"] = it->second.first.c_str();
+    dep["version"] = it->second.first.asString();
     dep["optional"] = it->second.second;
     variant["dependencies"].push_back(dep);
   }
@@ -239,7 +242,7 @@ void AddonProps::BuildDependencies(const cp_plugin_info_t *plugin)
     return;
   for (unsigned int i = 0; i < plugin->num_imports; ++i)
     dependencies.insert(make_pair(CStdString(plugin->imports[i].plugin_id),
-                        make_pair(AddonVersion(plugin->imports[i].version), plugin->imports[i].optional != 0)));
+                                  make_pair(AddonVersion(SS(plugin->imports[i].version)), plugin->imports[i].optional != 0)));
 }
 
 /**
@@ -276,7 +279,7 @@ CAddon::CAddon(const cp_plugin_info_t *plugin)
 CAddon::CAddon(const AddonProps &props)
   : m_props(props)
 {
-  if (props.libname.IsEmpty()) BuildLibName();
+  if (props.libname.empty()) BuildLibName();
   else m_strLibName = props.libname;
   BuildProfilePath();
   m_userSettingsPath = URIUtils::AddFileToFolder(Profile(), "settings.xml");
@@ -314,8 +317,7 @@ bool CAddon::MeetsVersion(const AddonVersion &version) const
   // if the addon is one of xbmc's extension point definitions (addonid starts with "xbmc.")
   // and the minversion is "0.0.0" i.e. no <backwards-compatibility> tag has been specified
   // we need to assume that the current version is not backwards-compatible and therefore check against the actual version
-  if (StringUtils::StartsWith(m_props.id, "xbmc.") &&
-     (strlen(m_props.minversion.c_str()) == 0 || StringUtils::EqualsNoCase(m_props.minversion.c_str(), "0.0.0")))
+  if (StringUtils::StartsWithNoCase(m_props.id, "xbmc.") && m_props.minversion.empty())
     return m_props.version == version;
 
   return m_props.minversion <= version && version <= m_props.version;
@@ -355,7 +357,7 @@ void CAddon::BuildLibName(const cp_extension_t *extension)
     case ADDON_SCRIPT_LIBRARY:
     case ADDON_SCRIPT_LYRICS:
     case ADDON_SCRIPT_WEATHER:
-    case ADDON_SCRIPT_SUBTITLES:
+    case ADDON_SUBTITLE_MODULE:        
     case ADDON_PLUGIN:
     case ADDON_SERVICE:
       ext = ADDON_PYTHON_EXT;
@@ -378,8 +380,8 @@ void CAddon::BuildLibName(const cp_extension_t *extension)
       case ADDON_SCRIPT_LIBRARY:
       case ADDON_SCRIPT_LYRICS:
       case ADDON_SCRIPT_WEATHER:
-      case ADDON_SCRIPT_SUBTITLES:
       case ADDON_SCRIPT_MODULE:
+      case ADDON_SUBTITLE_MODULE:
       case ADDON_SCRAPER_ALBUMS:
       case ADDON_SCRAPER_ARTISTS:
       case ADDON_SCRAPER_MOVIES:
@@ -588,7 +590,7 @@ TiXmlElement* CAddon::GetSettingsXML()
 
 void CAddon::BuildProfilePath()
 {
-  m_profile.Format("special://profile/addon_data/%s/", ID().c_str());
+  m_profile = StringUtils::Format("special://profile/addon_data/%s/", ID().c_str());
 }
 
 const CStdString CAddon::Icon() const
@@ -601,6 +603,15 @@ const CStdString CAddon::Icon() const
 const CStdString CAddon::LibPath() const
 {
   return URIUtils::AddFileToFolder(m_props.path, m_strLibName);
+}
+
+AddonVersion CAddon::GetDependencyVersion(const std::string &dependencyID) const
+{
+  const ADDON::ADDONDEPS &deps = GetDeps();
+  ADDONDEPS::const_iterator it = deps.find(dependencyID);
+  if (it != deps.end())
+    return it->second.first;
+  return AddonVersion("0.0.0");
 }
 
 /**
@@ -632,26 +643,6 @@ TYPE CAddonLibrary::SetAddonType()
   else
     return ADDON_UNKNOWN;
 }
-
-CStdString GetXbmcApiVersionDependency(ADDON::AddonPtr addon)
-{
-  CStdString version("1.0");
-  if (addon.get() != NULL)
-  {
-    const ADDON::ADDONDEPS &deps = addon->GetDeps();
-    ADDON::ADDONDEPS::const_iterator it;
-    CStdString key("xbmc.python");
-    it = deps.find(key);
-    if (!(it == deps.end()))
-    {
-      const ADDON::AddonVersion * xbmcApiVersion = &(it->second.first);
-      version = xbmcApiVersion->c_str();
-    }
-  }
-
-  return version;
-}
-
 
 } /* namespace ADDON */
 

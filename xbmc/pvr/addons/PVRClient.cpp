@@ -274,7 +274,7 @@ bool CPVRClient::CheckAPIVersion(void)
 
   if (!IsCompatibleAPIVersion(minVersion, m_apiVersion))
   {
-    CLog::Log(LOGERROR, "PVR - Add-on '%s' is using an incompatible API version. XBMC minimum API version = '%s', add-on API version '%s'", Name().c_str(), minVersion.c_str(), m_apiVersion.c_str());
+    CLog::Log(LOGERROR, "PVR - Add-on '%s' is using an incompatible API version. XBMC minimum API version = '%s', add-on API version '%s'", Name().c_str(), minVersion.asString().c_str(), m_apiVersion.asString().c_str());
     return false;
   }
 
@@ -286,7 +286,7 @@ bool CPVRClient::CheckAPIVersion(void)
 
   if (!IsCompatibleGUIAPIVersion(minVersion, guiVersion))
   {
-    CLog::Log(LOGERROR, "PVR - Add-on '%s' is using an incompatible GUI API version. XBMC minimum GUI API version = '%s', add-on GUI API version '%s'", Name().c_str(), minVersion.c_str(), guiVersion.c_str());
+    CLog::Log(LOGERROR, "PVR - Add-on '%s' is using an incompatible GUI API version. XBMC minimum GUI API version = '%s', add-on GUI API version '%s'", Name().c_str(), minVersion.asString().c_str(), guiVersion.asString().c_str());
     return false;
   }
 
@@ -320,7 +320,7 @@ bool CPVRClient::GetAddonProperties(void)
   catch (exception &e) { LogException(e, "GetConnectionString()"); return false;  }
 
   /* display name = backend name:connection string */
-  strFriendlyName.Format("%s:%s", strBackendName.c_str(), strConnectionString.c_str());
+  strFriendlyName = StringUtils::Format("%s:%s", strBackendName.c_str(), strConnectionString.c_str());
 
   /* backend version number */
   try { strBackendVersion = m_pStruct->GetBackendVersion(); }
@@ -409,7 +409,7 @@ void CPVRClient::CallMenuHook(const PVR_MENUHOOK &hook, const CFileItem *item)
       if (item->IsEPG())
       {
         hookData.cat = PVR_MENUHOOK_EPG;
-        hookData.data.iEpgUid = item->GetEPGInfoTag()->BroadcastId();
+        hookData.data.iEpgUid = item->GetEPGInfoTag()->UniqueBroadcastID();
       }
       else if (item->IsPVRChannel())
       {
@@ -1322,7 +1322,7 @@ bool CPVRClient::OpenStream(const CPVRChannel &channel, bool bIsSwitchingChannel
   {
     CLog::Log(LOGDEBUG, "add-on '%s' can not play channel '%s'", GetFriendlyName().c_str(), channel.ChannelName().c_str());
   }
-  else if (!channel.StreamURL().IsEmpty())
+  else if (!channel.StreamURL().empty())
   {
     CLog::Log(LOGDEBUG, "opening live stream on url '%s'", channel.StreamURL().c_str());
     bReturn = true;
@@ -1501,4 +1501,51 @@ void CPVRClient::UpdateCharInfoSignalStatus(void)
 
   CSingleLock lock(m_critSection);
   m_qualityInfo = qualityInfo;
+}
+
+time_t CPVRClient::GetPlayingTime(void) const
+{
+  time_t time = 0;
+  if (IsPlaying())
+  {
+    try
+    {
+      time = m_pStruct->GetPlayingTime();
+    }
+    catch (exception &e) { LogException(e, __FUNCTION__); }
+  }
+  // fallback if not implemented by addon
+  if (time == 0)
+  {
+    CDateTime::GetUTCDateTime().GetAsTime(time);
+  }
+  return time;
+}
+
+time_t CPVRClient::GetBufferTimeStart(void) const
+{
+  time_t time = 0;
+  if (IsPlaying())
+  {
+    try
+    {
+      time = m_pStruct->GetBufferTimeStart();
+    }
+    catch (exception &e) { LogException(e, __FUNCTION__); }
+  }
+  return time;
+}
+
+time_t CPVRClient::GetBufferTimeEnd(void) const
+{
+  time_t time = 0;
+  if (IsPlaying())
+  {
+    try
+    {
+      time = m_pStruct->GetBufferTimeEnd();
+    }
+    catch (exception &e) { LogException(e, __FUNCTION__); }
+  }
+  return time;
 }

@@ -28,6 +28,7 @@
 #include "utils/log.h"
 #include "cdioSupport.h"
 #include "filesystem/iso9660.h"
+#include "filesystem/File.h"
 #include "threads/SingleLock.h"
 #ifdef TARGET_POSIX
 #include <sys/types.h>
@@ -294,7 +295,7 @@ void CDetectDVDMedia::DetectMediaType()
   else
   {
     strLabel = m_pCdInfo->GetDiscLabel();
-    strLabel.TrimRight(" ");
+    StringUtils::TrimRight(strLabel);
   }
 
   SetNewDVDShareUrl( strNewUrl , bCDDA, strLabel);

@@ -46,8 +46,7 @@ public:
     ERROR_NFO    = 4
   };
 
-  NFOResult Create(const CStdString&, const ADDON::ScraperPtr&, int episode=-1,
-                   const CStdString& strPath2="");
+  NFOResult Create(const CStdString&, const ADDON::ScraperPtr&, int episode=-1);
   template<class T>
     bool GetDetails(T& details,const char* document=NULL, bool prioritise=false)
   {
@@ -58,17 +57,7 @@ public:
     else
       strDoc = m_headofdoc;
 
-    CStdString encoding;
-    XMLUtils::GetEncoding(&doc, encoding);
-
-    CStdString strUtf8(strDoc);
-    if (encoding.IsEmpty())
-      g_charsetConverter.unknownToUTF8(strUtf8);
-    else
-      g_charsetConverter.stringCharsetToUtf8(encoding, strDoc, strUtf8);
-
-    doc.Clear();
-    doc.Parse(strUtf8.c_str(),0,TIXML_ENCODING_UTF8);
+    doc.Parse(strDoc, TIXML_ENCODING_UNKNOWN);
     return details.Load(doc.RootElement(), true, prioritise);
   }
 

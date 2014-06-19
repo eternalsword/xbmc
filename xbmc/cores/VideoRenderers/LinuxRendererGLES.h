@@ -40,7 +40,8 @@ class CBaseTexture;
 namespace Shaders { class BaseYUV2RGBShader; }
 namespace Shaders { class BaseVideoFilterShader; }
 class COpenMaxVideo;
-class CStageFrightVideo;
+class CDVDVideoCodecStageFright;
+class CDVDMediaCodecInfo;
 typedef std::vector<int>     Features;
 
 
@@ -87,7 +88,8 @@ enum RenderMethod
   RENDER_OMXEGL = 0x040,
   RENDER_CVREF  = 0x080,
   RENDER_BYPASS = 0x100,
-  RENDER_EGLIMG = 0x200
+  RENDER_EGLIMG = 0x200,
+  RENDER_MEDIACODEC = 0x400
 };
 
 enum RenderQuality
@@ -113,9 +115,6 @@ extern YUVCOEF yuv_coef_bt709;
 extern YUVCOEF yuv_coef_ebu;
 extern YUVCOEF yuv_coef_smtp240m;
 
-class DllSwScale;
-struct SwsContext;
-
 class CEvent;
 
 class CLinuxRendererGLES : public CBaseRenderer
@@ -138,7 +137,9 @@ public:
   virtual unsigned int PreInit();
   virtual void         UnInit();
   virtual void         Reset(); /* resets renderer after seek for example */
+  virtual void         Flush();
   virtual void         ReorderDrawPoints();
+  virtual void         ReleaseBuffer(int idx);
   virtual void         SetBufferSize(int numBuffers) { m_NumYV12Buffers = numBuffers; }
   virtual unsigned int GetMaxBufferSize() { return NUM_BUFFERS; }
   virtual unsigned int GetProcessorSize();
@@ -163,7 +164,11 @@ public:
   virtual void         AddProcessor(struct __CVBuffer *cvBufferRef, int index);
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
-  virtual void         AddProcessor(CStageFrightVideo* stf, EGLImageKHR eglimg, int index);
+  virtual void         AddProcessor(CDVDVideoCodecStageFright* stf, EGLImageKHR eglimg, int index);
+#endif
+#if defined(TARGET_ANDROID)
+  // mediaCodec
+  virtual void         AddProcessor(CDVDMediaCodecInfo *mediacodec, int index);
 #endif
 
 protected:
@@ -184,6 +189,10 @@ protected:
   void DeleteYV12Texture(int index);
   bool CreateYV12Texture(int index);
 
+  void UploadNV12Texture(int index);
+  void DeleteNV12Texture(int index);
+  bool CreateNV12Texture(int index);
+
   void UploadCVRefTexture(int index);
   void DeleteCVRefTexture(int index);
   bool CreateCVRefTexture(int index);
@@ -196,6 +205,10 @@ protected:
   void DeleteEGLIMGTexture(int index);
   bool CreateEGLIMGTexture(int index);
 
+  void UploadSurfaceTexture(int index);
+  void DeleteSurfaceTexture(int index);
+  bool CreateSurfaceTexture(int index);
+
   void CalculateTextureSourceRects(int source, int num_planes);
 
   // renderers
@@ -205,6 +218,7 @@ protected:
   void RenderOpenMax(int index, int field);       // OpenMAX rgb texture
   void RenderEglImage(int index, int field);       // Android OES texture
   void RenderCoreVideoRef(int index, int field);  // CoreVideo reference
+  void RenderSurfaceTexture(int index, int field);// MediaCodec rendering using SurfaceTexture
 
   CFrameBufferObject m_fbo;
 
@@ -216,7 +230,6 @@ protected:
   bool m_bValidated;
   std::vector<ERenderFormat> m_formats;
   bool m_bImageReady;
-  ERenderFormat m_format;
   GLenum m_textureTarget;
   unsigned short m_renderMethod;
   unsigned short m_oldRenderMethod;
@@ -238,6 +251,10 @@ protected:
 
     unsigned texwidth;
     unsigned texheight;
+
+    //pixels per texel
+    unsigned pixpertex_x;
+    unsigned pixpertex_y;
 
     unsigned flipindex;
   };
@@ -261,8 +278,12 @@ protected:
     struct __CVBuffer *cvBufferRef;
 #endif
 #ifdef HAS_LIBSTAGEFRIGHT
-    CStageFrightVideo* stf;
+    CDVDVideoCodecStageFright* stf;
     EGLImageKHR eglimg;
+#endif
+#if defined(TARGET_ANDROID)
+    // mediacodec
+    CDVDMediaCodecInfo *mediacodec;
 #endif
   };
 
@@ -274,7 +295,7 @@ protected:
 
   void LoadPlane( YUVPLANE& plane, int type, unsigned flipindex
                 , unsigned width,  unsigned height
-                , unsigned int stride, void* data );
+                , unsigned int stride, int bpp, void* data );
 
   Shaders::BaseYUV2RGBShader     *m_pYUVShader;
   Shaders::BaseVideoFilterShader *m_pVideoFilterShader;
@@ -290,10 +311,10 @@ protected:
   float m_clearColour;
 
   // software scale libraries (fallback if required gl version is not available)
-  DllSwScale  *m_dllSwScale;
   struct SwsContext *m_sw_context;
   BYTE	      *m_rgbBuffer;  // if software scale is used, this will hold the result image
   unsigned int m_rgbBufferSize;
+  float        m_textureMatrix[16];
 };
 
 

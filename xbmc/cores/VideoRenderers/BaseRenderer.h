@@ -63,6 +63,7 @@ enum RenderMethods
   RENDER_METHOD_SOFTWARE,
   RENDER_METHOD_D3D_PS,
   RENDER_METHOD_DXVA,
+  RENDER_METHOD_DXVAHD,
   RENDER_OVERLAYS        = 99   // to retain compatibility
 };
 
@@ -101,7 +102,7 @@ public:
   virtual void RegisterRenderUpdateCallBack(const void *ctx, RenderUpdateCallBackFn fn);
   virtual void RegisterRenderFeaturesCallBack(const void *ctx, RenderFeaturesCallBackFn fn);
 
-  static void SettingOptionsRenderMethodsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current);
+  static void SettingOptionsRenderMethodsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 protected:
   void       ChooseBestResolution(float fps);
@@ -139,6 +140,7 @@ protected:
 
   // rendering flags
   unsigned m_iFlags;
+  ERenderFormat m_format;
 
   const void* m_RenderUpdateCallBackCtx;
   RenderUpdateCallBackFn m_RenderUpdateCallBackFn;

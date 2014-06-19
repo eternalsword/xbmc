@@ -23,6 +23,7 @@
 #include "FileItem.h"
 #include "guilib/Key.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
 
 #define CONTROL_HEADING       1
 #define CONTROL_LIST          3
@@ -131,6 +132,14 @@ bool CGUIDialogSelect::OnMessage(CGUIMessage& message)
     break;
   case GUI_MSG_SETFOCUS:
     {
+      // make sure the additional button is focused in case the list is empty
+      // (otherwise it is impossible to navigate to the additional button)
+      if (m_vecList->IsEmpty() && m_bButtonEnabled &&
+          m_viewControl.HasControl(message.GetControlId()))
+      {
+        SET_CONTROL_FOCUS(CONTROL_BUTTON, 0);
+        return true;
+      }
       if (m_viewControl.HasControl(message.GetControlId()) && m_viewControl.GetCurrentControl() != message.GetControlId())
       {
         m_viewControl.SetFocused();
@@ -271,12 +280,12 @@ void CGUIDialogSelect::SetSelected(std::vector<int> selectedIndexes)
     SetSelected(*it);
 }
 
-void CGUIDialogSelect::SetSelected(const std::vector<CStdString> &selectedLabels)
+void CGUIDialogSelect::SetSelected(const std::vector<std::string> &selectedLabels)
 {
   if (selectedLabels.empty())
     return;
 
-  for (std::vector<CStdString>::const_iterator it = selectedLabels.begin(); it != selectedLabels.end(); it++)
+  for (std::vector<std::string>::const_iterator it = selectedLabels.begin(); it != selectedLabels.end(); it++)
     SetSelected(*it);
 }
 
@@ -323,8 +332,7 @@ void CGUIDialogSelect::OnInitWindow()
   }
   m_viewControl.SetCurrentView(m_useDetails ? CONTROL_DETAILS : CONTROL_LIST);
 
-  CStdString items;
-  items.Format("%i %s", m_vecList->Size(), g_localizeStrings.Get(127).c_str());
+  CStdString items = StringUtils::Format("%i %s", m_vecList->Size(), g_localizeStrings.Get(127).c_str());
   SET_CONTROL_LABEL(CONTROL_NUMBEROFFILES, items);
   
   if (m_multiSelection)

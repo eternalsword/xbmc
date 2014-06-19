@@ -29,6 +29,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 
 using namespace std;
 using namespace XFILE;
@@ -42,9 +43,9 @@ CMusicDatabaseDirectory::~CMusicDatabaseDirectory(void)
 {
 }
 
-bool CMusicDatabaseDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CMusicDatabaseDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  CStdString path = CLegacyPathTranslation::TranslateMusicDbPath(strPath);
+  CStdString path = CLegacyPathTranslation::TranslateMusicDbPath(url);
   items.SetPath(path);
   auto_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(path));
 
@@ -58,7 +59,7 @@ bool CMusicDatabaseDirectory::GetDirectory(const CStdString& strPath, CFileItemL
     if (item->m_bIsFolder && !item->HasIcon() && !item->HasArt("thumb"))
     {
       CStdString strImage = GetIcon(item->GetPath());
-      if (!strImage.IsEmpty() && g_TextureManager.HasTexture(strImage))
+      if (!strImage.empty() && g_TextureManager.HasTexture(strImage))
         item->SetIconImage(strImage);
     }
   }
@@ -126,14 +127,13 @@ void CMusicDatabaseDirectory::ClearDirectoryCache(const CStdString& strDirectory
   Crc32 crc;
   crc.ComputeFromLowerCase(path);
 
-  CStdString strFileName;
-  strFileName.Format("special://temp/%08x.fi", (unsigned __int32) crc);
+  CStdString strFileName = StringUtils::Format("special://temp/%08x.fi", (unsigned __int32) crc);
   CFile::Delete(strFileName);
 }
 
 bool CMusicDatabaseDirectory::IsAllItem(const CStdString& strDirectory)
 {
-  if (strDirectory.Right(4).Equals("/-1/"))
+  if (StringUtils::EndsWith(strDirectory, "/-1/"))
     return true;
   return false;
 }
@@ -162,7 +162,7 @@ bool CMusicDatabaseDirectory::GetLabel(const CStdString& strDirectory, CStdStrin
   // get artist
   if (params.GetArtistId() >= 0)
   {
-    if (!strLabel.IsEmpty())
+    if (!strLabel.empty())
       strLabel += " / ";
     strLabel += musicdatabase.GetArtistById(params.GetArtistId());
   }
@@ -170,12 +170,12 @@ bool CMusicDatabaseDirectory::GetLabel(const CStdString& strDirectory, CStdStrin
   // get album
   if (params.GetAlbumId() >= 0)
   {
-    if (!strLabel.IsEmpty())
+    if (!strLabel.empty())
       strLabel += " / ";
     strLabel += musicdatabase.GetAlbumById(params.GetAlbumId());
   }
 
-  if (strLabel.IsEmpty())
+  if (strLabel.empty())
   {
     switch (pNode->GetChildType())
     {
@@ -225,7 +225,6 @@ bool CMusicDatabaseDirectory::GetLabel(const CStdString& strDirectory, CStdStrin
       strLabel = "";
       break;
     default:
-      CLog::Log(LOGWARNING, "%s - Unknown nodetype requested %d", __FUNCTION__, pNode->GetChildType());
       return false;
     }
   }
@@ -247,9 +246,9 @@ bool CMusicDatabaseDirectory::ContainsSongs(const CStdString &path)
   return false;
 }
 
-bool CMusicDatabaseDirectory::Exists(const char* strPath)
+bool CMusicDatabaseDirectory::Exists(const CURL& url)
 {
-  CStdString path = CLegacyPathTranslation::TranslateMusicDbPath(strPath);
+  CStdString path = CLegacyPathTranslation::TranslateMusicDbPath(url);
   auto_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(path));
 
   if (!pNode.get())
@@ -304,7 +303,6 @@ CStdString CMusicDatabaseDirectory::GetIcon(const CStdString &strDirectory)
   case NODE_TYPE_ALBUM_COMPILATIONS:
     return "DefaultMusicCompilations.png";
   default:
-    CLog::Log(LOGWARNING, "%s - Unknown nodetype requested %s", __FUNCTION__, strDirectory.c_str());
     break;
   }
 

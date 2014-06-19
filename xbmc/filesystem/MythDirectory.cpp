@@ -55,9 +55,8 @@ CMythDirectory::~CMythDirectory()
   Release();
 }
 
-DIR_CACHE_TYPE CMythDirectory::GetCacheType(const CStdString& strPath) const
+DIR_CACHE_TYPE CMythDirectory::GetCacheType(const CURL& url) const
 {
-  CURL url(strPath);
   CStdString fileName = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(fileName);
 
@@ -71,7 +70,7 @@ DIR_CACHE_TYPE CMythDirectory::GetCacheType(const CStdString& strPath) const
   if (fileName == "recordings"
   ||  fileName == "guide"
   ||  fileName == "movies"
-  ||  fileName.Left(7) == "tvshows")
+  ||  StringUtils::StartsWith(fileName, "tvshows"))
     return DIR_CACHE_ALWAYS;
 
   return DIR_CACHE_ONCE;
@@ -129,16 +128,15 @@ bool CMythDirectory::GetGuide(const CStdString& base, CFileItemList &items)
 
       CLog::Log(LOGDEBUG, "%s - Adding channel number %d: %s", __FUNCTION__, channum, name.c_str());
 
-      CStdString number;
-      number.Format("%d", channum); // CStdString easier for string manipulation than int.
+      CStdString number = StringUtils::Format("%d", channum); // CStdString easier for string manipulation than int.
       url.SetFileName("guide/" + number);
       CFileItemPtr item(new CFileItem(url.Get(), true));
       item->m_strTitle = number;
-      if (!name.IsEmpty())
+      if (!name.empty())
         item->m_strTitle += " - " + name; // e.g. 3 - TV3
 
       CStdString icon = GetValue(m_dll->channel_icon(channel));
-      if (!icon.IsEmpty())
+      if (!icon.empty())
       {
         url.SetFileName("files/channels/" + URIUtils::GetFileName(icon)); // e.g. files/channels/tv3.jpg
         item->SetArt("thumb", url.Get());
@@ -190,8 +188,10 @@ bool CMythDirectory::GetGuideForChannel(const CStdString& base, CFileItemList &i
       CDateTime localstart;
       if (program[i].starttime)
         localstart = CTimeUtils::GetLocalTime(program[i].starttime);
-      item->m_strTitle.Format("%s - %s", localstart.GetAsLocalizedTime("HH:mm", false), title); // e.g. 20:30 - Mythbusters
-      if (!subtitle.IsEmpty())
+      item->m_strTitle = StringUtils::Format("%s - %s",
+                                             localstart.GetAsLocalizedTime("HH:mm", false).c_str(),
+                                             title.c_str()); // e.g. 20:30 - Mythbusters
+      if (!subtitle.empty())
         item->m_strTitle     += " - \"" + subtitle + "\""; // e.g. 20:30 - Mythbusters - "The Pirate Special"
       item->m_dateTime        = localstart;
 
@@ -200,7 +200,7 @@ bool CMythDirectory::GetGuideForChannel(const CStdString& base, CFileItemList &i
        */
       CVideoInfoTag* tag      = item->GetVideoInfoTag();
       tag->m_strTitle         = title;
-      if (!subtitle.IsEmpty())
+      if (!subtitle.empty())
         tag->m_strTitle      += " - \"" + subtitle + "\""; // e.g. Mythbusters - "The Pirate Special"
       tag->m_strShowTitle     = title;
       tag->m_strOriginalTitle = title;
@@ -279,7 +279,7 @@ bool CMythDirectory::GetRecordings(const CStdString& base, CFileItemList &items,
         url.SetFileName("movies/" + path);
         break;
       case TV_SHOWS:
-        if (filter.CompareNoCase(name))
+        if (!StringUtils::EqualsNoCase(filter, name))
         {
           m_dll->ref_release(program);
           continue;
@@ -308,7 +308,7 @@ bool CMythDirectory::GetRecordings(const CStdString& base, CFileItemList &items,
         CStdString label(item->m_strTitle);
         unsigned short year = m_dll->proginfo_year(program);
         if (year > 0)
-          label.AppendFormat(" (%d)", year);
+          label += StringUtils::Format(" (%d)", year);
         item->SetLabel(label);
         item->SetLabelPreformated(true);
       }
@@ -466,9 +466,9 @@ bool CMythDirectory::GetChannels(const CStdString& base, CFileItemList &items)
   return true;
 }
 
-bool CMythDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CMythDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
-  m_session = CMythSession::AquireSession(strPath);
+  m_session = CMythSession::AquireSession(url);
   if (!m_session)
     return false;
 
@@ -476,10 +476,9 @@ bool CMythDirectory::GetDirectory(const CStdString& strPath, CFileItemList &item
   if (!m_dll)
     return false;
 
-  CStdString base(strPath);
+  CStdString base(url.Get());
   URIUtils::RemoveSlashAtEnd(base);
 
-  CURL url(strPath);
   CStdString fileName = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(fileName);
 
@@ -530,38 +529,37 @@ bool CMythDirectory::GetDirectory(const CStdString& strPath, CFileItemList &item
     return GetChannels(base, items);
   else if (fileName == "guide")
     return GetGuide(base, items);
-  else if (fileName.Left(6) == "guide/")
-    return GetGuideForChannel(base, items, atoi(fileName.Mid(6)));
+  else if (StringUtils::StartsWith(fileName, "guide/"))
+    return GetGuideForChannel(base, items, atoi(fileName.substr(6).c_str()));
   else if (fileName == "movies")
     return GetRecordings(base, items, MOVIES);
   else if (fileName == "recordings")
     return GetRecordings(base, items);
   else if (fileName == "tvshows")
     return GetTvShowFolders(base, items);
-  else if (fileName.Left(8) == "tvshows/")
-    return GetRecordings(base, items, TV_SHOWS, fileName.Mid(8));
+  else if (StringUtils::StartsWith(fileName, "tvshows/"))
+    return GetRecordings(base, items, TV_SHOWS, fileName.substr(8).c_str());
   return false;
 }
 
-bool CMythDirectory::Exists(const char* strPath)
+bool CMythDirectory::Exists(const CURL& url)
 {
   /*
    * Return true for any virtual folders that are known to exist. Don't check for explicit
    * existence using GetDirectory() as most methods will return true with empty content due to the
    * way they are implemented - by iterating over all programs and filtering out content.
    */
-  CURL url(strPath);
   CStdString fileName = url.GetFileName();
   URIUtils::RemoveSlashAtEnd(fileName);
 
   if (fileName == ""
   ||  fileName == "channels"
   ||  fileName == "guide"
-  ||  fileName.Left(6) == "guide/"
+  ||  StringUtils::StartsWith(fileName, "guide/")
   ||  fileName == "movies"
   ||  fileName == "recordings"
   ||  fileName == "tvshows"
-  ||  fileName.Left(8) == "tvshows/")
+  ||  StringUtils::StartsWith(fileName, "tvshows/"))
     return true;
 
   return false;
@@ -606,10 +604,10 @@ bool CMythDirectory::IsMovie(const cmyth_proginfo_t program)
 
   const int iMovieLength = g_advancedSettings.m_iMythMovieLength; // Minutes
   if (iMovieLength > 0) // Use hack to identify movie based on length (used if EPG is dubious).
-    return GetValue(m_dll->proginfo_programid(program)).Left(2) == "MV"
+    return StringUtils::StartsWith(GetValue(m_dll->proginfo_programid(program)), "MV")
         || m_dll->proginfo_length_sec(program) > iMovieLength * 60; // Minutes to seconds
   else
-    return GetValue(m_dll->proginfo_programid(program)).Left(2) == "MV";
+    return StringUtils::StartsWith(GetValue(m_dll->proginfo_programid(program)), "MV");
 }
 
 bool CMythDirectory::IsTvShow(const cmyth_proginfo_t program)
@@ -634,13 +632,13 @@ bool CMythDirectory::SupportsWriteFileOperations(const CStdString& strPath)
    * TV Shows directory has sub-folders so extra check is included so only files get the file
    * operations.
    */
-  return filename.Left(11) == "recordings/" ||
-         filename.Left(7)  == "movies/" ||
-        (filename.Left(8)  == "tvshows/" && URIUtils::HasExtension(filename));
+  return StringUtils::StartsWith(filename, "recordings/") ||
+         StringUtils::StartsWith(filename, "movies/") ||
+        (StringUtils::StartsWith(filename, "tvshows/") && URIUtils::HasExtension(filename));
 }
 
 bool CMythDirectory::IsLiveTV(const CStdString& strPath)
 {
   CURL url(strPath);
-  return url.GetFileName().Left(9) == "channels/";
+  return StringUtils::StartsWith(url.GetFileName(), "channels/");
 }

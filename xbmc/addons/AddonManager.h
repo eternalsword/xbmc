@@ -99,21 +99,35 @@ namespace ADDON
     bool ReloadSettings(const CStdString &id);
     /*! \brief Get all addons with available updates
      \param addons List to fill with all outdated addons
-     \param enabled Whether to get only enabled or disabled addons
+     \param getLocalVersion Whether to get the local addon version or the addon verion from the repository
      \return True if there are outdated addons otherwise false
      */
-    bool GetAllOutdatedAddons(VECADDONS &addons, bool enabled = true);
+    bool GetAllOutdatedAddons(VECADDONS &addons, bool getLocalVersion = false);
     /*! \brief Checks if there is any addon with available updates
-     \param enabled Whether to check only enabled or disabled addons
      \return True if there are outdated addons otherwise false
      */
-    bool HasOutdatedAddons(bool enabled = true);
+    bool HasOutdatedAddons();
     CStdString GetString(const CStdString &id, const int number);
 
     const char *GetTranslatedString(const cp_cfg_element_t *root, const char *tag);
     static AddonPtr AddonFromProps(AddonProps& props);
     void FindAddons();
     void RemoveAddon(const CStdString& ID);
+
+    /* \brief Disable an addon
+     Triggers the database routine and saves the current addon state to cache.
+     \param ID id of the addon
+     \param disable whether to enable or disable. Defaults to true (disable)
+     \sa IsAddonDisabled,
+     */
+    bool DisableAddon(const std::string& ID, bool disable = true);
+
+    /* \brief Check whether an addon has been disabled via DisableAddon.
+     In case the disabled cache does not know about the current state the database routine will be used.
+     \param ID id of the addon
+     \sa DisableAddon
+     */
+    bool IsAddonDisabled(const std::string& ID);
 
     /* libcpluff */
     CStdString GetExtValue(cp_cfg_element_t *base, const char *path);
@@ -133,7 +147,7 @@ namespace ADDON
      \param result [out] returned list of strings.
      \return true if the configuration element is present and the list of strings is non-empty
      */
-    bool GetExtList(cp_cfg_element_t *base, const char *path, std::vector<CStdString> &result) const;
+    bool GetExtList(cp_cfg_element_t *base, const char *path, std::vector<std::string> &result) const;
 
     const cp_extension_t *GetExtension(const cp_plugin_info_t *props, const char *extension) const;
 
@@ -203,6 +217,7 @@ namespace ADDON
     CAddonMgr const& operator=(CAddonMgr const&);
     virtual ~CAddonMgr();
 
+    std::map<std::string, bool> m_disabled;
     static std::map<TYPE, IAddonMgrCallback*> m_managers;
     CCriticalSection m_critSection;
     CAddonDatabase m_database;

@@ -32,6 +32,8 @@
 #include "GUIInfoManager.h"
 #include "utils/StringUtils.h"
 #include "utils/CPUInfo.h"
+#include <mmdeviceapi.h>
+#include "win32/IMMNotificationClient.h"
 
 #ifndef _DEBUG
 #define XBMC_TRACK_EXCEPTIONS
@@ -115,7 +117,8 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
     int argc;
     LPWSTR* argvW = CommandLineToArgvW(GetCommandLineW(), &argc);
 
-    CStdString* strargvA = new CStdString[argc];
+    std::vector<std::string> strargvA;
+    strargvA.resize(argc);
     const char** argv = (const char**) LocalAlloc(LMEM_FIXED, argc*sizeof(char*));
     for (int i = 0; i < argc; i++)
     {
@@ -130,7 +133,6 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
     // Clean up the storage we've used
     LocalFree(argvW);
     LocalFree(argv);
-    delete [] strargvA;
   }
 
   // Initialise Winsock
@@ -221,12 +223,28 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT )
   }
 #endif
 
+  HRESULT hr = E_FAIL;
+  IMMDeviceEnumerator *pEnumerator = NULL;
+  CMMNotificationClient cMMNC;
+  hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&pEnumerator);
+  if(SUCCEEDED(hr))
+  {
+    pEnumerator->RegisterEndpointNotificationCallback(&cMMNC);
+    SAFE_RELEASE(pEnumerator);
+  }
+
   g_application.Run();
 
   // clear previously set timer resolution
   timeEndPeriod(1);		
 
   // the end
+  hr = CoCreateInstance(CLSID_MMDeviceEnumerator, NULL, CLSCTX_ALL, IID_IMMDeviceEnumerator, (void**)&pEnumerator);
+  if(SUCCEEDED(hr))
+  {
+    pEnumerator->UnregisterEndpointNotificationCallback(&cMMNC);
+    SAFE_RELEASE(pEnumerator);
+  }
   WSACleanup();
   CoUninitialize();
 

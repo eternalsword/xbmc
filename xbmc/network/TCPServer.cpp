@@ -255,7 +255,7 @@ bool CTCPServer::Initialize()
 
   if (started)
   {
-    CAnnouncementManager::AddAnnouncer(this);
+    CAnnouncementManager::Get().AddAnnouncer(this);
     CLog::Log(LOGINFO, "JSONRPC Server: Successfully initialized");
     return true;
   }
@@ -477,7 +477,7 @@ void CTCPServer::Deinitialize()
   m_sdpd = NULL;
 #endif
 
-  CAnnouncementManager::RemoveAnnouncer(this);
+  CAnnouncementManager::Get().RemoveAnnouncer(this);
 }
 
 CTCPServer::CTCPClient::CTCPClient()
@@ -526,7 +526,7 @@ void CTCPServer::CTCPClient::Send(const char *data, unsigned int size)
   do
   {
     CSingleLock lock (m_critSection);
-    sent += send(m_socket, data, size - sent, 0);
+    sent += send(m_socket, data + sent, size - sent, 0);
   } while (sent < size);
 }
 

@@ -41,6 +41,8 @@
 #include "SDLJoystick.h"
 #endif
 
+#define JOYSTICK_DEFAULT_MAP "_xbmc_"
+
 using namespace std;
 using namespace XFILE;
 
@@ -81,6 +83,8 @@ static const ActionMapping actions[] =
         {"stepback"          , ACTION_STEP_BACK},
         {"bigstepforward"    , ACTION_BIG_STEP_FORWARD},
         {"bigstepback"       , ACTION_BIG_STEP_BACK},
+        {"chapterorbigstepforward", ACTION_CHAPTER_OR_BIG_STEP_FORWARD},
+        {"chapterorbigstepback"   , ACTION_CHAPTER_OR_BIG_STEP_BACK},
         {"osd"               , ACTION_SHOW_OSD},
         {"showsubtitles"     , ACTION_SHOW_SUBTITLES},
         {"nextsubtitle"      , ACTION_NEXT_SUBTITLE},
@@ -238,6 +242,7 @@ static const ActionMapping actions[] =
         {"playpvr"               , ACTION_PVR_PLAY},
         {"playpvrtv"             , ACTION_PVR_PLAY_TV},
         {"playpvrradio"          , ACTION_PVR_PLAY_RADIO},
+        {"record"                , ACTION_RECORD},
 
         // Mouse actions
         {"leftclick"         , ACTION_MOUSE_LEFT_CLICK},
@@ -350,6 +355,7 @@ static const ActionMapping windows[] =
         {"karaokelargeselector"     , WINDOW_DIALOG_KARAOKE_SELECTOR},
         {"sliderdialog"             , WINDOW_DIALOG_SLIDER},
         {"addoninformation"         , WINDOW_DIALOG_ADDON_INFO},
+        {"subtitlesearch"           , WINDOW_DIALOG_SUBTITLES},
         {"musicplaylist"            , WINDOW_MUSIC_PLAYLIST},
         {"musicfiles"               , WINDOW_MUSIC_FILES},
         {"musiclibrary"             , WINDOW_MUSIC_NAV},
@@ -739,7 +745,7 @@ int CButtonTranslator::TranslateLircRemoteString(const char* szDevice, const cha
 #if defined(HAS_SDL_JOYSTICK) || defined(HAS_EVENT_SERVER)
 void CButtonTranslator::MapJoystickActions(int windowID, TiXmlNode *pJoystick)
 {
-  string joyname = "_xbmc_"; // default global map name
+  string joyname = JOYSTICK_DEFAULT_MAP; // default global map name
   vector<string> joynames;
   map<int, string> buttonMap;
   map<int, string> axisMap;
@@ -859,7 +865,11 @@ bool CButtonTranslator::TranslateJoystickString(int window, const char* szDevice
 
   map<string, JoystickMap>::iterator it = jmap->find(szDevice);
   if (it==jmap->end())
-    return false;
+  {
+    it = jmap->find(JOYSTICK_DEFAULT_MAP); // default global map name
+    if (it==jmap->end())
+      return false;
+  }
 
   JoystickMap wmap = it->second;
 
@@ -880,7 +890,7 @@ bool CButtonTranslator::TranslateJoystickString(int window, const char* szDevice
   return (action > 0);
 }
 
-bool CButtonTranslator::TranslateTouchAction(int touchAction, int touchPointers, int &window, int &action)
+bool CButtonTranslator::TranslateTouchAction(int window, int touchAction, int touchPointers, int &action)
 {
   action = 0;
   if (touchPointers <= 0)
@@ -891,10 +901,7 @@ bool CButtonTranslator::TranslateTouchAction(int touchAction, int touchPointers,
 
   action = GetTouchActionCode(window, touchAction);
   if (action <= 0)
-  {
-    window = WINDOW_INVALID;
     action = GetTouchActionCode(-1, touchAction);
-  }
 
   return action > 0;
 }
@@ -1114,7 +1121,7 @@ void CButtonTranslator::MapWindowActions(TiXmlNode *pWindow, int windowID)
       }
 
       // add our map to our table
-      if (map.size() > 0)
+      if (!map.empty())
         m_translatorMap.insert(pair<int, buttonMap>( windowID, map));
     }
   }
@@ -1146,7 +1153,7 @@ bool CButtonTranslator::TranslateActionString(const char *szAction, int &action)
 {
   action = ACTION_NONE;
   CStdString strAction = szAction;
-  strAction.ToLower();
+  StringUtils::ToLower(strAction);
   if (CBuiltins::HasCommand(strAction)) 
     action = ACTION_BUILT_IN_FUNCTION;
 
@@ -1181,18 +1188,18 @@ CStdString CButtonTranslator::TranslateWindow(int windowID)
 int CButtonTranslator::TranslateWindow(const CStdString &window)
 {
   CStdString strWindow(window);
-  if (strWindow.IsEmpty()) 
+  if (strWindow.empty()) 
     return WINDOW_INVALID;
-  strWindow.ToLower();
+  StringUtils::ToLower(strWindow);
   // eliminate .xml
-  if (strWindow.Mid(strWindow.GetLength() - 4) == ".xml" )
-    strWindow = strWindow.Mid(0, strWindow.GetLength() - 4);
+  if (StringUtils::EndsWith(strWindow, ".xml"))
+    strWindow = strWindow.substr(0, strWindow.size() - 4);
 
   // window12345, for custom window to be keymapped
-  if (strWindow.length() > 6 && strWindow.Left(6).Equals("window"))
-    strWindow = strWindow.Mid(6);
-  if (strWindow.Left(2) == "my")  // drop "my" prefix
-    strWindow = strWindow.Mid(2);
+  if (strWindow.length() > 6 && StringUtils::StartsWithNoCase(strWindow, "window"))
+    strWindow = strWindow.substr(6);
+  if (StringUtils::StartsWithNoCase(strWindow, "my"))  // drop "my" prefix
+    strWindow = strWindow.substr(2);
   if (StringUtils::IsNaturalNumber(strWindow))
   {
     // allow a full window id or a delta id
@@ -1219,7 +1226,7 @@ uint32_t CButtonTranslator::TranslateGamepadString(const char *szButton)
     return 0;
   uint32_t buttonCode = 0;
   CStdString strButton = szButton;
-  strButton.ToLower();
+  StringUtils::ToLower(strButton);
   if (strButton.Equals("a")) buttonCode = KEY_BUTTON_A;
   else if (strButton.Equals("b")) buttonCode = KEY_BUTTON_B;
   else if (strButton.Equals("x")) buttonCode = KEY_BUTTON_X;
@@ -1258,7 +1265,7 @@ uint32_t CButtonTranslator::TranslateRemoteString(const char *szButton)
     return 0;
   uint32_t buttonCode = 0;
   CStdString strButton = szButton;
-  strButton.ToLower();
+  StringUtils::ToLower(strButton);
   if (strButton.Equals("left")) buttonCode = XINPUT_IR_REMOTE_LEFT;
   else if (strButton.Equals("right")) buttonCode = XINPUT_IR_REMOTE_RIGHT;
   else if (strButton.Equals("up")) buttonCode = XINPUT_IR_REMOTE_UP;
@@ -1389,14 +1396,13 @@ uint32_t CButtonTranslator::TranslateKeyboardButton(TiXmlElement *pButton)
   CStdString strMod;
   if (pButton->QueryValueAttribute("mod", &strMod) == TIXML_SUCCESS)
   {
-    strMod.ToLower();
+    StringUtils::ToLower(strMod);
 
-    CStdStringArray modArray;
-    StringUtils::SplitString(strMod, ",", modArray);
-    for (unsigned int i = 0; i < modArray.size(); i++)
+    vector<string> modArray = StringUtils::Split(strMod, ",");
+    for (vector<string>::const_iterator i = modArray.begin(); i != modArray.end(); ++i)
     {
-      CStdString& substr = modArray[i];
-      substr.Trim();
+      string substr = *i;
+      StringUtils::Trim(substr);
 
       if (substr == "ctrl" || substr == "control")
         button_id |= CKey::MODIFIER_CTRL;
@@ -1420,7 +1426,7 @@ uint32_t CButtonTranslator::TranslateAppCommand(const char *szButton)
 {
 #ifdef TARGET_WINDOWS
   CStdString strAppCommand = szButton;
-  strAppCommand.ToLower();
+  StringUtils::ToLower(strAppCommand);
 
   for (int i = 0; i < sizeof(appcommands)/sizeof(appcommands[0]); i++)
     if (strAppCommand.Equals(appcommands[i].name))
@@ -1435,7 +1441,7 @@ uint32_t CButtonTranslator::TranslateAppCommand(const char *szButton)
 uint32_t CButtonTranslator::TranslateMouseCommand(const char *szButton)
 {
   CStdString strMouseCommand = szButton;
-  strMouseCommand.ToLower();
+  StringUtils::ToLower(strMouseCommand);
 
   for (unsigned int i = 0; i < sizeof(mousecommands)/sizeof(mousecommands[0]); i++)
     if (strMouseCommand.Equals(mousecommands[i].name))
@@ -1474,7 +1480,7 @@ uint32_t CButtonTranslator::TranslateTouchCommand(TiXmlElement *pButton, CButton
     return ACTION_NONE;
 
   CStdString strTouchCommand = szButton;
-  strTouchCommand.ToLower();
+  StringUtils::ToLower(strTouchCommand);
 
   const char *attrVal = pButton->Attribute("direction");
   if (attrVal != NULL)
@@ -1552,7 +1558,7 @@ void CButtonTranslator::MapTouchActions(int windowID, TiXmlNode *pTouch)
   }
 
   // add the modified touch map with the window ID
-  if (map.size() > 0)
+  if (!map.empty())
     m_touchMap.insert(std::pair<int, buttonMap>(windowID, map));
 }
 

@@ -400,6 +400,17 @@ bool CWinEventsSDL::MessagePump()
   return ret;
 }
 
+size_t CWinEventsSDL::GetQueueSize()
+{
+  int ret;
+  SDL_Event event;
+
+  if (-1 == (ret = SDL_PeepEvents(&event, 0, SDL_PEEKEVENT, ~0)))
+    ret = 0;
+
+  return ret;
+}
+
 #ifdef TARGET_DARWIN_OSX
 bool CWinEventsSDL::ProcessOSXShortcuts(SDL_Event& event)
 {
@@ -425,7 +436,10 @@ bool CWinEventsSDL::ProcessOSXShortcuts(SDL_Event& event)
       g_application.OnAction(CAction(ACTION_TAKE_SCREENSHOT));
       return true;
 
-    case SDLK_h: // CMD-h to hide (but we minimize for now)
+    case SDLK_h: // CMD-h to hide
+      g_Windowing.Hide();
+      return true;
+
     case SDLK_m: // CMD-m to minimize
       CApplicationMessenger::Get().Minimize();
       return true;

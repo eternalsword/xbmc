@@ -23,6 +23,8 @@
 
 #include "utils/log.h"
 
+#include "cores/omxplayer/OMXImage.h"
+
 CRBP::CRBP()
 {
   m_initialized     = false;
@@ -40,6 +42,10 @@ CRBP::~CRBP()
 
 bool CRBP::Initialize()
 {
+  CSingleLock lock (m_critSection);
+  if (m_initialized)
+    return true;
+
   m_initialized = m_DllBcmHost->Load();
   if(!m_initialized)
     return false;
@@ -53,11 +59,21 @@ bool CRBP::Initialize()
   char response[80] = "";
   m_arm_mem = 0;
   m_gpu_mem = 0;
+  m_codec_mpg2_enabled = false;
+  m_codec_wvc1_enabled = false;
+
   if (vc_gencmd(response, sizeof response, "get_mem arm") == 0)
     vc_gencmd_number_property(response, "arm", &m_arm_mem);
   if (vc_gencmd(response, sizeof response, "get_mem gpu") == 0)
     vc_gencmd_number_property(response, "gpu", &m_gpu_mem);
 
+  if (vc_gencmd(response, sizeof response, "codec_enabled MPG2") == 0)
+    m_codec_mpg2_enabled = strcmp("MPG2=enabled", response) == 0;
+  if (vc_gencmd(response, sizeof response, "codec_enabled WVC1") == 0)
+    m_codec_wvc1_enabled = strcmp("WVC1=enabled", response) == 0;
+
+  g_OMXImage.Initialize();
+  m_omx_image_init = true;
   return true;
 }
 
@@ -67,7 +83,7 @@ void CRBP::LogFirmwareVerison()
   m_DllBcmHost->vc_gencmd(response, sizeof response, "version");
   response[sizeof(response) - 1] = '\0';
   CLog::Log(LOGNOTICE, "Raspberry PI firmware version: %s", response);
-  CLog::Log(LOGNOTICE, "ARM mem: %dMB GPU mem: %dMB", m_arm_mem, m_gpu_mem);
+  CLog::Log(LOGNOTICE, "ARM mem: %dMB GPU mem: %dMB MPG2:%d WVC1:%d", m_arm_mem, m_gpu_mem, m_codec_mpg2_enabled, m_codec_wvc1_enabled);
 }
 
 void CRBP::GetDisplaySize(int &width, int &height)
@@ -128,6 +144,9 @@ unsigned char *CRBP::CaptureDisplay(int width, int height, int *pstride, bool sw
 
 void CRBP::Deinitialize()
 {
+  if (m_omx_image_init)
+    g_OMXImage.Deinitialize();
+
   if(m_omx_initialized)
     m_OMX->Deinitialize();
 
@@ -136,6 +155,7 @@ void CRBP::Deinitialize()
   if(m_initialized)
     m_DllBcmHost->Unload();
 
+  m_omx_image_init  = false;
   m_initialized     = false;
   m_omx_initialized = false;
 }

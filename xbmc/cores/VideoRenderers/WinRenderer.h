@@ -30,6 +30,7 @@
 #include "RenderCapture.h"
 #include "settings/VideoSettings.h"
 #include "cores/dvdplayer/DVDCodecs/Video/DXVA.h"
+#include "cores/dvdplayer/DVDCodecs/Video/DXVAHD.h"
 #include "cores/VideoRenderers/RenderFlags.h"
 #include "cores/VideoRenderers/RenderFormats.h"
 
@@ -194,7 +195,7 @@ protected:
   void SelectSWVideoFilter();
   void SelectPSVideoFilter();
   void UpdatePSVideoFilter();
-  bool CreateIntermediateRenderTarget();
+  bool CreateIntermediateRenderTarget(unsigned int width, unsigned int height);
 
   void RenderProcessor(DWORD flags);
   int  m_iYV12RenderBuffer;
@@ -203,13 +204,10 @@ protected:
   bool                 m_bConfigured;
   SVideoBuffer        *m_VideoBuffers[NUM_BUFFERS];
   RenderMethod         m_renderMethod;
-  DXVA::CProcessor     m_processor;
+  DXVA::CProcessor    *m_processor;
   std::vector<ERenderFormat> m_formats;
 
   // software scale libraries (fallback if required pixel shaders version is not available)
-  DllAvUtil           *m_dllAvUtil;
-  DllAvCodec          *m_dllAvCodec;
-  DllSwScale          *m_dllSwScale;
   struct SwsContext   *m_sw_scale_ctx;
 
   // Software rendering
@@ -226,7 +224,7 @@ protected:
   ESCALINGMETHOD       m_scalingMethod;
   ESCALINGMETHOD       m_scalingMethodGui;
 
-  D3DCAPS9 m_deviceCaps;
+  D3DCAPS9             m_deviceCaps;
 
   bool                 m_bFilterInitialized;
 
@@ -234,7 +232,6 @@ protected:
 
   // clear colour for "black" bars
   DWORD                m_clearColour;
-  ERenderFormat        m_format;
   unsigned int         m_extended_format;
 
   // Width and height of the render target

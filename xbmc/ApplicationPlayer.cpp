@@ -20,6 +20,7 @@
 
 #include "ApplicationPlayer.h"
 #include "cores/IPlayer.h"
+#include "Application.h"
 
 #define VOLUME_MINIMUM 0.0f        // -60dB
 #define VOLUME_MAXIMUM 1.0f        // 0dB
@@ -48,13 +49,13 @@ void CApplicationPlayer::ClosePlayer()
   }
 }
 
-void CApplicationPlayer::CloseFile()
+void CApplicationPlayer::CloseFile(bool reopen)
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
   {
     ++m_iPlayerOPSeq;
-    player->CloseFile();
+    player->CloseFile(reopen);
   }
 }
 
@@ -80,7 +81,7 @@ void CApplicationPlayer::ClosePlayerGapless(PLAYERCOREID newCore)
     // but if we do not stop it, we can not distingush callbacks from previous
     // item and current item, it will confused us then we can not make correct delay
     // callback after the starting state.
-    CloseFile();
+    CloseFile(true);
   }
 }
 
@@ -222,11 +223,11 @@ void CApplicationPlayer::SetVolume(float volume)
     player->SetVolume(volume);
 }
 
-void CApplicationPlayer::Seek(bool bPlus, bool bLargeStep)
+void CApplicationPlayer::Seek(bool bPlus, bool bLargeStep, bool bChapterOverride)
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
-    player->Seek(bPlus, bLargeStep);
+    player->Seek(bPlus, bLargeStep, bChapterOverride);
 }
 
 void CApplicationPlayer::SeekPercentage(float fPercent)
@@ -279,33 +280,6 @@ int64_t CApplicationPlayer::GetTime() const
     return 0;
 }
 
-int CApplicationPlayer::GetPictureHeight()
-{
-  boost::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    return player->GetPictureHeight();
-  else
-    return 0;
-}
-
-int CApplicationPlayer::GetPictureWidth()
-{
-  boost::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    return player->GetPictureWidth();
-  else
-    return 0;
-}
-
-int CApplicationPlayer::GetSampleRate()
-{
-  boost::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    return player->GetSampleRate();
-  else
-    return 0;
-}
-
 bool CApplicationPlayer::IsCaching() const
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
@@ -342,29 +316,34 @@ int CApplicationPlayer::GetSubtitleCount()
     return 0;
 }
 
-int CApplicationPlayer::GetBitsPerSample()
-{
-  boost::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    return player->GetBitsPerSample();
-  else
-    return 0;
-}
-
 int CApplicationPlayer::GetAudioStream()
 {
+  if (!m_audioStreamUpdate.IsTimePast())
+    return m_iAudioStream;
+
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
-    return player->GetAudioStream();
+  {
+    m_iAudioStream = player->GetAudioStream();
+    m_audioStreamUpdate.Set(1000);
+    return m_iAudioStream;
+  }
   else
     return 0;
 }
 
 int CApplicationPlayer::GetSubtitle()
 {
+  if (!m_subtitleStreamUpdate.IsTimePast())
+    return m_iSubtitleStream;
+
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
-    return player->GetSubtitle();
+  {
+    m_iSubtitleStream = player->GetSubtitle();
+    m_subtitleStreamUpdate.Set(1000);
+    return m_iSubtitleStream;
+  }
   else
     return 0;
 }
@@ -516,7 +495,11 @@ void CApplicationPlayer::SetAudioStream(int iStream)
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
+  {
     player->SetAudioStream(iStream);
+    m_iAudioStream = iStream;
+    m_audioStreamUpdate.Set(1000);
+  }
 }
 
 void CApplicationPlayer::GetSubtitleStreamInfo(int index, SPlayerSubtitleStreamInfo &info)
@@ -530,7 +513,11 @@ void CApplicationPlayer::SetSubtitle(int iStream)
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
   if (player)
+  {
     player->SetSubtitle(iStream);
+    m_iSubtitleStream = iStream;
+    m_subtitleStreamUpdate.Set(1000);
+  }
 }
 
 void CApplicationPlayer::SetSubtitleVisible(bool bVisible)
@@ -618,12 +605,6 @@ void CApplicationPlayer::GetGeneralInfo( CStdString& strVideoInfo)
     player->GetGeneralInfo(strVideoInfo);
 }
 
-bool CApplicationPlayer::GetCurrentSubtitle(CStdString& strSubtitle)
-{
-  boost::shared_ptr<IPlayer> player = GetInternal();
-  return (player && player->GetCurrentSubtitle(strSubtitle));
-}
-
 int  CApplicationPlayer::SeekChapter(int iChapter)
 {
   boost::shared_ptr<IPlayer> player = GetInternal();
@@ -693,7 +674,7 @@ void CApplicationPlayer::SetPlaySpeed(int iSpeed, bool bApplicationMuted)
   {
     if (m_iPlaySpeed == 1)
     { // restore volume
-      player->SetVolume(VOLUME_MAXIMUM);
+      player->SetVolume(g_application.GetVolume(false));
     }
     else
     { // mute volume

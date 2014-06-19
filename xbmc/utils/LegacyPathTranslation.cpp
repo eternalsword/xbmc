@@ -20,6 +20,7 @@
 
 #include "LegacyPathTranslation.h"
 #include "utils/StringUtils.h"
+#include "URL.h"
 
 typedef struct Translator {
   const char *legacyPath;
@@ -79,6 +80,15 @@ static Translator s_musicDbTranslator[] = {
 
 #define MusicDbTranslatorSize sizeof(s_musicDbTranslator) / sizeof(Translator)
 
+std::string CLegacyPathTranslation::TranslateVideoDbPath(const CURL &legacyPath)
+{
+  return TranslatePath(legacyPath.Get(), s_videoDbTranslator, VideoDbTranslatorSize);
+}
+
+std::string CLegacyPathTranslation::TranslateMusicDbPath(const CURL &legacyPath)
+{
+  return TranslatePath(legacyPath.Get(), s_musicDbTranslator, MusicDbTranslatorSize);
+}
 
 std::string CLegacyPathTranslation::TranslateVideoDbPath(const std::string &legacyPath)
 {
@@ -95,7 +105,7 @@ std::string CLegacyPathTranslation::TranslatePath(const std::string &legacyPath,
   std::string newPath = legacyPath;
   for (size_t index = 0; index < translationMapSize; index++)
   {
-    if (StringUtils::StartsWith(newPath, translationMap[index].legacyPath))
+    if (StringUtils::StartsWithNoCase(newPath, translationMap[index].legacyPath))
     {
       StringUtils::Replace(newPath, translationMap[index].legacyPath, translationMap[index].newPath);
       break;

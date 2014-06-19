@@ -22,7 +22,7 @@
 
 #include "FileItem.h"
 #include "PVRChannel.h"
-#include "settings/ISettingCallback.h"
+#include "settings/lib/ISettingCallback.h"
 #include "utils/JobManager.h"
 
 #include <boost/shared_ptr.hpp>
@@ -50,7 +50,13 @@ namespace PVR
     CPVRChannelPtr channel;
     unsigned int   iChannelNumber;
   } PVRChannelGroupMember;
-
+  
+  enum EpgDateType
+  {
+    EPG_FIRST_DATE = 0,
+    EPG_LAST_DATE = 1
+  };
+  
   class CPVRChannelGroup;
   typedef boost::shared_ptr<PVR::CPVRChannelGroup> CPVRChannelGroupPtr;
 
@@ -210,6 +216,18 @@ namespace PVR
     int GroupType(void) const;
 
     /*!
+     * @return Time group has been watched last.
+     */
+    time_t LastWatched() const;
+
+    /*!
+     * @brief Last time group has been watched
+     * @param iLastWatched The new value.
+     * @return True if something changed, false otherwise.
+     */
+    bool SetLastWatched(time_t iLastWatched);
+
+    /*!
      * @brief Set if sorting and renumbering should happen after adding/updating channels to group.
      * @param bPreventSortAndRenumber The new sorting and renumbering prevention value for this group.
      */
@@ -365,8 +383,20 @@ namespace PVR
      * @return The amount of entries that were added.
      */
     int GetEPGNext(CFileItemList &results);
+    
+    /*!
+     * @brief Get the start time of the first entry.
+     * @return The start time.
+     */
+    CDateTime GetFirstEPGDate(void) const;
+    
+    /*!
+     * @brief Get the end time of the last entry.
+     * @return The end time.
+     */
+    CDateTime GetLastEPGDate(void) const;
 
-    bool UpdateChannel(const CFileItem &channel, bool bHidden, bool bVirtual, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const CStdString &strChannelName, const CStdString &strIconPath, const CStdString &strStreamURL);
+    bool UpdateChannel(const CFileItem &channel, bool bHidden, bool bVirtual, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const CStdString &strChannelName, const CStdString &strIconPath, const CStdString &strStreamURL, bool bUserSetIcon = false);
 
     bool ToggleChannelLocked(const CFileItem &channel);
 
@@ -380,18 +410,17 @@ namespace PVR
      */
     CPVRChannelPtr GetByClient(int iUniqueChannelId, int iClientID) const;
 
+    /*!
+     * @brief Get a channel given it's unique ID.
+     * @param iUniqueID The unique ID.
+     * @return The channel or NULL if it wasn't found.
+     */
+    CPVRChannelPtr GetByUniqueID(int iUniqueID) const;
+
     void SetSelectedGroup(bool bSetTo);
     bool IsSelectedGroup(void) const;
 
   protected:
-    /*!
-     * @brief Set a new channel icon path if the path exists
-     * @param channel The channel to change
-     * @param strIconPath The new path
-     * @return True if the path exists, false otherwise
-     */
-    bool SetChannelIconPath(CPVRChannelPtr channel, const std::string& strIconPath);
-
     /*!
      * @brief Load the channels stored in the database.
      * @param bCompress If true, compress the database after storing the channels.
@@ -470,13 +499,6 @@ namespace PVR
     void ResetChannelNumbers(void);
 
     /*!
-     * @brief Get a channel given it's unique ID.
-     * @param iUniqueID The unique ID.
-     * @return The channel or NULL if it wasn't found.
-     */
-    CPVRChannelPtr GetByUniqueID(int iUniqueID) const;
-
-    /*!
      * @brief Get a channel given it's channel ID.
      * @param iChannelID The channel ID.
      * @return The channel or NULL if it wasn't found.
@@ -493,8 +515,13 @@ namespace PVR
     bool             m_bUsingBackendChannelNumbers; /*!< true to use the channel numbers from 1 backend, false otherwise */
     bool             m_bSelectedGroup;              /*!< true when this is the selected group, false otherwise */
     bool             m_bPreventSortAndRenumber;     /*!< true when sorting and renumbering should not be done after adding/updating channels to the group */
+    time_t           m_iLastWatched;                /*!< last time group has been watched */
     std::vector<PVRChannelGroupMember> m_members;
     CCriticalSection m_critSection;
+    
+  private:
+    CDateTime GetEPGDate(EpgDateType epgDateType) const;
+    
   };
 
   class CPVRPersistGroupJob : public CJob

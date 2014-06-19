@@ -87,7 +87,7 @@ void CGUIDialogKeyboardGeneric::OnInitWindow()
   // set alphabetic (capitals)
   UpdateButtons();
 
-  CGUILabelControl* pEdit = ((CGUILabelControl*)GetControl(CTL_LABEL_EDIT));
+  CGUILabelControl* pEdit = dynamic_cast<CGUILabelControl*>(GetControl(CTL_LABEL_EDIT));
   if (pEdit)
   {
     pEdit->ShowCursor();
@@ -109,7 +109,7 @@ void CGUIDialogKeyboardGeneric::OnInitWindow()
   data["title"] = m_strHeading;
   data["type"] = !m_hiddenInput ? "keyboard" : "password";
   data["value"] = GetText();
-  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputRequested", data);
+  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputRequested", data);
 }
 
 bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
@@ -129,7 +129,7 @@ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
   }
   else if (action.GetID() == ACTION_CURSOR_RIGHT)
   {
-    if (m_strEditing.IsEmpty() && (unsigned int) GetCursorPos() == m_strEdit.size() && (m_strEdit.size() == 0 || m_strEdit[m_strEdit.size() - 1] != ' '))
+    if (m_strEditing.empty() && (unsigned int) GetCursorPos() == m_strEdit.size() && (m_strEdit.size() == 0 || m_strEdit[m_strEdit.size() - 1] != ' '))
     { // add a space
       Character(L' ');
     }
@@ -154,7 +154,7 @@ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
   }
   else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII)
   { // input from the keyboard (vkey, not ascii)
-    if (!m_strEditing.IsEmpty())
+    if (!m_strEditing.empty())
       return handled;
     uint8_t b = action.GetID() & 0xFF;
     if (b == XBMCVK_HOME)
@@ -163,7 +163,7 @@ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
     }
     else if (b == XBMCVK_END)
     {
-      SetCursorPos(m_strEdit.GetLength());
+      SetCursorPos(m_strEdit.size());
     }
     else if (b == XBMCVK_LEFT)
     {
@@ -179,7 +179,7 @@ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
     }
     else if (b == XBMCVK_DELETE)
     {
-      if (GetCursorPos() < m_strEdit.GetLength())
+      if (GetCursorPos() < (int)m_strEdit.size())
       {
         MoveCursor(1);
         Backspace();
@@ -213,7 +213,7 @@ bool CGUIDialogKeyboardGeneric::OnAction(const CAction &action)
         Close();
         break;
       case 0x7F: // Delete
-        if (GetCursorPos() < m_strEdit.GetLength())
+        if (GetCursorPos() < (int)m_strEdit.size())
         {
           MoveCursor(1);
           Backspace();
@@ -311,8 +311,8 @@ bool CGUIDialogKeyboardGeneric::OnMessage(CGUIMessage& message)
 
 void CGUIDialogKeyboardGeneric::SetText(const CStdString& aTextString)
 {
-  m_strEdit.Empty();
-  m_strEditing.Empty();
+  m_strEdit.clear();
+  m_strEditing.clear();
   m_iEditingOffset = 0;
   g_charsetConverter.utf8ToW(aTextString, m_strEdit);
   UpdateLabel();
@@ -323,11 +323,11 @@ void CGUIDialogKeyboardGeneric::InputText(const CStdString& aTextString)
 {
   CStdStringW newStr;
   g_charsetConverter.utf8ToW(aTextString, newStr);
-  if (!newStr.IsEmpty())
+  if (!newStr.empty())
   {
-    m_strEditing.Empty();
+    m_strEditing.clear();
     m_iEditingOffset = 0;
-    m_strEdit.Insert(GetCursorPos(), newStr);
+    m_strEdit.insert(GetCursorPos(), newStr);
     UpdateLabel();
     MoveCursor(newStr.size());
   }
@@ -335,7 +335,7 @@ void CGUIDialogKeyboardGeneric::InputText(const CStdString& aTextString)
 
 void CGUIDialogKeyboardGeneric::InputTextEditing(const CStdString& aTextString, int start, int length)
 {
-  m_strEditing.Empty();
+  m_strEditing.clear();
   m_iEditingOffset = start;
   m_iEditingLength = length;
   g_charsetConverter.utf8ToW(aTextString, m_strEditing);
@@ -354,10 +354,10 @@ CStdString CGUIDialogKeyboardGeneric::GetText() const
 void CGUIDialogKeyboardGeneric::Character(WCHAR ch)
 {
   if (!ch) return;
-  m_strEditing.Empty();
+  m_strEditing.clear();
   m_iEditingOffset = 0;
   // TODO: May have to make this routine take a WCHAR for the symbols?
-  m_strEdit.Insert(GetCursorPos(), ch);
+  m_strEdit.insert(GetCursorPos(), 1, ch);
   UpdateLabel();
   MoveCursor(1);
 }
@@ -376,7 +376,7 @@ void CGUIDialogKeyboardGeneric::FrameMove()
 
 void CGUIDialogKeyboardGeneric::UpdateLabel() // FIXME seems to be called twice for one USB SDL keyboard action/character
 {
-  CGUILabelControl* pEdit = ((CGUILabelControl*)GetControl(CTL_LABEL_EDIT));
+  CGUILabelControl* pEdit = dynamic_cast<CGUILabelControl*>(GetControl(CTL_LABEL_EDIT));
   if (pEdit)
   {
     CStdStringW edit = m_strEdit;
@@ -384,7 +384,7 @@ void CGUIDialogKeyboardGeneric::UpdateLabel() // FIXME seems to be called twice 
     pEdit->SetSelection(0, 0);
     if (m_hiddenInput)
     { // convert to *'s
-      edit.Empty();
+      edit.clear();
       if (m_lastRemoteClickTime + REMOTE_SMS_DELAY > CTimeUtils::GetFrameTime() && m_iCursorPos > 0)
       { // using the remove to input, so display the last key input
         edit.append(m_iCursorPos - 1, L'*');
@@ -393,9 +393,9 @@ void CGUIDialogKeyboardGeneric::UpdateLabel() // FIXME seems to be called twice 
       else
         edit.append(m_strEdit.size(), L'*');
     }
-    else if (!m_strEditing.IsEmpty())
+    else if (!m_strEditing.empty())
     {
-      edit.Insert(m_iCursorPos, m_strEditing);
+      edit.insert(m_iCursorPos, m_strEditing);
       pEdit->SetHighlight(m_iCursorPos, m_iCursorPos + m_strEditing.size());
       if (m_iEditingLength > 0)
         pEdit->SetSelection(m_iCursorPos + m_iEditingOffset, m_iCursorPos + m_iEditingOffset + m_iEditingLength);
@@ -413,7 +413,7 @@ void CGUIDialogKeyboardGeneric::UpdateLabel() // FIXME seems to be called twice 
     if (m_pCharCallback)
     {
       // do not send editing text comes from system input method
-      if (!m_hiddenInput && !m_strEditing.IsEmpty())
+      if (!m_hiddenInput && !m_strEditing.empty())
         g_charsetConverter.wToUTF8(m_strEdit, utf8Edit);
       m_pCharCallback(this, utf8Edit);
     }
@@ -526,36 +526,10 @@ char CGUIDialogKeyboardGeneric::GetCharacter(int iButton)
 
 void CGUIDialogKeyboardGeneric::UpdateButtons()
 {
-  if (m_bShift)
-  { // show the button depressed
-    CGUIMessage msg(GUI_MSG_SELECTED, GetID(), CTL_BUTTON_SHIFT);
-    OnMessage(msg);
-  }
-  else
-  {
-    CGUIMessage msg(GUI_MSG_DESELECTED, GetID(), CTL_BUTTON_SHIFT);
-    OnMessage(msg);
-  }
-  if (m_keyType == CAPS)
-  {
-    CGUIMessage msg(GUI_MSG_SELECTED, GetID(), CTL_BUTTON_CAPS);
-    OnMessage(msg);
-  }
-  else
-  {
-    CGUIMessage msg(GUI_MSG_DESELECTED, GetID(), CTL_BUTTON_CAPS);
-    OnMessage(msg);
-  }
-  if (m_keyType == SYMBOLS)
-  {
-    CGUIMessage msg(GUI_MSG_SELECTED, GetID(), CTL_BUTTON_SYMBOLS);
-    OnMessage(msg);
-  }
-  else
-  {
-    CGUIMessage msg(GUI_MSG_DESELECTED, GetID(), CTL_BUTTON_SYMBOLS);
-    OnMessage(msg);
-  }
+  SET_CONTROL_SELECTED(GetID(), CTL_BUTTON_SHIFT, m_bShift);
+  SET_CONTROL_SELECTED(GetID(), CTL_BUTTON_CAPS, m_keyType == CAPS);
+  SET_CONTROL_SELECTED(GetID(), CTL_BUTTON_SYMBOLS, m_keyType == SYMBOLS);
+
   char szLabel[2];
   szLabel[0] = 32;
   szLabel[1] = 0;
@@ -606,12 +580,12 @@ void CGUIDialogKeyboardGeneric::OnDeinitWindow(int nextWindowID)
   m_strHeading = "";
 
   g_Windowing.EnableTextInput(false);
-  ANNOUNCEMENT::CAnnouncementManager::Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputFinished");
+  ANNOUNCEMENT::CAnnouncementManager::Get().Announce(ANNOUNCEMENT::Input, "xbmc", "OnInputFinished");
 }
 
 void CGUIDialogKeyboardGeneric::MoveCursor(int iAmount)
 {
-  if (!m_strEditing.IsEmpty())
+  if (!m_strEditing.empty())
     return;
   SetCursorPos(GetCursorPos() + iAmount);
 }
@@ -623,7 +597,7 @@ void CGUIDialogKeyboardGeneric::SetCursorPos(int iPos)
   else if (iPos > (int)m_strEdit.size())
     iPos = (int)m_strEdit.size();
   m_iCursorPos = iPos;
-  CGUILabelControl* pEdit = ((CGUILabelControl*)GetControl(CTL_LABEL_EDIT));
+  CGUILabelControl* pEdit = dynamic_cast<CGUILabelControl*>(GetControl(CTL_LABEL_EDIT));
   if (pEdit)
   {
     pEdit->SetCursorPos(m_iCursorPos + (m_hiddenInput ? 0 : m_iEditingOffset));
@@ -664,16 +638,16 @@ void CGUIDialogKeyboardGeneric::OnIPAddress()
   if (start > -1)
   {
     length = reg.GetSubLength(0);
-    ip = utf8String.Mid(start, length);
+    ip = utf8String.substr(start, length);
   }
   else
     start = utf8String.size();
   if (CGUIDialogNumeric::ShowAndGetIPAddress(ip, g_localizeStrings.Get(14068)))
   {
-    utf8String = utf8String.Left(start) + ip + utf8String.Mid(start + length);
+    utf8String = utf8String.substr(0, start) + ip.c_str() + utf8String.substr(start + length);
     g_charsetConverter.utf8ToW(utf8String, m_strEdit);
     UpdateLabel();
-    CGUILabelControl* pEdit = ((CGUILabelControl*)GetControl(CTL_LABEL_EDIT));
+    CGUILabelControl* pEdit = dynamic_cast<CGUILabelControl*>(GetControl(CTL_LABEL_EDIT));
     if (pEdit)
       pEdit->SetCursorPos(m_strEdit.size());
   }
@@ -761,9 +735,11 @@ void CGUIDialogKeyboardGeneric::OnPasteClipboard(void)
   {
     g_charsetConverter.utf8ToW(utf8_text, unicode_text);
 
-    int i = GetCursorPos();
-    CStdStringW left_end = m_strEdit.Left(i);
-    CStdStringW right_end = m_strEdit.Right(m_strEdit.length() - i);
+    size_t i = GetCursorPos();
+    if (i > m_strEdit.size())
+      i = m_strEdit.size();
+    CStdStringW left_end = m_strEdit.substr(0, i);
+    CStdStringW right_end = m_strEdit.substr(i);
 
     m_strEdit = left_end;
     m_strEdit.append(unicode_text);

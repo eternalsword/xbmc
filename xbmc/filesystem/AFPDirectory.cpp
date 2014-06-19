@@ -84,7 +84,7 @@ bool CAFPDirectory::ResolveSymlink( const CStdString &dirName, const CStdString 
       //and just can't change the global nfs context here
       //without destroying something...    
       fullpath = resolvedLink;
-      fullpath = fullpath.Right(fullpath.length()-1);
+      fullpath.erase(0, 1);
       resolvedUrl.SetFileName(fullpath);     
       ret = gAfpConnection.stat(resolvedUrl, stat);
       if(ret < 0)
@@ -115,7 +115,7 @@ bool CAFPDirectory::ResolveSymlink( const CStdString &dirName, const CStdString 
 }
 
 
-bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CAFPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // We accept afp://[[user[:password@]]server[/share[/path[/file]]]]
   // silence gdb breaking on signal SIGUSR2 with "handle SIGUSR2 nostop noprint"
@@ -123,17 +123,15 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   FILETIME fileTime, localTime;
 
   CSingleLock lock(gAfpConnection);
-  // we need an url to do proper escaping
-  CURL url(strPath);
   CAfpConnection::afpConnnectError afpError = gAfpConnection.Connect(url);
 
-  if (afpError != CAfpConnection::AfpOk || (!url.GetShareName().IsEmpty() && !gAfpConnection.GetVolume()))
+  if (afpError != CAfpConnection::AfpOk || (!url.GetShareName().empty() && !gAfpConnection.GetVolume()))
   {
     if (afpError == CAfpConnection::AfpAuth)
     {
        if (m_flags & DIR_FLAG_ALLOW_PROMPT)
        {
-         RequireAuthentication(url.Get());
+         RequireAuthentication(url);
        }
     }
     return false;
@@ -145,7 +143,7 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   struct afp_file_info *curDirPtr = NULL;
 
   // if no share name in url - try to fetch the volumes on the server and treat them like folders
-  if (url.GetShareName().IsEmpty())
+  if (url.GetShareName().empty())
   {
     bListVolumes = true;
     struct afp_server *serv = gAfpConnection.GetServer();
@@ -179,13 +177,13 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
     gAfpConnection.GetImpl()->afp_ml_filebase_free(&dirEnt);
   }
 
+  CStdString myStrPath(url.Get());
+  URIUtils::AddSlashAtEnd(myStrPath); //be sure the dir ends with a slash
   for (size_t i = 0; i < vecEntries.size(); i++)
   {
     CachedDirEntry aDir = vecEntries[i];
     // We use UTF-8 internally, as does AFP
     CStdString strFile = aDir.name;
-    CStdString myStrPath(strPath);
-    URIUtils::AddSlashAtEnd(myStrPath); //be sure the dir ends with a slash    
     CStdString path(myStrPath + strFile);
 
     if (!strFile.Equals(".") && !strFile.Equals("..") && !strFile.Equals("lost+found"))
@@ -271,11 +269,9 @@ bool CAFPDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items
   return true;
 }
 
-bool CAFPDirectory::Create(const char* strPath)
+bool CAFPDirectory::Create(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
-
-  CURL url(strPath);
 
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
@@ -290,11 +286,10 @@ bool CAFPDirectory::Create(const char* strPath)
   return (result == 0 || EEXIST == result);
 }
 
-bool CAFPDirectory::Remove(const char *strPath)
+bool CAFPDirectory::Remove(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
 
-  CURL url(strPath);
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
 
@@ -311,11 +306,10 @@ bool CAFPDirectory::Remove(const char *strPath)
   return true;
 }
 
-bool CAFPDirectory::Exists(const char *strPath)
+bool CAFPDirectory::Exists(const CURL& url)
 {
   CSingleLock lock(gAfpConnection);
 
-  CURL url(strPath);
   if (gAfpConnection.Connect(url) != CAfpConnection::AfpOk || !gAfpConnection.GetVolume())
     return false;
 

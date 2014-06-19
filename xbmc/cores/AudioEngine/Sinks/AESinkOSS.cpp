@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-#include "Utils/AEUtil.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "utils/StdString.h"
 #include "utils/log.h"
 #include "threads/SingleLock.h"
@@ -66,7 +66,6 @@ static int OSSSampleRateList[] =
 CAESinkOSS::CAESinkOSS()
 {
   m_fd = 0;
-  m_blockingNeedsUpdate = true;
 }
 
 CAESinkOSS::~CAESinkOSS()
@@ -145,8 +144,6 @@ bool CAESinkOSS::Initialize(AEAudioFormat &format, std::string &device)
     oss_fmt = AFMT_S16_BE;
   else if ((format.m_dataFormat == AE_FMT_S16LE) && (format_mask & AFMT_S16_LE))
     oss_fmt = AFMT_S16_LE;
-  else if ((format.m_dataFormat == AE_FMT_S8   ) && (format_mask & AFMT_S8    ))
-    oss_fmt = AFMT_S8;
   else if ((format.m_dataFormat == AE_FMT_U8   ) && (format_mask & AFMT_U8    ))
     oss_fmt = AFMT_U8;
   else if ((AE_IS_RAW(format.m_dataFormat)     ) && (format_mask & AFMT_AC3   ))
@@ -205,11 +202,6 @@ bool CAESinkOSS::Initialize(AEAudioFormat &format, std::string &device)
     {
       oss_fmt = AFMT_S16_LE;
       format.m_dataFormat = AE_FMT_S16LE;
-    }
-    else if (format_mask & AFMT_S8    )
-    {
-      oss_fmt = AFMT_S8;
-      format.m_dataFormat = AE_FMT_S8;
     }
     else if (format_mask & AFMT_U8    )
     {
@@ -341,8 +333,6 @@ void CAESinkOSS::Deinitialize()
 
   if (m_fd != -1)
     close(m_fd);
-  
-  m_blockingNeedsUpdate = true;
 }
 
 inline CAEChannelInfo CAESinkOSS::GetChannelLayout(AEAudioFormat format)
@@ -374,19 +364,6 @@ inline CAEChannelInfo CAESinkOSS::GetChannelLayout(AEAudioFormat format)
   return info;
 }
 
-bool CAESinkOSS::IsCompatible(const AEAudioFormat &format, const std::string &device)
-{
-  AEAudioFormat tmp  = format;
-  tmp.m_channelLayout = GetChannelLayout(format);
-
-  return (
-    tmp.m_sampleRate    == m_initFormat.m_sampleRate    &&
-    tmp.m_dataFormat    == m_initFormat.m_dataFormat    &&
-    tmp.m_channelLayout == m_initFormat.m_channelLayout &&
-    GetDeviceUse(tmp, device) == m_device
-  );
-}
-
 void CAESinkOSS::Stop()
 {
 #ifdef SNDCTL_DSP_RESET
@@ -407,7 +384,7 @@ double CAESinkOSS::GetDelay()
   return (double)delay / (m_format.m_frameSize * m_format.m_sampleRate);
 }
 
-unsigned int CAESinkOSS::AddPackets(uint8_t *data, unsigned int frames, bool hasAudio, bool blocking)
+unsigned int CAESinkOSS::AddPackets(uint8_t **data, unsigned int frames, unsigned int offset)
 {
   int size = frames * m_format.m_frameSize;
   if (m_fd == -1)
@@ -416,24 +393,10 @@ unsigned int CAESinkOSS::AddPackets(uint8_t *data, unsigned int frames, bool has
     return INT_MAX;
   }
 
-  if(m_blockingNeedsUpdate)
-  {
-    if(!blocking)
-    {
-      if (fcntl(m_fd, F_SETFL,  fcntl(m_fd, F_GETFL, 0) | O_NONBLOCK) == -1)
-      {
-        CLog::Log(LOGERROR, "CAESinkOSS::Initialize - Failed to set non blocking writes");
-      }
-    }
-    m_blockingNeedsUpdate = false;
-  }
-
-  int wrote = write(m_fd, data, size);
+  void *buffer = data[0]+offset*m_format.m_frameSize;
+  int wrote = write(m_fd, buffer, size);
   if (wrote < 0)
   {
-    if(!blocking && (errno == EAGAIN || errno == EWOULDBLOCK))
-      return 0;
-
     CLog::Log(LOGERROR, "CAESinkOSS::AddPackets - Failed to write");
     return INT_MAX;
   }

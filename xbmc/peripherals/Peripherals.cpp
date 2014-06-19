@@ -47,7 +47,7 @@
 #include "utils/StringUtils.h"
 #include "Util.h"
 #include "guilib/Key.h"
-#include "settings/Setting.h"
+#include "settings/lib/Setting.h"
 
 using namespace PERIPHERALS;
 using namespace XFILE;
@@ -114,9 +114,9 @@ void CPeripherals::Clear(void)
   /* delete mappings */
   for (unsigned int iMappingPtr = 0; iMappingPtr < m_mappings.size(); iMappingPtr++)
   {
-    map<CStdString, CSetting *> settings = m_mappings.at(iMappingPtr).m_settings;
-    for (map<CStdString, CSetting *>::iterator itr = settings.begin(); itr != settings.end(); itr++)
-      delete itr->second;
+    map<CStdString, PeripheralDeviceSetting> settings = m_mappings.at(iMappingPtr).m_settings;
+    for (map<CStdString, PeripheralDeviceSetting>::iterator itr = settings.begin(); itr != settings.end(); ++itr)
+      delete itr->second.m_setting;
     m_mappings.at(iMappingPtr).m_settings.clear();
   }
   m_mappings.clear();
@@ -320,7 +320,11 @@ void CPeripherals::OnDeviceAdded(const CPeripheralBus &bus, const CPeripheral &p
   CGUIMessage msg(GUI_MSG_UPDATE, WINDOW_SETTINGS_SYSTEM, 0);
   g_windowManager.SendThreadMessage(msg, WINDOW_SETTINGS_SYSTEM);
 
-  CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(35005), peripheral.DeviceName());
+  SetChanged();
+
+  // don't show a notification for devices detected during the initial scan
+  if (bus.IsInitialised())
+    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(35005), peripheral.DeviceName());
 }
 
 void CPeripherals::OnDeviceDeleted(const CPeripheralBus &bus, const CPeripheral &peripheral)
@@ -332,6 +336,8 @@ void CPeripherals::OnDeviceDeleted(const CPeripheralBus &bus, const CPeripheral 
   // refresh settings (peripherals manager could be disabled now)
   CGUIMessage msg(GUI_MSG_UPDATE, WINDOW_SETTINGS_SYSTEM, 0);
   g_windowManager.SendThreadMessage(msg, WINDOW_SETTINGS_SYSTEM);
+
+  SetChanged();
 
   CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Info, g_localizeStrings.Get(35006), peripheral.DeviceName());
 }
@@ -397,8 +403,8 @@ void CPeripherals::GetSettingsFromMapping(CPeripheral &peripheral) const
 
     if (bBusMatch && bProductMatch && bClassMatch)
     {
-      for (map<CStdString, CSetting *>::const_iterator itr = mapping->m_settings.begin(); itr != mapping->m_settings.end(); itr++)
-        peripheral.AddSetting((*itr).first, (*itr).second);
+      for (map<CStdString, PeripheralDeviceSetting>::const_iterator itr = mapping->m_settings.begin(); itr != mapping->m_settings.end(); ++itr)
+        peripheral.AddSetting((*itr).first, (*itr).second.m_setting, (*itr).second.m_order);
     }
   }
 }
@@ -421,7 +427,6 @@ bool CPeripherals::LoadMappings(void)
 
   for (TiXmlElement *currentNode = pRootElement->FirstChildElement("peripheral"); currentNode; currentNode = currentNode->NextSiblingElement("peripheral"))
   {
-    CStdStringArray vpArray, idArray;
     PeripheralID id;
     PeripheralDeviceMapping mapping;
 
@@ -431,18 +436,18 @@ bool CPeripherals::LoadMappings(void)
     if (currentNode->Attribute("vendor_product"))
     {
       // The vendor_product attribute is a list of comma separated vendor:product pairs
-      StringUtils::SplitString(currentNode->Attribute("vendor_product"), ",", vpArray);
-      for (unsigned int i = 0; i < vpArray.size(); i++)
+      vector<string> vpArray = StringUtils::Split(currentNode->Attribute("vendor_product"), ",");
+      for (vector<string>::const_iterator i = vpArray.begin(); i != vpArray.end(); ++i)
       {
-        StringUtils::SplitString(vpArray[i], ":", idArray);
+        vector<string> idArray = StringUtils::Split(*i, ":");
         if (idArray.size() != 2)
         {
           CLog::Log(LOGERROR, "%s - ignoring node \"%s\" with invalid vendor_product attribute", __FUNCTION__, mapping.m_strDeviceName.c_str());
           continue;
         }
 
-        id.m_iVendorId = PeripheralTypeTranslator::HexStringToInt(idArray[0]);
-        id.m_iProductId = PeripheralTypeTranslator::HexStringToInt(idArray[1]);
+        id.m_iVendorId = PeripheralTypeTranslator::HexStringToInt(idArray[0].c_str());
+        id.m_iProductId = PeripheralTypeTranslator::HexStringToInt(idArray[1].c_str());
         mapping.m_PeripheralID.push_back(id);
       }
     }
@@ -459,14 +464,16 @@ bool CPeripherals::LoadMappings(void)
   return true;
 }
 
-void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, map<CStdString, CSetting *> &m_settings)
+void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, map<CStdString, PeripheralDeviceSetting> &settings)
 {
   TiXmlElement *currentNode = xmlNode->FirstChildElement("setting");
+  int iMaxOrder = 0;
+
   while (currentNode)
   {
     CSetting *setting = NULL;
     CStdString strKey(currentNode->Attribute("key"));
-    if (strKey.IsEmpty())
+    if (strKey.empty())
       continue;
 
     CStdString strSettingsType(currentNode->Attribute("type"));
@@ -489,8 +496,7 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, map<CStdSt
       int iMin   = currentNode->Attribute("min") ? atoi(currentNode->Attribute("min")) : 0;
       int iStep  = currentNode->Attribute("step") ? atoi(currentNode->Attribute("step")) : 1;
       int iMax   = currentNode->Attribute("max") ? atoi(currentNode->Attribute("max")) : 255;
-      CStdString strFormat(currentNode->Attribute("format"));
-      setting = new CSettingInt(strKey, iLabelId, iValue, iMin, iStep, iMax, strFormat);
+      setting = new CSettingInt(strKey, iLabelId, iValue, iMin, iStep, iMax);
     }
     else if (strSettingsType.Equals("float"))
     {
@@ -503,13 +509,13 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, map<CStdSt
     else if (strSettingsType.Equals("enum"))
     {
       CStdString strEnums(currentNode->Attribute("lvalues"));
-      if (!strEnums.IsEmpty())
+      if (!strEnums.empty())
       {
         vector< pair<int,int> > enums;
-        vector<CStdString> valuesVec;
-        CUtil::Tokenize(strEnums, valuesVec, "|");
+        vector<std::string> valuesVec;
+        StringUtils::Tokenize(strEnums, valuesVec, "|");
         for (unsigned int i = 0; i < valuesVec.size(); i++)
-          enums.push_back(make_pair(atoi(valuesVec[i]), atoi(valuesVec[i])));
+          enums.push_back(make_pair(atoi(valuesVec[i].c_str()), atoi(valuesVec[i].c_str())));
         int iValue = currentNode->Attribute("value") ? atoi(currentNode->Attribute("value")) : 0;
         setting = new CSettingInt(strKey, iLabelId, iValue, enums);
       }
@@ -527,21 +533,38 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, map<CStdSt
       /* set the visibility */
       setting->SetVisible(bConfigurable);
 
+      /* set the order */
+      int iOrder = 0;
+      currentNode->Attribute("order", &iOrder);
+      /* if the order attribute is invalid or 0, then the setting will be added at the end */
+      if (iOrder < 0)
+        iOrder = 0;
+      if (iOrder > iMaxOrder)
+       iMaxOrder = iOrder;
+
       /* and add this new setting */
-      m_settings[strKey] = setting;
+      PeripheralDeviceSetting deviceSetting = { setting, iOrder };
+      settings[strKey] = deviceSetting;
     }
 
     currentNode = currentNode->NextSiblingElement("setting");
+  }
+
+  /* add the settings without an order attribute or an invalid order attribute set at the end */
+  for (map<CStdString, PeripheralDeviceSetting>::iterator it = settings.begin(); it != settings.end(); ++it)
+  {
+    if (it->second.m_order == 0)
+      it->second.m_order = ++iMaxOrder;
   }
 }
 
 void CPeripherals::GetDirectory(const CStdString &strPath, CFileItemList &items) const
 {
-  if (!strPath.Left(14).Equals("peripherals://"))
+  if (!StringUtils::StartsWithNoCase(strPath, "peripherals://"))
     return;
 
-  CStdString strPathCut = strPath.Right(strPath.length() - 14);
-  CStdString strBus = strPathCut.Left(strPathCut.Find('/'));
+  CStdString strPathCut = strPath.substr(14);
+  CStdString strBus = strPathCut.substr(0, strPathCut.find('/'));
 
   CSingleLock lock(m_critSection);
   for (unsigned int iBusPtr = 0; iBusPtr < m_busses.size(); iBusPtr++)
@@ -553,11 +576,11 @@ void CPeripherals::GetDirectory(const CStdString &strPath, CFileItemList &items)
 
 CPeripheral *CPeripherals::GetByPath(const CStdString &strPath) const
 {
-  if (!strPath.Left(14).Equals("peripherals://"))
+  if (!StringUtils::StartsWithNoCase(strPath, "peripherals://"))
     return NULL;
 
-  CStdString strPathCut = strPath.Right(strPath.length() - 14);
-  CStdString strBus = strPathCut.Left(strPathCut.Find('/'));
+  CStdString strPathCut = strPath.substr(14);
+  CStdString strBus = strPathCut.substr(0, strPathCut.find('/'));
 
   CSingleLock lock(m_critSection);
   for (unsigned int iBusPtr = 0; iBusPtr < m_busses.size(); iBusPtr++)
@@ -687,7 +710,7 @@ void CPeripherals::OnSettingChanged(const CSetting *setting)
     vector<CPeripheral *> cecDevices;
     if (g_peripherals.GetPeripheralsWithFeature(cecDevices, FEATURE_CEC) > 0)
     {
-      for (vector<CPeripheral *>::iterator it = cecDevices.begin(); it != cecDevices.end(); it++)
+      for (vector<CPeripheral *>::iterator it = cecDevices.begin(); it != cecDevices.end(); ++it)
         (*it)->SetSetting("use_tv_menu_language", false);
     }
   }

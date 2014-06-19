@@ -49,9 +49,9 @@ class CPlayerController;
 #include "cores/IPlayerCallback.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
 #include "PlayListPlayer.h"
-#include "settings/ISettingsHandler.h"
-#include "settings/ISettingCallback.h"
-#include "settings/ISubSettings.h"
+#include "settings/lib/ISettingsHandler.h"
+#include "settings/lib/ISettingCallback.h"
+#include "settings/lib/ISubSettings.h"
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
 #include "storage/DetectDVDType.h"
 #endif
@@ -153,9 +153,10 @@ public:
   void RestartApp();
   void UnloadSkin(bool forReload = false);
   bool LoadUserWindows();
-  void ReloadSkin();
+  void ReloadSkin(bool confirm = false);
   const CStdString& CurrentFile();
   CFileItem& CurrentFileItem();
+  CFileItem& CurrentUnstackedItem();
   virtual bool OnMessage(CGUIMessage& message);
   PLAYERCOREID GetCurrentPlayer();
   virtual void OnPlayBackEnded();
@@ -268,6 +269,7 @@ public:
   CApplicationPlayer* m_pPlayer;
 
   inline bool IsInScreenSaver() { return m_bScreenSave; };
+  inline bool IsDPMSActive() { return m_dpmsIsActive; };
   int m_iScreenSaveLock; // spiff: are we checking for a lock? if so, ignore the screensaver state, if -1 we have failed to input locks
 
   bool m_bPlaybackStarting;
@@ -281,10 +283,6 @@ public:
   } PlayState;
   PlayState m_ePlayState;
   CCriticalSection m_playStateMutex;
-
-  bool m_bInBackground;
-  inline bool IsInBackground() { return m_bInBackground; };
-  void SetInBackground(bool background);
 
   CKaraokeLyricsManager* m_pKaraokeMgr;
 
@@ -364,14 +362,17 @@ protected:
   virtual bool OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode);
 
   bool LoadSkin(const CStdString& skinID);
-  void LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
+  bool LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
 
-  bool m_skinReloading; // if true we disallow LoadSkin until ReloadSkin is called
+  bool m_skinReverting;
 
   bool m_loggingIn;
 
 #if defined(TARGET_DARWIN_IOS)
   friend class CWinEventsIOS;
+#endif
+#if defined(TARGET_ANDROID)
+  friend class CWinEventsAndroid;
 #endif
   // screensaver
   bool m_bScreenSave;
@@ -442,7 +443,7 @@ protected:
   bool ProcessGamepad(float frameTime);
   bool ProcessEventServer(float frameTime);
   bool ProcessPeripherals(float frameTime);
-  bool ProcessJoystickEvent(const std::string& joystickName, int button, bool isAxis, float fAmount, unsigned int holdTime = 0);
+  bool ProcessJoystickEvent(const std::string& joystickName, int button, short inputType, float fAmount, unsigned int holdTime = 0);
   bool ExecuteInputAction(const CAction &action);
   int  GetActiveWindowID(void);
 

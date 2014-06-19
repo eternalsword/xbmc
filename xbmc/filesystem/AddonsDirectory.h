@@ -37,10 +37,10 @@ namespace XFILE
   public:
     CAddonsDirectory(void);
     virtual ~CAddonsDirectory(void);
-    virtual bool GetDirectory(const CStdString& strPath, CFileItemList &items);
-    virtual bool Create(const char* strPath) { return true; }
-    virtual bool Exists(const char* strPath) { return true; }
-    virtual bool IsAllowed(const CStdString& strFile) const { return true; }
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+    virtual bool Create(const CURL& url) { return true; }
+    virtual bool Exists(const CURL& url) { return true; }
+    virtual bool AllowAll() const { return true; }
 
     /*! \brief Fetch script and plugin addons of a given content type
      \param content the content type to fetch
@@ -63,6 +63,6 @@ namespace XFILE
     static CFileItemPtr GetMoreItem(const CStdString &content);
 
     static void GenerateListing(CURL &path, ADDON::VECADDONS& addons, CFileItemList &items, bool reposAsFolders = true);
-    static CFileItemPtr FileItemFromAddon(ADDON::AddonPtr &addon, const CStdString &basePath, bool folder = false);
+    static CFileItemPtr FileItemFromAddon(const ADDON::AddonPtr &addon, const CStdString &basePath, bool folder = false);
   };
 }

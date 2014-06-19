@@ -26,6 +26,7 @@
 #include "URL.h"
 #include "ZipManager.h"
 #include "FileItem.h"
+#include "utils/StringUtils.h"
 
 #include <vector>
 
@@ -40,18 +41,15 @@ namespace XFILE
   {
   }
 
-  bool CZipDirectory::GetDirectory(const CStdString& strPathOrig, CFileItemList& items)
+  bool CZipDirectory::GetDirectory(const CURL& urlOrig, CFileItemList& items)
   {
-    CStdString strPath;
+    CURL urlZip(urlOrig);
 
     /* if this isn't a proper archive path, assume it's the path to a archive file */
-    if( !strPathOrig.Left(6).Equals("zip://") )
-      URIUtils::CreateArchivePath(strPath, "zip", strPathOrig, "");
-    else
-      strPath = strPathOrig;
+    if (urlOrig.GetProtocol() != "zip")
+      urlZip = URIUtils::CreateArchivePath("zip", urlOrig);
 
-    CURL url(strPath);
-
+    CURL url(urlZip);
     CStdString strArchive = url.GetHostName();
     CStdString strOptions = url.GetOptions();
     CStdString strPathInZip = url.GetFileName();
@@ -70,22 +68,22 @@ namespace XFILE
     // turn on fast lookups
     bool bWasFast(items.GetFastLookup());
     items.SetFastLookup(true);
-    if (!g_ZipManager.GetZipList(strPath,entries))
+    if (!g_ZipManager.GetZipList(urlZip,entries))
       return false;
 
-    vector<CStdString> baseTokens;
-    if (!strPathInZip.IsEmpty())
-      CUtil::Tokenize(strPathInZip,baseTokens,"/");
+    vector<std::string> baseTokens;
+    if (!strPathInZip.empty())
+      StringUtils::Tokenize(strPathInZip,baseTokens,"/");
 
     for (vector<SZipEntry>::iterator ze=entries.begin();ze!=entries.end();++ze)
     {
       CStdString strEntryName(ze->name);
-      strEntryName.Replace('\\','/');
+      StringUtils::Replace(strEntryName, '\\','/');
       if (strEntryName == strPathInZip) // skip the listed dir
         continue;
 
-      vector<CStdString> pathTokens;
-      CUtil::Tokenize(strEntryName,pathTokens,"/");
+      vector<std::string> pathTokens;
+      StringUtils::Tokenize(strEntryName,pathTokens,"/");
       if (pathTokens.size() < baseTokens.size()+1)
         continue;
 
@@ -122,8 +120,7 @@ namespace XFILE
 
       CFileItemPtr pFileItem(new CFileItem);
 
-      if (g_charsetConverter.isValidUtf8(pathTokens[baseTokens.size()]))
-        g_charsetConverter.utf8ToStringCharset(pathTokens[baseTokens.size()]);
+      g_charsetConverter.unknownToUTF8(pathTokens[baseTokens.size()]);
 
       pFileItem->SetLabel(pathTokens[baseTokens.size()]);
       if (bIsFolder)
@@ -142,10 +139,10 @@ namespace XFILE
     return true;
   }
 
-  bool CZipDirectory::ContainsFiles(const CStdString& strPath)
+  bool CZipDirectory::ContainsFiles(const CURL& url)
   {
     vector<SZipEntry> items;
-    g_ZipManager.GetZipList(strPath,items);
+    g_ZipManager.GetZipList(url, items);
     if (items.size())
     {
       if (items.size() > 1)

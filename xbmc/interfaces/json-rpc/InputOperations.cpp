@@ -57,21 +57,14 @@ JSONRPC_STATUS CInputOperations::SendAction(int actionID, bool wakeScreensaver /
 JSONRPC_STATUS CInputOperations::activateWindow(int windowID)
 {
   if(!handleScreenSaver())
-    CApplicationMessenger::Get().ActivateWindow(windowID, std::vector<CStdString>(), false);
+    CApplicationMessenger::Get().ActivateWindow(windowID, std::vector<std::string>(), false);
 
   return ACK;
 }
 
 JSONRPC_STATUS CInputOperations::SendText(const CStdString &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  CGUIWindow *window = g_windowManager.GetWindow(g_windowManager.GetFocusedWindow());
-  if (!window)
-    return InternalError;
-
-  CGUIMessage msg(GUI_MSG_SET_TEXT, 0, 0);
-  msg.SetLabel(parameterObject["text"].asString());
-  msg.SetParam1(parameterObject["done"].asBoolean() ? 1 : 0);
-  CApplicationMessenger::Get().SendGUIMessage(msg, window->GetID());
+  CApplicationMessenger::Get().SendText(parameterObject["text"].asString(), parameterObject["done"].asBoolean());
   return ACK;
 }
 

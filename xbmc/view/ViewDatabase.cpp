@@ -48,38 +48,28 @@ bool CViewDatabase::Open()
   return CDatabase::Open();
 }
 
-bool CViewDatabase::CreateTables()
+void CViewDatabase::CreateTables()
 {
-  try
-  {
-    CDatabase::CreateTables();
-
-    CLog::Log(LOGINFO, "create view table");
-    m_pDS->exec("CREATE TABLE view ("
-                  "idView integer primary key,"
-                  "window integer,"
-                  "path text,"
-                  "viewMode integer,"
-                  "sortMethod integer,"
-                  "sortOrder integer,"
-                  "sortAttributes integer,"
-                  "skin text)\n");
-    CLog::Log(LOGINFO, "create view index");
-    m_pDS->exec("CREATE INDEX idxViews ON view(path)");
-    CLog::Log(LOGINFO, "create view - window index");
-    m_pDS->exec("CREATE INDEX idxViewsWindow ON view(window)");
-  }
-  catch (...)
-  {
-    CLog::Log(LOGERROR, "%s unable to create tables:%u",
-              __FUNCTION__, GetLastError());
-    return false;
-  }
-
-  return true;
+  CLog::Log(LOGINFO, "create view table");
+  m_pDS->exec("CREATE TABLE view ("
+                "idView integer primary key,"
+                "window integer,"
+                "path text,"
+                "viewMode integer,"
+                "sortMethod integer,"
+                "sortOrder integer,"
+                "sortAttributes integer,"
+                "skin text)\n");
 }
 
-bool CViewDatabase::UpdateOldVersion(int version)
+void CViewDatabase::CreateAnalytics()
+{
+  CLog::Log(LOGINFO, "%s - creating indicies", __FUNCTION__);
+  m_pDS->exec("CREATE INDEX idxViews ON view(path)");
+  m_pDS->exec("CREATE INDEX idxViewsWindow ON view(window)");
+}
+
+void CViewDatabase::UpdateTables(int version)
 {
   if (version < 4)
     m_pDS->exec("alter table view add skin text");
@@ -93,9 +83,9 @@ bool CViewDatabase::UpdateOldVersion(int version)
       {
         std::string originalPath = m_pDS->fv(1).get_asString();
         std::string path = originalPath;
-        if (StringUtils::StartsWith(path, "musicdb://"))
+        if (StringUtils::StartsWithNoCase(path, "musicdb://"))
           path = CLegacyPathTranslation::TranslateMusicDbPath(path);
-        else if (StringUtils::StartsWith(path, "videodb://"))
+        else if (StringUtils::StartsWithNoCase(path, "videodb://"))
           path = CLegacyPathTranslation::TranslateVideoDbPath(path);
 
         if (!StringUtils::EqualsNoCase(path, originalPath))
@@ -112,8 +102,6 @@ bool CViewDatabase::UpdateOldVersion(int version)
   {
     // convert the "path" table
     m_pDS->exec("CREATE TABLE tmp_view AS SELECT * FROM view");
-    m_pDS->exec("DROP INDEX idxViews");
-    m_pDS->exec("DROP INDEX idxViewsWindow");
     m_pDS->exec("DROP TABLE view");
 
     m_pDS->exec("CREATE TABLE view ("
@@ -125,8 +113,6 @@ bool CViewDatabase::UpdateOldVersion(int version)
                 "sortOrder integer,"
                 "sortAttributes integer,"
                 "skin text)\n");
-    m_pDS->exec("CREATE INDEX idxViews ON view(path)");
-    m_pDS->exec("CREATE INDEX idxViewsWindow ON view(window)");
     
     m_pDS->query("SELECT * FROM tmp_view");
     while (!m_pDS->eof())
@@ -142,8 +128,6 @@ bool CViewDatabase::UpdateOldVersion(int version)
     }
     m_pDS->exec("DROP TABLE tmp_view");
   }
-
-  return true;
 }
 
 bool CViewDatabase::GetViewState(const CStdString &path, int window, CViewState &state, const CStdString &skin)
@@ -155,10 +139,10 @@ bool CViewDatabase::GetViewState(const CStdString &path, int window, CViewState 
 
     CStdString path1(path);
     URIUtils::AddSlashAtEnd(path1);
-    if (path1.IsEmpty()) path1 = "root://";
+    if (path1.empty()) path1 = "root://";
 
     CStdString sql;
-    if (skin.IsEmpty())
+    if (skin.empty())
       sql = PrepareSQL("select * from view where window = %i and path='%s'", window, path1.c_str());
     else
       sql = PrepareSQL("select * from view where window = %i and path='%s' and skin='%s'", window, path1.c_str(), skin.c_str());
@@ -191,7 +175,7 @@ bool CViewDatabase::SetViewState(const CStdString &path, int window, const CView
 
     CStdString path1(path);
     URIUtils::AddSlashAtEnd(path1);
-    if (path1.IsEmpty()) path1 = "root://";
+    if (path1.empty()) path1 = "root://";
 
     CStdString sql = PrepareSQL("select idView from view where window = %i and path='%s' and skin='%s'", window, path1.c_str(), skin.c_str());
     m_pDS->query(sql.c_str());

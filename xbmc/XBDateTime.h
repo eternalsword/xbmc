@@ -20,7 +20,9 @@
  *
  */
 
-#include "utils/Archive.h"
+#include "utils/StdString.h"
+#include "utils/IArchivable.h"
+#include "system.h"
 
 /*! \brief TIME_FORMAT enum/bitmask used for formatting time strings
  Note the use of bitmasking, e.g.
@@ -72,6 +74,7 @@ public:
   int GetHours() const;
   int GetMinutes() const;
   int GetSeconds() const;
+  int GetSecondsTotal() const;
 
 private:
   void ToULargeInt(ULARGE_INTEGER& time) const;
@@ -96,7 +99,7 @@ public:
   CDateTime(int year, int month, int day, int hour, int minute, int second);
   virtual ~CDateTime() {}
 
-  void SetFromDateString(const CStdString &date);
+  bool SetFromDateString(const CStdString &date);
 
   static CDateTime GetCurrentDateTime();
   static CDateTime GetUTCDateTime();
@@ -165,20 +168,21 @@ public:
   int GetDayOfWeek() const;
   int GetMinuteOfDay() const;
 
-  void SetDateTime(int year, int month, int day, int hour, int minute, int second);
-  void SetDate(int year, int month, int day);
-  void SetTime(int hour, int minute, int second);
-  void SetFromDBDate(const CStdString &date);
-  void SetFromDBTime(const CStdString &time);
-  void SetFromW3CDate(const CStdString &date);
-  void SetFromUTCDateTime(const CDateTime &dateTime);
-  void SetFromUTCDateTime(const time_t &dateTime);
-  void SetFromRFC1123DateTime(const CStdString &dateTime);
+  bool SetDateTime(int year, int month, int day, int hour, int minute, int second);
+  bool SetDate(int year, int month, int day);
+  bool SetTime(int hour, int minute, int second);
+  bool SetFromDBDate(const CStdString &date);
+  bool SetFromDBTime(const CStdString &time);
+  bool SetFromW3CDate(const CStdString &date);
+  bool SetFromW3CDateTime(const CStdString &date, bool ignoreTimezone = false);
+  bool SetFromUTCDateTime(const CDateTime &dateTime);
+  bool SetFromUTCDateTime(const time_t &dateTime);
+  bool SetFromRFC1123DateTime(const CStdString &dateTime);
 
   /*! \brief set from a database datetime format YYYY-MM-DD HH:MM:SS
    \sa GetAsDBDateTime()
    */
-  void SetFromDBDateTime(const CStdString &dateTime);
+  bool SetFromDBDateTime(const CStdString &dateTime);
 
   void GetAsSystemTime(SYSTEMTIME& time) const;
   void GetAsTime(time_t& time) const;
@@ -194,6 +198,8 @@ public:
   CStdString GetAsLocalizedTime(const CStdString &format, bool withSeconds=true) const;
   CStdString GetAsLocalizedDateTime(bool longDate=false, bool withSeconds=true) const;
   CStdString GetAsRFC1123DateTime() const;
+  CStdString GetAsW3CDate() const;
+  CStdString GetAsW3CDateTime(bool asUtc = false) const;
 
   void SetValid(bool yesNo);
   bool IsValid() const;

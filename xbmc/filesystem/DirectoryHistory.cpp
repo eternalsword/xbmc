@@ -103,6 +103,20 @@ CStdString CDirectoryHistory::GetParentPath(bool filter /* = false */)
   return m_vecPathHistory.back().GetPath(filter);
 }
 
+bool CDirectoryHistory::IsInHistory(const std::string &path) const
+{
+  std::string slashEnded(path);
+  URIUtils::AddSlashAtEnd(slashEnded);
+  for (vector<CPathHistoryItem>::const_iterator i = m_vecPathHistory.begin(); i != m_vecPathHistory.end(); ++i)
+  {
+    std::string testPath(i->GetPath());
+    URIUtils::AddSlashAtEnd(testPath);
+    if (slashEnded == testPath)
+      return true;
+  }
+  return false;
+}
+
 CStdString CDirectoryHistory::RemoveParentPath(bool filter /* = false */)
 {
   if (m_vecPathHistory.empty())
@@ -118,13 +132,14 @@ void CDirectoryHistory::ClearPathHistory()
   m_vecPathHistory.clear();
 }
 
+bool CDirectoryHistory::IsMusicSearchUrl(CPathHistoryItem &i)
+{
+  return StringUtils::StartsWith(i.GetPath(), "musicsearch://");
+}
+
 void CDirectoryHistory::ClearSearchHistory()
 {
-  for (vector<CPathHistoryItem>::iterator it = m_vecPathHistory.begin(); it != m_vecPathHistory.end(); ++it)
-  {
-    if (it->GetPath().Left(14) == "musicsearch://")
-      it = m_vecPathHistory.erase(it);
-  }
+  m_vecPathHistory.erase(remove_if(m_vecPathHistory.begin(), m_vecPathHistory.end(), IsMusicSearchUrl), m_vecPathHistory.end());
 }
 
 void CDirectoryHistory::DumpPathHistory()
@@ -139,7 +154,8 @@ CStdString CDirectoryHistory::preparePath(const CStdString &strDirectory, bool t
 {
   CStdString strDir = strDirectory;
   if (tolower)
-    strDir.ToLower();
+    StringUtils::ToLower(strDir);
+
   URIUtils::RemoveSlashAtEnd(strDir);
 
   return strDir;

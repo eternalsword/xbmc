@@ -134,7 +134,7 @@ LibraryLoader* DllLoaderContainer::FindModule(const char* sName, const char* sCu
     CURL url(sName);
     CStdString newName = "special://temp/";
     newName += url.GetFileName();
-    CFile::Cache(sName, newName);
+    CFile::Copy(sName, newName);
     return FindModule(newName, sCurrentDir, bLoadSymbols);
   }
 
@@ -156,21 +156,21 @@ LibraryLoader* DllLoaderContainer::FindModule(const char* sName, const char* sCu
   }
 
   //  in environment variable?
-  CStdStringArray vecEnv;
+  std::vector<std::string> vecEnv;
 
 #if defined(TARGET_ANDROID)
   CStdString systemLibs = getenv("XBMC_ANDROID_SYSTEM_LIBS");
-  StringUtils::SplitString(systemLibs, ":", vecEnv);
+  vecEnv = StringUtils::Split(systemLibs, ":");
   CStdString localLibs = getenv("XBMC_ANDROID_LIBS");
   vecEnv.insert(vecEnv.begin(),localLibs);
 #else
-  StringUtils::SplitString(ENV_PATH, ";", vecEnv);
+  vecEnv = StringUtils::Split(ENV_PATH, ";");
 #endif
   LibraryLoader* pDll = NULL;
 
-  for (int i=0; i<(int)vecEnv.size(); ++i)
+  for (std::vector<std::string>::const_iterator i = vecEnv.begin(); i != vecEnv.end(); ++i)
   {
-    CStdString strPath=vecEnv[i];
+    CStdString strPath = *i;
     URIUtils::AddSlashAtEnd(strPath);
 
 #ifdef LOGALL
@@ -330,7 +330,7 @@ void DllLoaderContainer::UnRegisterDll(LibraryLoader* pDll)
 
 void DllLoaderContainer::UnloadPythonDlls()
 {
-  // unload all dlls that python24.dll could have loaded
+  // unload all dlls that python could have loaded
   for (int i = 0; i < m_iNrOfDlls && m_dlls[i] != NULL; i++)
   {
     char* name = m_dlls[i]->GetName();
@@ -341,33 +341,5 @@ void DllLoaderContainer::UnloadPythonDlls()
       i = 0;
     }
   }
-
-  // last dll to unload, python24.dll
-  for (int i = 0; i < m_iNrOfDlls && m_dlls[i] != NULL; i++)
-  {
-    char* name = m_dlls[i]->GetName();
-
-#ifdef HAVE_LIBPYTHON2_6
-    if (strstr(name, "python26.dll") != NULL)
-#else
-    if (strstr(name, "python24.dll") != NULL)
-#endif
-    {
-      LibraryLoader* pDll = m_dlls[i];
-      pDll->IncrRef();
-      while (pDll->DecrRef() > 1) pDll->DecrRef();
-
-      // since we freed all python extension dlls first, we have to remove any associations with them first
-      DllTrackInfo* info = tracker_get_dlltrackinfo_byobject((DllLoader*) pDll);
-      if (info != NULL)
-      {
-        info->dllList.clear();
-      }
-
-      ReleaseModule(pDll);
-      break;
-    }
-  }
-
 
 }

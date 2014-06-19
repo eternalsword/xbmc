@@ -94,6 +94,7 @@
 #include "Application.h"
 #include "URL.h"
 #include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "network/WakeOnAccess.h"
 
 using namespace XFILE;
@@ -114,10 +115,11 @@ IFile* CFileFactory::CreateLoader(const CStdString& strFileName)
 
 IFile* CFileFactory::CreateLoader(const CURL& url)
 {
-  CWakeOnAccess::Get().WakeUpHost(url);
+  if (!CWakeOnAccess::Get().WakeUpHost(url))
+    return NULL;
 
   CStdString strProtocol = url.GetProtocol();
-  strProtocol.MakeLower();
+  StringUtils::ToLower(strProtocol);
 
 #if defined(TARGET_ANDROID)
   if (strProtocol == "apk") return new CAPKFile();
@@ -136,7 +138,7 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
   else if (strProtocol == "special") return new CSpecialProtocolFile();
   else if (strProtocol == "multipath") return new CMultiPathFile();
   else if (strProtocol == "image") return new CImageFile();
-  else if (strProtocol == "file" || strProtocol.IsEmpty()) return new CHDFile();
+  else if (strProtocol == "file" || strProtocol.empty()) return new CHDFile();
   else if (strProtocol == "filereader") return new CFileReaderFile();
 #if defined(HAS_FILESYSTEM_CDDA) && defined(HAS_DVD_DRIVE)
   else if (strProtocol == "cdda") return new CFileCDDA();
@@ -145,8 +147,12 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
   else if (strProtocol == "iso9660") return new CISOFile();
 #endif
   else if(strProtocol == "udf") return new CUDFFile();
+#if defined(TARGET_ANDROID)
+  else if (strProtocol == "androidapp") return new CFileAndroidApp();
+#endif
 
-  if( g_application.getNetwork().IsAvailable() )
+  bool networkAvailable = g_application.getNetwork().IsAvailable();
+  if (networkAvailable)
   {
     if (strProtocol == "ftp"
     ||  strProtocol == "ftps"
@@ -196,11 +202,8 @@ IFile* CFileFactory::CreateLoader(const CURL& url)
 #ifdef HAS_UPNP
     else if (strProtocol == "upnp") return new CUPnPFile();
 #endif
-#if defined(TARGET_ANDROID)
-    else if (strProtocol == "androidapp") return new CFileAndroidApp();
-#endif
   }
 
-  CLog::Log(LOGWARNING, "%s - Unsupported protocol(%s) in %s", __FUNCTION__, strProtocol.c_str(), url.Get().c_str() );
+  CLog::Log(LOGWARNING, "%s - %sunsupported protocol(%s) in %s", __FUNCTION__, networkAvailable ? "" : "Network down or ", strProtocol.c_str(), url.GetRedacted().c_str());
   return NULL;
 }

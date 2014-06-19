@@ -28,6 +28,7 @@
 #include "settings/MediaSourceSettings.h"
 #include "guilib/TextureManager.h"
 #include "storage/MediaManager.h"
+#include "utils/StringUtils.h"
 
 using namespace XFILE;
 
@@ -39,11 +40,10 @@ CSourcesDirectory::~CSourcesDirectory(void)
 {
 }
 
-bool CSourcesDirectory::GetDirectory(const CStdString& strPath, CFileItemList &items)
+bool CSourcesDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // break up our path
   // format is:  sources://<type>/
-  CURL url(strPath);
   CStdString type(url.GetFileName());
   URIUtils::RemoveSlashAtEnd(type);
 
@@ -65,12 +65,12 @@ bool CSourcesDirectory::GetDirectory(const VECSOURCES &sources, CFileItemList &i
   {
     const CMediaSource& share = sources[i];
     CFileItemPtr pItem(new CFileItem(share));
-    if (pItem->GetPath().Left(14).Equals("musicsearch://"))
+    if (StringUtils::StartsWithNoCase(pItem->GetPath(), "musicsearch://"))
       pItem->SetCanQueue(false);
     
     CStdString strIcon;
     // We have the real DVD-ROM, set icon on disktype
-    if (share.m_iDriveType == CMediaSource::SOURCE_TYPE_DVD && share.m_strThumbnailImage.IsEmpty())
+    if (share.m_iDriveType == CMediaSource::SOURCE_TYPE_DVD && share.m_strThumbnailImage.empty())
     {
       CUtil::GetDVDDriveIcon( pItem->GetPath(), strIcon );
       // CDetectDVDMedia::SetNewDVDShareUrl() caches disc thumb as special://temp/dvdicon.tbn
@@ -78,7 +78,7 @@ bool CSourcesDirectory::GetDirectory(const VECSOURCES &sources, CFileItemList &i
       if (XFILE::CFile::Exists(strThumb))
         pItem->SetArt("thumb", strThumb);
     }
-    else if (pItem->GetPath().Left(9) == "addons://")
+    else if (StringUtils::StartsWith(pItem->GetPath(), "addons://"))
       strIcon = "DefaultHardDisk.png";
     else if (   pItem->IsVideoDb()
              || pItem->IsMusicDb()
@@ -111,7 +111,7 @@ bool CSourcesDirectory::GetDirectory(const VECSOURCES &sources, CFileItemList &i
   return true;
 }
 
-bool CSourcesDirectory::Exists(const char* strPath)
+bool CSourcesDirectory::Exists(const CURL& url)
 {
   return true;
 }

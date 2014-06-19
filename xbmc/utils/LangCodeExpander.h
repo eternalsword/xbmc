@@ -62,9 +62,10 @@ public:
   *          or full english name string to a 2-Char (ISO 639-1) code.  
   *   \param[out] code The 2-Char language code of the given language lang.
   *   \param[in] lang The language that should be converted.
+  *   \param[in] checkXbmcLocales Try to find in XBMC specific locales
   *   \return true if the conversion succeeded, false otherwise. 
   */ 
-  bool ConvertToTwoCharCode(CStdString& code, const CStdString& lang);
+  bool ConvertToTwoCharCode(CStdString& code, const CStdString& lang, bool checkXbmcLocales = true);
 
   /** \brief Converts a language given as 2-Char (ISO 639-1),
   *          3-Char (ISO 639-2/T or ISO 639-2/B),
@@ -73,23 +74,18 @@ public:
   *   \return The 3-Char ISO 639-2/T code of lang if that code exists, lang otherwise.
   */
   CStdString ConvertToISO6392T(const CStdString& lang);
-#ifdef TARGET_WINDOWS
-  bool ConvertTwoToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strTwoCharCode, bool localeHack = false);
-  bool ConvertToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strCharCode, bool localeHack = false);
-#else
-  bool ConvertTwoToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strTwoCharCode);
-  bool ConvertToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strCharCode);
-#endif
+  static bool ConvertTwoToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strTwoCharCode, bool checkWin32Locales = false);
+  static bool ConvertToThreeCharCode(CStdString& strThreeCharCode, const CStdString& strCharCode, bool checkXbmcLocales = true, bool checkWin32Locales = false);
 
 #ifdef TARGET_WINDOWS
-  bool ConvertLinuxToWindowsRegionCodes(const CStdString& strTwoCharCode, CStdString& strThreeCharCode);
-  bool ConvertWindowsToGeneralCharCode(const CStdString& strWindowsCharCode, CStdString& strThreeCharCode);
+  static bool ConvertLinuxToWindowsRegionCodes(const CStdString& strTwoCharCode, CStdString& strThreeCharCode);
+  static bool ConvertWindowsToGeneralCharCode(const CStdString& strWindowsCharCode, CStdString& strThreeCharCode);
 #endif
 
   void LoadUserCodes(const TiXmlElement* pRootElement);
   void Clear();
 
-  std::vector<std::string> GetLanguageNames(LANGFORMATS format = ISO_639_1) const;
+  static std::vector<std::string> GetLanguageNames(LANGFORMATS format = ISO_639_1);
 protected:
 
   /** \brief Converts a language code given as a long, see #MAKECODE(a, b, c, d)
@@ -97,12 +93,12 @@ protected:
   *   \param[in] code The language code given as a long, see #MAKECODE(a, b, c, d).
   *   \param[out] ret The string representation of the given language code code.
   */ 
-  void CodeToString(long code, CStdString& ret);
+  static void CodeToString(long code, CStdString& ret);
 
   typedef std::map<CStdString, CStdString> STRINGLOOKUPTABLE;
   STRINGLOOKUPTABLE m_mapUser;
 
-  bool LookupInDb(CStdString& desc, const CStdString& code);
+  static bool LookupInDb(CStdString& desc, const CStdString& code);
   bool LookupInMap(CStdString& desc, const CStdString& code);
 
   /** \brief Looks up the ISO 639-1, ISO 639-2/T, or ISO 639-2/B, whichever it finds first,

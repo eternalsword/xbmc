@@ -22,6 +22,7 @@
 
 #include <boost/shared_ptr.hpp>
 #include "threads/SingleLock.h"
+#include "threads/SystemClock.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
 
 typedef enum
@@ -53,6 +54,12 @@ class CApplicationPlayer
   PLAYERCOREID m_eCurrentPlayer;
 
   CCriticalSection  m_player_lock;
+
+  // cache player state
+  XbmcThreads::EndTime m_audioStreamUpdate;
+  int m_iAudioStream;
+  XbmcThreads::EndTime m_subtitleStreamUpdate;
+  int m_iSubtitleStream;
   
 public:
   CApplicationPlayer();
@@ -60,7 +67,7 @@ public:
   int m_iPlaySpeed;
 
   // player management
-  void CloseFile();
+  void CloseFile(bool reopen = false);
   void ClosePlayer();
   void ClosePlayerGapless(PLAYERCOREID newCore);
   void CreatePlayer(PLAYERCOREID newCore, IPlayerCallback& callback);
@@ -84,7 +91,6 @@ public:
   int   GetAudioStream();
   int   GetAudioStreamCount();
   void  GetAudioStreamInfo(int index, SPlayerAudioStreamInfo &info);
-  int   GetBitsPerSample();
   int   GetCacheLevel() const;
   float GetCachePercentage() const;
   int   GetChapterCount();
@@ -92,15 +98,11 @@ public:
   void  GetChapterName(CStdString& strChapterName);
   void  GetDeinterlaceMethods(std::vector<int> &deinterlaceMethods);
   void  GetDeinterlaceModes(std::vector<int> &deinterlaceModes);
-  bool  GetCurrentSubtitle(CStdString& strSubtitle);
   void  GetGeneralInfo( CStdString& strVideoInfo);
   float GetPercentage() const;
-  int   GetPictureHeight();
-  int   GetPictureWidth();
   CStdString GetPlayerState();
   CStdString GetPlayingTitle();
   void  GetRenderFeatures(std::vector<int> &renderFeatures);
-  int   GetSampleRate();
   void  GetScalingMethods(std::vector<int> &scalingMethods);
   bool  GetStreamDetails(CStreamDetails &details);
   int   GetSubtitle();
@@ -132,7 +134,7 @@ public:
   bool  QueueNextFile(const CFileItem &file);
   bool  Record(bool bOnOff);
   void  RegisterAudioCallback(IAudioCallback* pCallback);
-  void  Seek(bool bPlus = true, bool bLargeStep = false);
+  void  Seek(bool bPlus = true, bool bLargeStep = false, bool bChapterOverride = false);
   int   SeekChapter(int iChapter);
   void  SeekPercentage(float fPercent = 0);
   bool  SeekScene(bool bPlus = true);

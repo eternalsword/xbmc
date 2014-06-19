@@ -17,10 +17,12 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
+#include "system.h"
+#ifdef HAVE_LIBBLURAY
 #include "BlurayDirectory.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/StringUtils.h"
 #include "URL.h"
 #include "DllLibbluray.h"
 #include "FileItem.h"
@@ -57,16 +59,20 @@ void CBlurayDirectory::Dispose()
 CFileItemPtr CBlurayDirectory::GetTitle(const BLURAY_TITLE_INFO* title, const CStdString& label)
 {
   CStdString buf;
+  CStdString chap;
   CFileItemPtr item(new CFileItem("", false));
   CURL path(m_url);
-  buf.Format("BDMV/PLAYLIST/%05d.mpls", title->playlist);
+  buf = StringUtils::Format("BDMV/PLAYLIST/%05d.mpls", title->playlist);
   path.SetFileName(buf);
   item->SetPath(path.Get());
-  item->GetVideoInfoTag()->m_duration = (int)(title->duration / 90000);
+  int duration = (int)(title->duration / 90000);
+  item->GetVideoInfoTag()->m_duration = duration;
   item->GetVideoInfoTag()->m_iTrack = title->playlist;
-  buf.Format(label.c_str(), title->playlist);
+  buf = StringUtils::Format(label.c_str(), title->playlist);
   item->m_strTitle = buf;
   item->SetLabel(buf);
+  chap = StringUtils::Format(g_localizeStrings.Get(25007), title->chapter_count, StringUtils::SecondsToTimeString(duration).c_str());
+  item->SetProperty("Addon.Summary", chap);
   item->m_dwSize = 0;
   item->SetIconImage("DefaultVideo.png");
   for(unsigned int i = 0; i < title->clip_count; ++i)
@@ -139,10 +145,10 @@ void CBlurayDirectory::GetRoot(CFileItemList &items)
     items.Add(item);
 }
 
-bool CBlurayDirectory::GetDirectory(const CStdString& path, CFileItemList &items)
+bool CBlurayDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   Dispose();
-  m_url.Parse(path);
+  m_url = url;
   CStdString root = m_url.GetHostName();
   CStdString file = m_url.GetFileName();
   URIUtils::RemoveSlashAtEnd(file);
@@ -183,3 +189,4 @@ bool CBlurayDirectory::GetDirectory(const CStdString& path, CFileItemList &items
 
 
 } /* namespace XFILE */
+#endif

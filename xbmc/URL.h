@@ -29,9 +29,12 @@
 class CURL
 {
 public:
-  CURL(const CStdString& strURL);
+  explicit CURL(const CStdString& strURL);
   CURL();
   virtual ~CURL(void);
+
+  // explicit equals operator for std::string comparison
+  bool operator==(const std::string &url) const { return Get() == url; }
 
   void Reset();
   void Parse(const CStdString& strURL);
@@ -63,14 +66,14 @@ public:
   char GetDirectorySeparator() const;
 
   CStdString Get() const;
-  CStdString GetWithoutUserDetails() const;
+  std::string GetWithoutUserDetails(bool redact = false) const;
   CStdString GetWithoutFilename() const;
+  std::string GetRedacted() const;
+  static std::string GetRedacted(const std::string& path);
   bool IsLocal() const;
   bool IsLocalHost() const;
   static bool IsFileOnly(const CStdString &url); ///< return true if there are no directories in the url.
   static bool IsFullPath(const CStdString &url); ///< return true if the url includes the full path
-  static void Decode(CStdString& strURLData);
-  static void Encode(CStdString& strURLData);
   static std::string Decode(const std::string& strURLData);
   static std::string Encode(const std::string& strURLData);
   static CStdString TranslateProtocol(const CStdString& prot);

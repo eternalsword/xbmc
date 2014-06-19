@@ -36,6 +36,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
+#include "utils/StringUtils.h"
 #include "ApplicationMessenger.h"
 #include "Application.h"
 #include "URL.h"
@@ -89,7 +90,9 @@ bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir
 {
   CURL url(strPath);
 
-  if (!CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_UNKNOWN) && 
+  // try the plugin type first, and if not found, try an unknown type
+  if (!CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_PLUGIN) &&
+      !CAddonMgr::Get().GetAddon(url.GetHostName(), m_addon, ADDON_UNKNOWN) &&
       !CAddonInstaller::Get().PromptForInstall(url.GetHostName(), m_addon))
   {
     CLog::Log(LOGERROR, "Unable to find plugin %s", url.GetHostName().c_str());
@@ -118,8 +121,7 @@ bool CPluginDirectory::StartScript(const CStdString& strPath, bool retrievingDir
   m_totalItems = 0;
 
   // setup our parameters to send the script
-  CStdString strHandle;
-  strHandle.Format("%i", handle);
+  CStdString strHandle = StringUtils::Format("%i", handle);
   vector<string> argv;
   argv.push_back(basePath);
   argv.push_back(strHandle);
@@ -403,11 +405,10 @@ void CPluginDirectory::AddSortMethod(int handle, SORT_METHOD sortMethod, const C
   }
 }
 
-bool CPluginDirectory::GetDirectory(const CStdString& strPath, CFileItemList& items)
+bool CPluginDirectory::GetDirectory(const CURL& url, CFileItemList& items)
 {
-  CURL url(strPath);
-
-  bool success = StartScript(strPath, true);
+  const CStdString pathToUrl(url.Get());
+  bool success = StartScript(pathToUrl, true);
 
   // append the items to the list
   items.Assign(*m_listItems, true); // true to keep the current items
@@ -418,7 +419,7 @@ bool CPluginDirectory::GetDirectory(const CStdString& strPath, CFileItemList& it
 bool CPluginDirectory::RunScriptWithParams(const CStdString& strPath)
 {
   CURL url(strPath);
-  if (url.GetHostName().IsEmpty()) // called with no script - should never happen
+  if (url.GetHostName().empty()) // called with no script - should never happen
     return false;
 
   AddonPtr addon;
@@ -438,8 +439,7 @@ bool CPluginDirectory::RunScriptWithParams(const CStdString& strPath)
   CStdString basePath(url.Get());
 
   // setup our parameters to send the script
-  CStdString strHandle;
-  strHandle.Format("%i", -1);
+  CStdString strHandle = StringUtils::Format("%i", -1);
   vector<string> argv;
   argv.push_back(basePath);
   argv.push_back(strHandle);
@@ -529,7 +529,7 @@ bool CPluginDirectory::WaitOnScriptResult(const CStdString &scriptPath, int scri
       cancelled = true;
       startTime = XbmcThreads::SystemClockMillis();
     }
-    if (cancelled && XbmcThreads::SystemClockMillis() - startTime > timeToKillScript)
+    if ((cancelled && XbmcThreads::SystemClockMillis() - startTime > timeToKillScript) || g_application.m_bStop)
     { // cancel our script
       if (scriptId != -1 && CScriptInvocationManager::Get().IsRunning(scriptId))
       {

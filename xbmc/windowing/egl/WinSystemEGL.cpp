@@ -33,6 +33,7 @@
 #include "EGLWrapper.h"
 #include "EGLQuirks.h"
 #include <vector>
+#include <float.h>
 ////////////////////////////////////////////////////////////////////////////////////////////
 CWinSystemEGL::CWinSystemEGL() : CWinSystemBase()
 {
@@ -165,13 +166,20 @@ bool CWinSystemEGL::CreateWindow(RESOLUTION_INFO &res)
     }
   }
 
-  int width = 0, height = 0;
-  if (!m_egl->GetSurfaceSize(m_display, m_surface, &width, &height))
+  /* The intel driver on wayland is broken and always returns a surface
+   * size of -1, -1. Work around it for now */
+  if (m_egl->TrustSurfaceSize())
   {
-    CLog::Log(LOGERROR, "%s: Surface is invalid",__FUNCTION__);
-    return false;
+    int width = 0, height = 0;
+    if (!m_egl->GetSurfaceSize(m_display, m_surface, &width, &height))
+    {
+      CLog::Log(LOGERROR, "%s: Surface is invalid",__FUNCTION__);
+      return false;
+    }
+    CLog::Log(LOGDEBUG, "%s: Created surface of size %ix%i",__FUNCTION__, width, height);
   }
-  CLog::Log(LOGDEBUG, "%s: Created surface of size %ix%i",__FUNCTION__, width, height);
+  else
+    CLog::Log(LOGDEBUG, "%s: Cannot reliably get surface size with this backend",__FUNCTION__);
 
   EGLint contextAttrs[] =
   {
@@ -299,7 +307,9 @@ bool CWinSystemEGL::DestroyWindow()
 bool CWinSystemEGL::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
   CRenderSystemGLES::ResetRenderSystem(newWidth, newHeight, true, 0);
-  SetVSyncImpl(m_iVSyncMode);
+  int vsync_mode = CSettings::Get().GetInt("videoscreen.vsync");
+  if (vsync_mode != VSYNC_DRIVER)
+    SetVSyncImpl(m_iVSyncMode);
   return true;
 }
 
@@ -307,7 +317,9 @@ bool CWinSystemEGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
 {
   CreateNewWindow("", fullScreen, res, NULL);
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
-  SetVSyncImpl(m_iVSyncMode);
+  int vsync_mode = CSettings::Get().GetInt("videoscreen.vsync");
+  if (vsync_mode != VSYNC_DRIVER)
+    SetVSyncImpl(m_iVSyncMode);
   return true;
 }
 
@@ -371,7 +383,7 @@ void CWinSystemEGL::UpdateResolutions()
        resDesktop.iScreenWidth == resolutions[i].iScreenWidth &&
        resDesktop.iScreenHeight == resolutions[i].iScreenHeight &&
        (resDesktop.dwFlags & D3DPRESENTFLAG_MODEMASK) == (resolutions[i].dwFlags & D3DPRESENTFLAG_MODEMASK) &&
-       resDesktop.fRefreshRate == resolutions[i].fRefreshRate)
+       fabs(resDesktop.fRefreshRate - resolutions[i].fRefreshRate) < FLT_EPSILON)
     {
       ResDesktop = res_index;
     }

@@ -24,6 +24,15 @@
 #include "utils/Stopwatch.h"
 #include "threads/Event.h"
 
+class CAddonDatabase;
+
+enum {
+  AUTO_UPDATES_ON = 0,
+  AUTO_UPDATES_NOTIFY,
+  AUTO_UPDATES_NEVER,
+  AUTO_UPDATES_MAX
+};
+
 class CAddonInstaller : public IJobCallback
 {
 public:
@@ -68,9 +77,10 @@ public:
    Iterates through the addon's dependencies, checking they're installed or installable.
    Each dependency must also satisfies CheckDependencies in turn.
    \param addon the addon to check
+   \param database the database instance to update. Defaults to NULL.
    \return true if dependencies are available, false otherwise.
    */
-  bool CheckDependencies(const ADDON::AddonPtr &addon);
+  bool CheckDependencies(const ADDON::AddonPtr &addon, CAddonDatabase *database = NULL);
 
   /*! \brief Update all repositories (if needed)
    Runs through all available repositories and queues an update of them if they
@@ -86,6 +96,10 @@ public:
    */
   bool HasJob(const CStdString& ID) const;
 
+  /*! \brief Fetch the last repository update time.
+   \return the last time a repository was updated.
+   */
+  CDateTime LastRepoUpdate() const;
   void UpdateRepos(bool force = false, bool wait = false);
 
   void OnJobComplete(unsigned int jobID, bool success, CJob* job);
@@ -127,10 +141,11 @@ private:
    Each dependency must also satisfies CheckDependencies in turn.
    \param addon the addon to check
    \param preDeps previous dependencies encountered during recursion. aids in avoiding infinite recursion
+   \param database database instance to update
    \return true if dependencies are available, false otherwise.
    */
   bool CheckDependencies(const ADDON::AddonPtr &addon,
-                         std::vector<std::string>& preDeps);
+                         std::vector<std::string>& preDeps, CAddonDatabase &database);
 
   void PrunePackageCache();
   int64_t EnumeratePackageFolder(std::map<CStdString,CFileItemList*>& result);
@@ -175,12 +190,6 @@ private:
    \param fileName - filename which is shown in case the addon id is unknown
    */
   void ReportInstallError(const CStdString& addonID, const CStdString& fileName);
-
-  /*! \brief Check the hash of a downloaded addon with the hash in the repository
-   \param addonZip - filename of the zipped addon to check
-   \return true if the hash matches (or no hash is available on the repo), false otherwise
-   */
-  bool CheckHash(const CStdString& addonZip);
 
   ADDON::AddonPtr m_addon;
   CStdString m_hash;

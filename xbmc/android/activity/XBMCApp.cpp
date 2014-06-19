@@ -46,6 +46,7 @@
 #include "ApplicationMessenger.h"
 #include "utils/StringUtils.h"
 #include "AppParamParser.h"
+#include "XbmcContext.h"
 #include <android/bitmap.h>
 #include "android/jni/JNIThreading.h"
 #include "android/jni/BroadcastReceiver.h"
@@ -81,10 +82,11 @@ void* thread_run(void* obj)
   (static_cast<T*>(obj)->*fn)();
   return NULL;
 }
-
+CEvent CXBMCApp::m_windowCreated;
 ANativeActivity *CXBMCApp::m_activity = NULL;
 ANativeWindow* CXBMCApp::m_window = NULL;
 int CXBMCApp::m_batteryLevel = 0;
+int CXBMCApp::m_initialVolume = 0;
 
 CXBMCApp::CXBMCApp(ANativeActivity* nativeActivity)
   : CJNIContext(nativeActivity)
@@ -132,6 +134,10 @@ void CXBMCApp::onResume()
 void CXBMCApp::onPause()
 {
   android_printf("%s: ", __PRETTY_FUNCTION__);
+
+  // Restore volume
+  SetSystemVolume(m_initialVolume);
+
   unregisterReceiver(*this);
 }
 
@@ -187,6 +193,7 @@ void CXBMCApp::onCreateWindow(ANativeWindow* window)
     return;
   }
   m_window = window;
+  m_windowCreated.Set();
   if (getWakeLock() &&  m_wakeLock)
     m_wakeLock->acquire();
   if(!m_firstrun)
@@ -199,6 +206,8 @@ void CXBMCApp::onCreateWindow(ANativeWindow* window)
 void CXBMCApp::onResizeWindow()
 {
   android_printf("%s: ", __PRETTY_FUNCTION__);
+  m_window=NULL;
+  m_windowCreated.Reset();
   // no need to do anything because we are fixed in fullscreen landscape mode
 }
 
@@ -216,7 +225,6 @@ void CXBMCApp::onDestroyWindow()
   if (m_wakeLock)
     m_wakeLock->release();
 
-  m_window=NULL;
 }
 
 void CXBMCApp::onGainFocus()
@@ -244,6 +252,9 @@ void CXBMCApp::run()
   int status = 0;
 
   SetupEnv();
+  XBMC::Context context;
+
+  m_initialVolume = GetSystemVolume();
 
   CJNIIntent startIntent = getIntent();
   android_printf("XBMC Started with action: %s\n",startIntent.getAction().c_str());
@@ -264,12 +275,6 @@ void CXBMCApp::run()
     free(argv);
   }
 
-  android_printf(" => waiting for a window");
-  // Hack!
-  // TODO: Change EGL startup so that we can start headless, then create the
-  // window once android gives us a surface to play with.
-  while(!m_window)
-    usleep(1000);
   m_firstrun=false;
   android_printf(" => running XBMC_Run...");
   try
@@ -398,17 +403,32 @@ bool CXBMCApp::HasLaunchIntent(const string &package)
 // Note intent, dataType, dataURI all default to ""
 bool CXBMCApp::StartActivity(const string &package, const string &intent, const string &dataType, const string &dataURI)
 {
-  CJNIIntent newIntent = GetPackageManager().getLaunchIntentForPackage(package);
+  CJNIIntent newIntent = intent.empty() ?
+    GetPackageManager().getLaunchIntentForPackage(package) :
+    CJNIIntent(intent);
+
   if (!newIntent)
     return false;
 
   if (!dataURI.empty())
-    newIntent.setData(dataURI);
+  {
+    CJNIURI jniURI = CJNIURI::parse(dataURI);
 
-  if (!intent.empty())
-    newIntent.setAction(intent);
+    if (!jniURI)
+      return false;
 
-   startActivity(newIntent);
+    newIntent.setDataAndType(jniURI, dataType); 
+  }
+
+  newIntent.setPackage(package);
+  startActivity(newIntent);
+  if (xbmc_jnienv()->ExceptionOccurred())
+  {
+    CLog::Log(LOGERROR, "CXBMCApp::StartActivity - ExceptionOccurred launching %s", package.c_str());
+    xbmc_jnienv()->ExceptionClear();
+    return false;
+  }
+
   return true;
 }
 
@@ -504,7 +524,7 @@ int CXBMCApp::GetMaxSystemVolume()
   {
     maxVolume = GetMaxSystemVolume(env);
   }
-  android_printf("CXBMCApp::GetMaxSystemVolume: %i",maxVolume);
+  //android_printf("CXBMCApp::GetMaxSystemVolume: %i",maxVolume);
   return maxVolume;
 }
 
@@ -513,8 +533,29 @@ int CXBMCApp::GetMaxSystemVolume(JNIEnv *env)
   CJNIAudioManager audioManager(getSystemService("audio"));
   if (audioManager)
     return audioManager.getStreamMaxVolume();
-    android_printf("CXBMCApp::SetSystemVolume: Could not get Audio Manager");
+  android_printf("CXBMCApp::SetSystemVolume: Could not get Audio Manager");
   return 0;
+}
+
+int CXBMCApp::GetSystemVolume()
+{
+  CJNIAudioManager audioManager(getSystemService("audio"));
+  if (audioManager)
+    return audioManager.getStreamVolume();
+  else 
+  {
+    android_printf("CXBMCApp::GetSystemVolume: Could not get Audio Manager");
+    return 0;
+  }
+}
+
+void CXBMCApp::SetSystemVolume(int val)
+{
+  CJNIAudioManager audioManager(getSystemService("audio"));
+  if (audioManager)
+    audioManager.setStreamVolume(val);
+  else
+    android_printf("CXBMCApp::SetSystemVolume: Could not get Audio Manager");
 }
 
 void CXBMCApp::SetSystemVolume(JNIEnv *env, float percent)
@@ -548,21 +589,32 @@ void CXBMCApp::onNewIntent(CJNIIntent intent)
 void CXBMCApp::SetupEnv()
 {
   setenv("XBMC_ANDROID_SYSTEM_LIBS", CJNISystem::getProperty("java.library.path").c_str(), 0);
-  setenv("XBMC_ANDROID_DATA", getApplicationInfo().dataDir.c_str(), 0);
   setenv("XBMC_ANDROID_LIBS", getApplicationInfo().nativeLibraryDir.c_str(), 0);
   setenv("XBMC_ANDROID_APK", getPackageResourcePath().c_str(), 0);
 
-  std::string cacheDir = getCacheDir().getAbsolutePath();
-  setenv("XBMC_BIN_HOME", (cacheDir + "/apk/assets").c_str(), 0);
-  setenv("XBMC_HOME", (cacheDir + "/apk/assets").c_str(), 0);
+  std::string xbmcHome = CJNISystem::getProperty("xbmc.home", "");
+  if (xbmcHome.empty())
+  {
+    std::string cacheDir = getCacheDir().getAbsolutePath();
+    setenv("XBMC_BIN_HOME", (cacheDir + "/apk/assets").c_str(), 0);
+    setenv("XBMC_HOME", (cacheDir + "/apk/assets").c_str(), 0);
+  }
+  else
+  {
+    setenv("XBMC_BIN_HOME", (xbmcHome + "/assets").c_str(), 0);
+    setenv("XBMC_HOME", (xbmcHome + "/assets").c_str(), 0);
+  }
 
-  std::string externalDir;
-  CJNIFile androidPath = getExternalFilesDir("");
-  if (!androidPath)
-    androidPath = getDir("org.xbmc.xbmc", 1);
+  std::string externalDir = CJNISystem::getProperty("xbmc.data", "");
+  if (externalDir.empty())
+  {
+    CJNIFile androidPath = getExternalFilesDir("");
+    if (!androidPath)
+      androidPath = getDir("org.xbmc.xbmc", 1);
 
-  if (androidPath)
-    externalDir = androidPath.getAbsolutePath();
+    if (androidPath)
+      externalDir = androidPath.getAbsolutePath();
+  }
 
   if (!externalDir.empty())
     setenv("HOME", externalDir.c_str(), 0);
@@ -597,4 +649,13 @@ std::string CXBMCApp::GetFilenameFromIntent(const CJNIIntent &intent)
     else
       ret = data.toString();
   return ret;
+}
+
+const ANativeWindow** CXBMCApp::GetNativeWindow(int timeout)
+{
+  if (m_window)
+    return (const ANativeWindow**)&m_window;
+
+  m_windowCreated.WaitMSec(timeout);
+  return (const ANativeWindow**)&m_window;
 }
