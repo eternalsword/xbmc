@@ -108,7 +108,7 @@ TEST(TestFile, Write)
   ASSERT_TRUE(file->OpenForWrite(XBMC_TEMPFILEPATH(file), true));
   EXPECT_EQ((int)sizeof(str), file->Write(str, sizeof(str)));
   file->Flush();
-  EXPECT_EQ(0, file->GetPosition());
+  EXPECT_EQ((int64_t)sizeof(str), file->GetPosition());
   file->Close();
   ASSERT_TRUE(file->Open(XBMC_TEMPFILEPATH(file)));
   EXPECT_EQ(0, file->GetPosition());
@@ -151,7 +151,7 @@ TEST(TestFile, Stat)
 TEST(TestFile, Delete)
 {
   XFILE::CFile *file;
-  CStdString path;
+  std::string path;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();
@@ -164,7 +164,7 @@ TEST(TestFile, Delete)
 TEST(TestFile, Rename)
 {
   XFILE::CFile *file;
-  CStdString path1, path2;
+  std::string path1, path2;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();
@@ -184,7 +184,7 @@ TEST(TestFile, Rename)
 TEST(TestFile, Copy)
 {
   XFILE::CFile *file;
-  CStdString path1, path2;
+  std::string path1, path2;
 
   ASSERT_TRUE((file = XBMC_CREATETEMPFILE("")) != NULL);
   file->Close();

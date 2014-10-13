@@ -120,9 +120,12 @@ namespace VIDEO
     static std::string GetImage(CFileItem *pItem, bool useLocal, bool bApplyToDir, const std::string &type = "");
     static std::string GetFanart(CFileItem *pItem, bool useLocal);
 
+    bool EnumerateEpisodeItem(const CFileItem *item, EPISODELIST& episodeList);
+
   protected:
     virtual void Process();
     bool DoScan(const CStdString& strDirectory);
+    bool IsExcluded(const CStdString& strDirectory) const;
 
     INFO_RET RetrieveInfoForTvShow(CFileItem *pItem, bool bDirNames, ADDON::ScraperPtr &scraper, bool useLocal, CScraperUrl* pURL, bool fetchEpisodes, CGUIDialogProgress* pDlgProgress);
     INFO_RET RetrieveInfoForMovie(CFileItem *pItem, bool bDirNames, ADDON::ScraperPtr &scraper, bool useLocal, CScraperUrl* pURL, CGUIDialogProgress* pDlgProgress);
@@ -229,7 +232,6 @@ namespace VIDEO
     INFO_RET OnProcessSeriesFolder(EPISODELIST& files, const ADDON::ScraperPtr &scraper, bool useLocal, const CVideoInfoTag& showInfo, CGUIDialogProgress* pDlgProgress = NULL);
 
     bool EnumerateSeriesFolder(CFileItem* item, EPISODELIST& episodeList);
-    bool EnumerateEpisodeItem(const CFileItem *item, EPISODELIST& episodeList);
     bool ProcessItemByVideoInfoTag(const CFileItem *item, EPISODELIST &episodeList);
 
     CStdString GetnfoFile(CFileItem *item, bool bGrabAny=false) const;

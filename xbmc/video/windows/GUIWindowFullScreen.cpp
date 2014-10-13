@@ -148,9 +148,7 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
   case ACTION_SHOW_GUI:
     {
       // switch back to the menu
-      OutputDebugString("Switching to GUI\n");
       g_windowManager.PreviousWindow();
-      OutputDebugString("Now in GUI\n");
       return true;
     }
     break;
@@ -590,18 +588,18 @@ void CGUIWindowFullScreen::FrameMove()
       CStdString strCores = g_cpuInfo.GetCoresUsageString();
 #endif
       int    missedvblanks;
-      int    refreshrate;
+      double refreshrate;
       double clockspeed;
       CStdString strClock;
 
       if (g_VideoReferenceClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
-        strClock = StringUtils::Format("S( refresh:%i missed:%i speed:%+.3f%% %s )"
+        strClock = StringUtils::Format("S( refresh:%.3f missed:%i speed:%+.3f%% %s )"
                                        , refreshrate
                                        , missedvblanks
                                        , clockspeed - 100.0
                                        , g_renderManager.GetVSyncState().c_str());
 
-      strGeneralFPS = StringUtils::Format("%s\nW( fps:%02.2f %s ) %s"
+      strGeneralFPS = StringUtils::Format("%s\nW( fps:%02.2f %s )\n%s"
                                           , strGeneral.c_str()
                                           , g_infoManager.GetFPS()
                                           , strCores.c_str(), strClock.c_str() );
@@ -639,7 +637,7 @@ void CGUIWindowFullScreen::FrameMove()
       float xscale = (float)res.iScreenWidth  / (float)res.iWidth;
       float yscale = (float)res.iScreenHeight / (float)res.iHeight;
 
-      CStdString strSizing = StringUtils::Format(g_localizeStrings.Get(245),
+      CStdString strSizing = StringUtils::Format(g_localizeStrings.Get(245).c_str(),
                                                  (int)info.SrcRect.Width(),
                                                  (int)info.SrcRect.Height(),
                                                  (int)(info.DestRect.Width() * xscale),

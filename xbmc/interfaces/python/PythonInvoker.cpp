@@ -78,9 +78,9 @@ extern "C"
 
 CCriticalSection CPythonInvoker::s_critical;
 
-static const CStdString getListOfAddonClassesAsString(XBMCAddon::AddonClass::Ref<XBMCAddon::Python::PythonLanguageHook>& languageHook)
+static const std::string getListOfAddonClassesAsString(XBMCAddon::AddonClass::Ref<XBMCAddon::Python::PythonLanguageHook>& languageHook)
 {
-  CStdString message;
+  std::string message;
   CSingleLock l(*(languageHook.get()));
   std::set<XBMCAddon::AddonClass*>& acs = languageHook->GetRegisteredAddonClasses();
   bool firstTime = true;
@@ -184,15 +184,18 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
 
   // get path from script file name and add python path's
   // this is used for python so it will search modules from script path first
-  CStdString scriptDir = URIUtils::GetDirectory(realFilename);
+  std::string scriptDir = URIUtils::GetDirectory(realFilename);
   URIUtils::RemoveSlashAtEnd(scriptDir);
   addPath(scriptDir);
 
-  // add on any addon modules the user has installed
-  ADDON::VECADDONS addons;
-  ADDON::CAddonMgr::Get().GetAddons(ADDON::ADDON_SCRIPT_MODULE, addons);
-  for (unsigned int i = 0; i < addons.size(); ++i)
-    addPath(CSpecialProtocol::TranslatePath(addons[i]->LibPath()));
+  // add all addon module dependecies to path
+  if (m_addon)
+  {
+    std::set<std::string> paths;
+    getAddonModuleDeps(m_addon, paths);
+    for (std::set<std::string>::const_iterator it = paths.begin(); it != paths.end(); ++it)
+      addPath(*it);
+  }
 
   // we want to use sys.path so it includes site-packages
   // if this fails, default to using Py_GetPath
@@ -344,7 +347,7 @@ bool CPythonInvoker::execute(const std::string &script, const std::vector<std::s
     }
     if (old != s)
     {
-      CLog::Log(LOGINFO, "CPythonInvoker(%d, %s): waiting on thread %"PRIu64, GetId(), m_sourceFile.c_str(), (uint64_t)s->thread_id);
+      CLog::Log(LOGINFO, "CPythonInvoker(%d, %s): waiting on thread %" PRIu64, GetId(), m_sourceFile.c_str(), (uint64_t)s->thread_id);
       old = s;
     }
 
@@ -559,23 +562,23 @@ void CPythonInvoker::onError()
   CGUIDialogKaiToast *pDlgToast = (CGUIDialogKaiToast*)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
   if (pDlgToast != NULL)
   {
-    CStdString desc;
-    CStdString script;
+    std::string desc;
+    std::string script;
     if (m_addon.get() != NULL)
       script = m_addon->Name();
     else
     {
-      CStdString path;
+      std::string path;
       URIUtils::Split(m_sourceFile.c_str(), path, script);
-      if (script.Equals("default.py"))
+      if (script == "default.py")
       {
-        CStdString path2;
+        std::string path2;
         URIUtils::RemoveSlashAtEnd(path);
         URIUtils::Split(path, path2, script);
       }
     }
 
-    desc = StringUtils::Format(g_localizeStrings.Get(2100), script.c_str());
+    desc = StringUtils::Format(g_localizeStrings.Get(2100).c_str(), script.c_str());
     pDlgToast->QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(257), desc);
   }
 }
@@ -601,6 +604,26 @@ bool CPythonInvoker::initializeModule(PythonModuleInitialization module)
 
   module();
   return true;
+}
+
+void CPythonInvoker::getAddonModuleDeps(const ADDON::AddonPtr& addon, std::set<std::string>& paths)
+{
+  ADDON::ADDONDEPS deps = addon->GetDeps();
+  for (ADDON::ADDONDEPS::const_iterator it = deps.begin(); it != deps.end(); ++it)
+  {
+    //Check if dependency is a module addon
+    ADDON::AddonPtr dependency;
+    if (ADDON::CAddonMgr::Get().GetAddon(it->first, dependency, ADDON::ADDON_SCRIPT_MODULE))
+    {
+      std::string path = CSpecialProtocol::TranslatePath(dependency->LibPath());
+      if (paths.find(path) == paths.end())
+      {
+        // add it and its dependencies
+        paths.insert(path);
+        getAddonModuleDeps(dependency, paths);
+      }
+    }
+  }
 }
 
 void CPythonInvoker::addPath(const std::string& path)
