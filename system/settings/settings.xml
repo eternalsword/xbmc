@@ -719,7 +719,7 @@
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevaapivc1" operator="is">true</dependency>
           </dependencies>
           <level>3</level>
-          <default>false</default>
+          <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="videoplayer.prefervaapirender" type="boolean" parent="videoplayer.usevaapi" label="13457" help="36433">
@@ -2754,12 +2754,12 @@
         </setting>
         <setting id="debug.extralogging" type="boolean" label="666" help="36394">
           <level>1</level>
-          <default>false</default>
+          <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="debug.setextraloglevel" type="list[integer]" parent="debug.extralogging" label="668" help="36534">
           <level>1</level>
-          <default></default>
+          <default>32768</default>
           <constraints>
             <options>loggingcomponents</options>
             <delimiter>,</delimiter>
