@@ -472,7 +472,7 @@ void CGUIViewState::SetSortOrder(SortOrder sortOrder)
   if (sortOrder == SortOrderNone)
     return;
 
-  if (m_currentSortMethod < 0 && m_currentSortMethod >= (int)m_sortMethods.size())
+  if (m_currentSortMethod < 0 || m_currentSortMethod >= (int)m_sortMethods.size())
     return;
 
   m_sortMethods[m_currentSortMethod].m_sortDescription.sortOrder = sortOrder;
@@ -557,7 +557,7 @@ CGUIViewStateFromItems::CGUIViewStateFromItems(const CFileItemList &items) : CGU
     AddonPtr addon;
     if (CAddonMgr::Get().GetAddon(url.GetHostName(),addon) && addon)
     {
-      PluginPtr plugin = boost::static_pointer_cast<CPluginSource>(addon);
+      PluginPtr plugin = std::static_pointer_cast<CPluginSource>(addon);
       if (plugin->Provides(CPluginSource::AUDIO))
         m_playlist = PLAYLIST_MUSIC;
       if (plugin->Provides(CPluginSource::VIDEO))

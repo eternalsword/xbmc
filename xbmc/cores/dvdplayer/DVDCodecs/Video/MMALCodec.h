@@ -35,14 +35,14 @@
 
 #include <queue>
 #include <semaphore.h>
-#include <boost/shared_ptr.hpp>
-#include "utils/StdString.h"
+#include <memory>
+#include <string>
 #include "guilib/Geometry.h"
 #include "rendering/RenderSystem.h"
 #include "cores/VideoRenderers/BaseRenderer.h"
 
 class CMMALVideo;
-typedef boost::shared_ptr<CMMALVideo> MMALVideoPtr;
+typedef std::shared_ptr<CMMALVideo> MMALVideoPtr;
 
 // a mmal video frame
 class CMMALVideoBuffer
@@ -128,7 +128,7 @@ protected:
   std::vector<CMMALVideoBuffer*> m_output_buffers;
 
   // initialize mmal and get decoder component
-  bool Initialize( const CStdString &decoder_name);
+  bool Initialize( const std::string &decoder_name);
   void PortSettingsChanged(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buffer);
   bool SendCodecConfigData();
 

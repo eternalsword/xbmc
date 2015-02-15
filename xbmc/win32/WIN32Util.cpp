@@ -43,6 +43,8 @@
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
 
+#include <cassert>
+
 #define DLL_ENV_PATH "special://xbmc/system/;" \
                      "special://xbmc/system/players/dvdplayer/;" \
                      "special://xbmc/system/players/paplayer/;" \
@@ -412,7 +414,7 @@ std::string CWIN32Util::GetSystemPath()
 std::string CWIN32Util::GetProfilePath()
 {
   std::string strProfilePath;
-  CStdString strHomePath;
+  std::string strHomePath;
 
   CUtil::GetHomePath(strHomePath);
 
@@ -772,8 +774,8 @@ bool CWIN32Util::EjectDrive(const char cDriveLetter)
   char VetoName[MAX_PATH];
   bool bSuccess = false;
 
-  res = CM_Get_Parent(&DevInst, DevInst, 0); // disk's parent, e.g. the USB bridge, the SATA controller....
-  res = CM_Get_DevNode_Status(&Status, &ProblemNumber, DevInst, 0);
+  CM_Get_Parent(&DevInst, DevInst, 0); // disk's parent, e.g. the USB bridge, the SATA controller....
+  CM_Get_DevNode_Status(&Status, &ProblemNumber, DevInst, 0);
 
   for(int i=0;i<3;i++)
   {
@@ -808,7 +810,7 @@ bool CWIN32Util::HasGLDefaultDrivers()
 {
   unsigned int a=0,b=0;
 
-  CStdString strVendor = g_Windowing.GetRenderVendor();
+  std::string strVendor = g_Windowing.GetRenderVendor();
   g_Windowing.GetRenderVersion(a, b);
 
   if(strVendor.find("Microsoft")!=strVendor.npos && a==1 && b==1)
@@ -972,9 +974,9 @@ extern "C"
 {
   FILE *fopen_utf8(const char *_Filename, const char *_Mode)
   {
-    CStdStringW wfilename, wmode;
+    std::string modetmp = _Mode;
+    std::wstring wfilename, wmode(modetmp.begin(), modetmp.end());
     g_charsetConverter.utf8ToW(_Filename, wfilename, false);
-    wmode = _Mode;
     return _wfopen(wfilename.c_str(), wmode.c_str());
   }
 }
@@ -1387,8 +1389,14 @@ LONG CWIN32Util::UtilRegGetValue( const HKEY hKey, const char *const pcKey, DWOR
   {
     if (ppcBuffer)
     {
-      char *pcValue=*ppcBuffer;
-      if (!pcValue || !pdwSizeBuff || dwSize +dwSizeAdd > *pdwSizeBuff) pcValue= (char*)realloc(pcValue, dwSize +dwSizeAdd);
+      char *pcValue=*ppcBuffer, *pcValueTmp;
+      if (!pcValue || !pdwSizeBuff || dwSize +dwSizeAdd > *pdwSizeBuff) {
+        pcValueTmp = (char*)realloc(pcValue, dwSize +dwSizeAdd);
+        if(pcValueTmp != NULL)
+        {
+          pcValue = pcValueTmp;
+        }
+      }
       lRet= RegQueryValueEx(hKey,pcKey,NULL,NULL,(LPBYTE)pcValue,&dwSize);
 
       if ( lRet == ERROR_SUCCESS || *ppcBuffer ) *ppcBuffer= pcValue;
