@@ -68,6 +68,7 @@ public:
   bool OMXStateExecute(bool lock = true) { return false; }
   void OMXStateIdle(bool lock = true) {}
   bool HDMIClockSync(bool lock = true) { return false; }
+  void OMXSetSpeedAdjust(double adjust, bool lock = true) {}
 };
 #endif
 
@@ -255,7 +256,7 @@ public:
   virtual void SetSubtitle(int iStream);
   virtual bool GetSubtitleVisible();
   virtual void SetSubtitleVisible(bool bVisible);
-  virtual int  AddSubtitle(const std::string& strSubPath);
+  virtual void AddSubtitle(const std::string& strSubPath);
 
   virtual int GetAudioStreamCount();
   virtual int GetAudioStream();
@@ -266,7 +267,8 @@ public:
 
   virtual int  GetChapterCount();
   virtual int  GetChapter();
-  virtual void GetChapterName(std::string& strChapterName);
+  virtual void GetChapterName(std::string& strChapterName, int chapterIdx=-1);
+  virtual int64_t GetChapterPos(int chapterIdx=-1);
   virtual int  SeekChapter(int iChapter);
 
   virtual void SeekTime(int64_t iTime);
@@ -286,7 +288,7 @@ public:
 
   virtual std::string GetPlayingTitle();
 
-  virtual bool SwitchChannel(PVR::CPVRChannel &channel);
+  virtual bool SwitchChannel(const PVR::CPVRChannelPtr &channel);
   virtual bool CachePVRStream(void) const;
 
   enum ECacheState
@@ -338,7 +340,7 @@ protected:
 
   bool ShowPVRChannelInfo();
 
-  int  AddSubtitleFile(const std::string& filename, const std::string& subfilename = "", CDemuxStream::EFlags flags = CDemuxStream::FLAG_NONE);
+  int  AddSubtitleFile(const std::string& filename, const std::string& subfilename = "");
   void SetSubtitleVisibleInternal(bool bVisible);
 
   /**
@@ -355,6 +357,7 @@ protected:
 
 
   void FlushBuffers(bool queued, double pts = DVD_NOPTS_VALUE, bool accurate = true, bool sync = true);
+  void TriggerResync();
 
   void HandleMessages();
   void HandlePlaySpeed();
@@ -412,6 +415,7 @@ protected:
     int64_t lasttime;
     int lastseekpts;
     double  lastabstime;
+    bool needsync;
   } m_SpeedState;
 
   int m_errorCount;
@@ -478,8 +482,7 @@ protected:
       dts           = DVD_NOPTS_VALUE;
       player_state  = "";
       chapter       = 0;
-      chapter_name  = "";
-      chapter_count = 0;
+      chapters.clear();
       canrecord     = false;
       recording     = false;
       canpause      = false;
@@ -504,9 +507,8 @@ protected:
 
     std::string player_state;  // full player state
 
-    int         chapter;      // current chapter
-    std::string chapter_name; // name of current chapter
-    int         chapter_count;// number of chapter
+    int         chapter;      		   // current chapter
+    std::vector<std::pair<std::string, int64_t>> chapters; // name and position for chapters
 
     bool canrecord;           // can input stream record
     bool recording;           // are we currently recording

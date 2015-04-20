@@ -75,7 +75,6 @@ class DPMSSupport;
 class CSplash;
 class CBookmark;
 class CNetwork;
-class CInputManager;
 
 namespace VIDEO
 {
@@ -117,7 +116,6 @@ class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMs
                      public ISettingCallback, public ISettingsHandler, public ISubSettings
 {
   friend class CApplicationPlayer;
-  friend class CInputManager;
 public:
 
   enum ESERVERS
@@ -181,7 +179,7 @@ public:
   PlayBackRet PlayFile(const CFileItem& item, bool bRestart = false);
   void SaveFileState(bool bForeground = false);
   void UpdateFileState();
-  void LoadVideoSettings(const std::string &path);
+  void LoadVideoSettings(const CFileItem& item);
   void StopPlaying();
   void Restart(bool bSamePosition = true);
   void DelayedPlayerRestart();
@@ -189,7 +187,6 @@ public:
   bool IsPlayingFullScreenVideo() const;
   bool IsStartingPlayback() const { return m_bPlaybackStarting; }
   bool IsFullScreen();
-  bool OnKey(const CKey& key);
   bool OnAppCommand(const CAction &action);
   bool OnAction(const CAction &action);
   void CheckShutdown();
@@ -375,6 +372,7 @@ public:
   bool GetRenderGUI() const { return m_renderGUI; };
 
   bool SetLanguage(const std::string &strLanguage);
+  bool LoadLanguage(bool reload, bool& fallback);
 
   ReplayGainSettings& GetReplayGainSettings() { return m_replayGainSettings; }
 
@@ -465,13 +463,13 @@ protected:
   bool m_bPresentFrame;
   unsigned int m_lastFrameTime;
   unsigned int m_lastRenderTime;
+  bool m_skipGuiRender;
 
   bool m_bStandalone;
   bool m_bEnableLegacyRes;
   bool m_bTestMode;
   bool m_bSystemScreenSaverEnable;
 
-  VIDEO::CVideoInfoScanner *m_videoInfoScanner;
   MUSIC_INFO::CMusicInfoScanner *m_musicInfoScanner;
 
   bool m_muted;
@@ -485,11 +483,9 @@ protected:
   void VolumeChanged() const;
 
   PlayBackRet PlayStack(const CFileItem& item, bool bRestart);
-  bool ExecuteInputAction(const CAction &action);
-  
+  int  GetActiveWindowID(void);
 
   float NavigationIdleTime();
-  static bool AlwaysProcess(const CAction& action);
 
   bool InitDirectoriesLinux();
   bool InitDirectoriesOSX();

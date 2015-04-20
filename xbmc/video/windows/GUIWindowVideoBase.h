@@ -49,7 +49,7 @@ public:
   static bool HasResumeItemOffset(const CFileItem *item);
 
   void AddToDatabase(int iItem);
-  virtual void OnInfo(CFileItem* pItem, const ADDON::ScraperPtr& scraper);
+  virtual void OnInfo(CFileItem* pItem, ADDON::ScraperPtr& scraper);
 
 
   /*! \brief Show the resume menu for this item (if it has a resume bookmark)
@@ -87,8 +87,6 @@ public:
 
 protected:
   void OnScan(const std::string& strPath, bool scanAll = false);
-  virtual void OnInitWindow();
-  virtual void UpdateButtons();
   virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true);
   virtual bool GetDirectory(const std::string &strDirectory, CFileItemList &items);
   virtual void OnItemLoaded(CFileItem* pItem) {};

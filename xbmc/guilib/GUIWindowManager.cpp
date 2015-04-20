@@ -33,7 +33,7 @@
 #include "GUITexture.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/Variant.h"
-#include "Key.h"
+#include "input/Key.h"
 #include "utils/StringUtils.h"
 
 #include "windows/GUIWindowHome.h"
@@ -571,12 +571,15 @@ void CGUIWindowManager::AddCustomWindow(CGUIWindow* pWindow)
   m_vecCustomWindows.push_back(pWindow);
 }
 
-void CGUIWindowManager::AddModeless(CGUIWindow* dialog)
+void CGUIWindowManager::RegisterDialog(CGUIWindow* dialog)
 {
   CSingleLock lock(g_graphicsContext);
-  // only add the window if it's not already added
-  for (iDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
-    if (*it == dialog) return;
+  // only add the window if it does not exists
+  for (const auto& activeDialog : m_activeDialogs)
+  {
+    if (activeDialog->GetID() == dialog->GetID())
+      return;
+  }
   m_activeDialogs.push_back(dialog);
 }
 
@@ -772,6 +775,14 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const vector<stri
     return;
   }
 
+  // don't activate a window if there are active modal dialogs
+  if (HasModalDialog())
+  {
+    CLog::Log(LOG_LEVEL_DEBUG, "Activate of window '%i' refused because there are active modal dialogs", iWindowID);
+    g_audioManager.PlayActionSound(CAction(ACTION_ERROR));
+    return;
+  }
+
   g_infoManager.SetNextWindow(iWindowID);
 
   // set our overlay state
@@ -803,10 +814,19 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const vector<stri
 void CGUIWindowManager::CloseDialogs(bool forceClose) const
 {
   CSingleLock lock(g_graphicsContext);
-  while (m_activeDialogs.size() > 0)
+  for (const auto& dialog : m_activeDialogs)
   {
-    CGUIWindow* win = m_activeDialogs[0];
-    win->Close(forceClose);
+    dialog->Close(forceClose);
+  }
+}
+
+void CGUIWindowManager::CloseInternalModalDialogs(bool forceClose) const
+{
+  CSingleLock lock(g_graphicsContext);
+  for (const auto& dialog : m_activeDialogs)
+  {
+    if (dialog->IsModalDialog() && !IsAddonWindow(dialog->GetID()) && !IsPythonWindow(dialog->GetID()))
+      dialog->Close(forceClose);
   }
 }
 
@@ -974,8 +994,6 @@ bool CGUIWindowManager::Render()
       CGUITexture::DrawQuad(*i, 0x4c00ff00);
   }
 
-  RenderEx();
-
   return hasRendered;
 }
 
@@ -1068,7 +1086,7 @@ void CGUIWindowManager::DeInitialize()
   for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
     CGUIWindow* pWindow = (*it).second;
-    if (IsWindowActive(it->first))
+    if (IsWindowActive(it->first, false))
     {
       pWindow->DisableAnimations();
       pWindow->Close(true);
@@ -1093,18 +1111,6 @@ void CGUIWindowManager::DeInitialize()
   m_activeDialogs.clear();
 
   m_initialized = false;
-}
-
-/// \brief Route to a window
-/// \param pWindow Window to route to
-void CGUIWindowManager::RouteToWindow(CGUIWindow* dialog)
-{
-  CSingleLock lock(g_graphicsContext);
-  // Just to be sure: Unroute this window,
-  // #we may have routed to it before
-  RemoveDialog(dialog->GetID());
-
-  m_activeDialogs.push_back(dialog);
 }
 
 /// \brief Unroute window

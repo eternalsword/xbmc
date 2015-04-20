@@ -55,6 +55,7 @@
 #include "TextureCache.h"
 #include "Util.h"
 #include "utils/LangCodeExpander.h"
+#include "pvr/PVRManager.h"
 
 
 bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
@@ -97,7 +98,7 @@ int DegreeToOrientation(int degrees)
 
 bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
                                 CTextureDetails &details,
-                                CStreamDetails *pStreamDetails)
+                                CStreamDetails *pStreamDetails, int pos)
 {
   std::string redactPath = CURL::GetRedacted(strPath);
   unsigned int nTime = XbmcThreads::SystemClockMillis();
@@ -112,6 +113,12 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
    || pInputStream->IsStreamType(DVDSTREAM_TYPE_BLURAY))
   {
     CLog::Log(LOGDEBUG, "%s: disc streams not supported for thumb extraction, file: %s", __FUNCTION__, redactPath.c_str());
+    delete pInputStream;
+    return false;
+  }
+
+  if (pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
+  {
     delete pInputStream;
     return false;
   }
@@ -216,7 +223,7 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
     if (pVideoCodec)
     {
       int nTotalLen = pDemuxer->GetStreamLength();
-      int nSeekTo = nTotalLen / 3;
+      int nSeekTo = (pos==-1?nTotalLen / 3:pos);
 
       CLog::Log(LOGDEBUG,"%s - seeking to pos %dms (total: %dms) in %s", __FUNCTION__, nSeekTo, nTotalLen, redactPath.c_str());
       if (pDemuxer->SeekTime(nSeekTo, true))
@@ -467,7 +474,7 @@ bool CDVDFileInfo::AddExternalSubtitleToDetails(const std::string &path, CStream
       vobsubfile = URIUtils::ReplaceExtension(filename, ".sub");
 
     CDVDDemuxVobsub v;
-    if(!v.Open(filename, vobsubfile))
+    if (!v.Open(filename, STREAM_SOURCE_NONE, vobsubfile))
       return false;
 
     int count = v.GetNrOfStreams();

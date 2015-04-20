@@ -40,6 +40,8 @@ CDVDAudio::CDVDAudio(volatile bool &bStop)
   m_iBitrate = 0;
   m_SecondsPerByte = 0.0;
   m_bPaused = true;
+  m_playingPts = DVD_NOPTS_VALUE; //silence coverity uninitialized warning, is set elsewhere
+  m_timeOfPts = 0.0; //silence coverity uninitialized warning, is set elsewhere
 }
 
 CDVDAudio::~CDVDAudio()
@@ -274,5 +276,17 @@ double CDVDAudio::GetPlayingPts()
   if (m_playingPts == DVD_NOPTS_VALUE)
     return 0.0;
 
-  return m_playingPts + CDVDClock::GetAbsoluteClock() - m_timeOfPts;
+  double now = CDVDClock::GetAbsoluteClock();
+  double diff = now - m_timeOfPts;
+  double cache = GetCacheTime();
+  double played = 0.0;
+
+  if (diff < cache)
+    played = diff;
+  else
+    played = cache;
+
+  m_timeOfPts = now;
+  m_playingPts += played;
+  return m_playingPts;
 }

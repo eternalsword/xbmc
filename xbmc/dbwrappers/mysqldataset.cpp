@@ -134,7 +134,13 @@ int MysqlDatabase::connect(bool create_new) {
       return DB_CONNECTION_NONE;
 
     // establish connection with just user credentials
-    if (mysql_real_connect(conn, host.c_str(),login.c_str(),passwd.c_str(), NULL, atoi(port.c_str()),NULL,0) != NULL)
+    if (mysql_real_connect(conn, host.c_str(),
+                                 login.c_str(),
+                                 passwd.c_str(),
+                                 NULL,
+                                 atoi(port.c_str()),
+                                 NULL,
+                                 compression ? CLIENT_COMPRESS : 0) != NULL)
     {
       // disable mysql autocommit since we handle it
       //mysql_autocommit(conn, false);
@@ -443,6 +449,7 @@ long MysqlDatabase::nextid(const char* sname) {
 void MysqlDatabase::start_transaction() {
   if (active)
   {
+    mysql_autocommit(conn, false);
     CLog::Log(LOGDEBUG,"Mysql Start transaction");
     _in_transaction = true;
   }
@@ -452,6 +459,7 @@ void MysqlDatabase::commit_transaction() {
   if (active)
   {
     mysql_commit(conn);
+    mysql_autocommit(conn, true);
     CLog::Log(LOGDEBUG,"Mysql commit transaction");
     _in_transaction = false;
   }
@@ -461,6 +469,7 @@ void MysqlDatabase::rollback_transaction() {
   if (active)
   {
     mysql_rollback(conn);
+    mysql_autocommit(conn, true);
     CLog::Log(LOGDEBUG,"Mysql rollback transaction");
     _in_transaction = false;
   }

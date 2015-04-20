@@ -139,6 +139,7 @@ CDVDPlayerVideo::CDVDPlayerVideo( CDVDClock* pClock
   m_iVideoDelay = 0;
   m_iSubtitleDelay = 0;
   m_FlipTimeStamp = 0.0;
+  m_FlipTimePts = 0.0f; //silence coverity uninitialized warning, is set elsewhere
   m_iLateFrames = 0;
   m_iDroppedRequest = 0;
   m_fForcedAspectRatio = 0;
@@ -200,10 +201,7 @@ bool CDVDPlayerVideo::OpenStream( CDVDStreamInfo &hint )
     return false;
   }
 
-  if(CSettings::Get().GetBool("videoplayer.usedisplayasclock") && !g_VideoReferenceClock.IsRunning())
-  {
-    g_VideoReferenceClock.Create();
-  }
+  g_VideoReferenceClock.Start();
 
   if(m_messageQueue.IsInited())
     m_messageQueue.Put(new CDVDMsgVideoCodecChange(hint, codec), 0);
@@ -591,7 +589,6 @@ void CDVDPlayerVideo::Process()
       // loop while no error
       while (!m_bStop)
       {
-
         // if decoder was flushed, we need to seek back again to resume rendering
         if (iDecoderState & VC_FLUSHED)
         {
@@ -608,6 +605,23 @@ void CDVDPlayerVideo::Process()
           }
 
           m_pVideoCodec->Reset();
+          m_packets.clear();
+          picture.iFlags &= ~DVP_FLAG_ALLOCATED;
+          g_renderManager.DiscardBuffer();
+          break;
+        }
+
+        if (iDecoderState & VC_REOPEN)
+        {
+          while(!m_packets.empty())
+          {
+            CDVDMsgDemuxerPacket* msg = (CDVDMsgDemuxerPacket*)m_packets.front().message->Acquire();
+            msg->m_drop = false;
+            m_packets.pop_front();
+            m_messageQueue.Put(msg, iPriority + 10);
+          }
+
+          m_pVideoCodec->Reopen();
           m_packets.clear();
           picture.iFlags &= ~DVP_FLAG_ALLOCATED;
           g_renderManager.DiscardBuffer();
@@ -1079,6 +1093,9 @@ int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
   //try to calculate the framerate
   CalcFrameRate();
 
+  // remember original pts, we need it later for overlaying subtitles
+  double ptsovl = pts;
+
   // signal to clock what our framerate is, it may want to adjust it's
   // speed to better match with our video renderer's output speed
   double interval;
@@ -1170,7 +1187,7 @@ int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
     return EOS_DROPPED;
   }
 
-  ProcessOverlays(pPicture, pts);
+  ProcessOverlays(pPicture, ptsovl);
 
   int index = g_renderManager.AddVideoPicture(*pPicture);
 

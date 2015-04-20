@@ -23,8 +23,9 @@
 #include "ButtonTranslator.h"
 #include "profiles/ProfilesManager.h"
 #include "utils/URIUtils.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "guilib/WindowIDs.h"
+#include "input/MouseStat.h"
 #include "input/XBMC_keysym.h"
 #include "input/XBMC_keytable.h"
 #include "filesystem/File.h"
@@ -113,6 +114,8 @@ static const ActionMapping actions[] =
         {"nextcalibration"   , ACTION_CALIBRATE_SWAP_ARROWS},
         {"resetcalibration"  , ACTION_CALIBRATE_RESET},
         {"analogmove"        , ACTION_ANALOG_MOVE},
+        {"analogmovex"       , ACTION_ANALOG_MOVE_X},
+        {"analogmovey"       , ACTION_ANALOG_MOVE_Y},
         {"rotate"            , ACTION_ROTATE_PICTURE_CW},
         {"rotateccw"         , ACTION_ROTATE_PICTURE_CCW},
         {"close"             , ACTION_NAV_BACK}, // backwards compatibility
@@ -226,6 +229,7 @@ static const ActionMapping actions[] =
         {"decreasepar"       , ACTION_DECREASE_PAR},
         {"volampup"          , ACTION_VOLAMP_UP},
         {"volampdown"        , ACTION_VOLAMP_DOWN},
+        {"volumeamplification", ACTION_VOLAMP},
         {"createbookmark"        , ACTION_CREATE_BOOKMARK},
         {"createepisodebookmark" , ACTION_CREATE_EPISODE_BOOKMARK},
         {"settingsreset"      , ACTION_SETTINGS_RESET},
@@ -270,7 +274,8 @@ static const ActionMapping actions[] =
         {"swipeup"           , ACTION_GESTURE_SWIPE_UP},
         {"swipedown"         , ACTION_GESTURE_SWIPE_DOWN},
 
-        // Do nothing action
+        // Do nothing / error action
+        { "error"            , ACTION_ERROR},
         { "noop"             , ACTION_NOOP}
 };
 
@@ -796,7 +801,6 @@ void CButtonTranslator::MapJoystickFamily(TiXmlNode *pNode)
 
 void CButtonTranslator::MapJoystickActions(int windowID, TiXmlNode *pJoystick)
 {
-  string joyname = JOYSTICK_DEFAULT_MAP; // default global map name
   std::string joyFamilyName;
   map<int, string> buttonMap;
   map<int, string> axisMap;
@@ -804,17 +808,21 @@ void CButtonTranslator::MapJoystickActions(int windowID, TiXmlNode *pJoystick)
   ActionMap hatMap;
 
   TiXmlElement *pJoy = pJoystick->ToElement();
-  if (pJoy && pJoy->Attribute("name")) {
+  if (pJoy && pJoy->Attribute("family"))
+    joyFamilyName = pJoy->Attribute("family");
+  else if (pJoy) {
     // transform loose name to new family, including altnames
-    std::string joyName = pJoy->Attribute("name");
+    string joyName = JOYSTICK_DEFAULT_MAP; // default global map name
+    if (pJoy->Attribute("name"))
+      joyName = pJoy->Attribute("name");
     joyFamilyName = joyName;    
     JoystickFamily* joyFamily = &m_joystickFamilies[joyFamilyName];
 
     std::shared_ptr<CRegExp> re(new CRegExp(true, CRegExp::asciiOnly));
-    std::string joyRe = JoynameToRegex(joyname);
+    std::string joyRe = JoynameToRegex(joyName);
     if (!re->RegComp(joyRe, CRegExp::StudyRegExp))
     {
-      CLog::Log(LOGNOTICE, "Invalid joystick regex specified: '%s'", joyname.c_str());
+      CLog::Log(LOGNOTICE, "Invalid joystick regex specified: '%s'", joyName.c_str());
       return;
     }
     AddFamilyRegex(joyFamily, re);
@@ -836,11 +844,6 @@ void CButtonTranslator::MapJoystickActions(int windowID, TiXmlNode *pJoystick)
     }
 
   }
-  else if (pJoy && pJoy->Attribute("family"))
-    joyFamilyName = pJoy->Attribute("family");
-  else
-    CLog::Log(LOGNOTICE, "No Joystick name specified, loading default map");
-
 
   // parse map
   TiXmlElement *pButton = pJoystick->FirstChildElement();
@@ -1622,7 +1625,7 @@ uint32_t CButtonTranslator::TranslateMouseCommand(TiXmlElement *pButton)
       else
       {
         int id = 0;
-        if ((pButton->QueryIntAttribute("id", &id) == TIXML_SUCCESS) && id>=0 && id<=4)
+        if ((pButton->QueryIntAttribute("id", &id) == TIXML_SUCCESS) && id>=0 && id<MOUSE_MAX_BUTTON)
         {
           buttonId += id;
         }

@@ -34,6 +34,7 @@ namespace PVR
   {
   private:
     typedef std::map<CPVRRecordingUid, CPVRRecordingPtr> PVR_RECORDINGMAP;
+    typedef PVR_RECORDINGMAP::iterator             PVR_RECORDINGMAP_ITR;
     typedef PVR_RECORDINGMAP::const_iterator             PVR_RECORDINGMAP_CITR;
 
     CCriticalSection             m_critSection;
@@ -42,6 +43,7 @@ namespace PVR
     unsigned int                 m_iLastId;
     bool                         m_bGroupItems;
     CVideoDatabase               m_database;
+    bool                         m_bHasDeleted;
 
     virtual void UpdateFromClients(void);
     virtual std::string TrimSlashes(const std::string &strOrig) const;
@@ -65,6 +67,7 @@ namespace PVR
     void Unload();
     void Clear();
     void UpdateFromClient(const CPVRRecordingPtr &tag);
+    void UpdateEpgTags(void);
 
     /**
      * @brief refresh the recordings list from the clients.
@@ -72,7 +75,8 @@ namespace PVR
     void Update(void);
 
     int GetNumRecordings();
-    int GetRecordings(CFileItemList* results);
+    bool HasDeletedRecordings();
+    int GetRecordings(CFileItemList* results, bool bDeleted = false);
     
     /**
      * Deletes the item in question, be it a directory or a file
@@ -80,13 +84,15 @@ namespace PVR
      * @return whether the item was deleted successfully
      */
     bool Delete(const CFileItem &item);
+    bool Undelete(const CFileItem &item);
+    bool DeleteAllRecordingsFromTrash();
     bool RenameRecording(CFileItem &item, std::string &strNewName);
     bool SetRecordingsPlayCount(const CFileItemPtr &item, int count);
 
     bool GetDirectory(const std::string& strPath, CFileItemList &items);
     CFileItemPtr GetByPath(const std::string &path);
     CPVRRecordingPtr GetById(int iClientId, const std::string &strRecordingId) const;
-    void GetAll(CFileItemList &items);
+    void GetAll(CFileItemList &items, bool bDeleted = false);
     CFileItemPtr GetById(unsigned int iId) const;
 
     void SetGroupItems(bool value) { m_bGroupItems = value; };
