@@ -224,7 +224,7 @@ bool CInputManager::ProcessGamepad(int windowId)
 bool CInputManager::ProcessRemote(int windowId)
 {
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
-  if (g_RemoteControl.GetButton() && g_application.IsAppFocused())
+  if (m_RemoteControl.GetButton() && g_application.IsAppFocused())
   {
     CKey key(m_RemoteControl.GetButton(), m_RemoteControl.GetHoldTime());
     m_RemoteControl.Reset();
