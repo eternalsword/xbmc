@@ -23,7 +23,6 @@
 #include "threads/Thread.h"
 #include "IDVDPlayer.h"
 #include "DVDMessageQueue.h"
-#include "DVDDemuxers/DVDDemuxUtils.h"
 #include "DVDCodecs/Video/DVDVideoCodec.h"
 #include "DVDClock.h"
 #include "DVDOverlayContainer.h"
@@ -31,6 +30,7 @@
 #ifdef HAS_VIDEO_PLAYBACK
 #include "cores/VideoRenderers/RenderManager.h"
 #endif
+#include "utils/BitstreamStats.h"
 
 class CDemuxStreamVideo;
 
@@ -74,7 +74,7 @@ public:
   void WaitForBuffers()                             { m_messageQueue.WaitUntilEmpty(); }
   bool AcceptsData() const                          { return !m_messageQueue.IsFull(); }
   bool HasData() const                              { return m_messageQueue.GetDataSize() > 0; }
-  int  GetLevel() const;
+  int  GetLevel() const                             { return m_messageQueue.GetLevel(); }
   bool IsInited() const                             { return m_messageQueue.IsInited(); }
   void SendMessage(CDVDMsg* pMsg, int priority = 0) { m_messageQueue.Put(pMsg, priority); }
   void FlushMessages()                              { m_messageQueue.Flush(); }

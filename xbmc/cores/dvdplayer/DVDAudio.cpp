@@ -22,7 +22,6 @@
 #include "utils/log.h"
 #include "DVDAudio.h"
 #include "DVDClock.h"
-#include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/Audio/DVDAudioCodec.h"
 #include "cores/AudioEngine/AEFactory.h"
 #include "cores/AudioEngine/Interfaces/AEStream.h"
@@ -84,6 +83,9 @@ bool CDVDAudio::Create(const DVDAudioFrame &audioframe, AVCodecID codec, bool ne
     m_SecondsPerByte = 1.0 / (m_channelLayout.Count() * m_iBitrate * (m_iBitsPerSample>>3));
   else
     m_SecondsPerByte = 0.0;
+
+  if (m_pAudioStream->HasDSP())
+    m_pAudioStream->SetFFmpegInfo(audioframe.profile, audioframe.matrix_encoding, audioframe.audio_service_type);
 
   SetDynamicRangeCompression((long)(CMediaSettings::Get().GetCurrentVideoSettings().m_VolumeAmplification * 100));
 

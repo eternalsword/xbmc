@@ -19,7 +19,6 @@
  */
 
 #include "GUIWindowVideoPlaylist.h"
-#include "playlists/PlayListFactory.h"
 #include "Util.h"
 #include "playlists/PlayListM3U.h"
 #include "Application.h"
@@ -36,6 +35,7 @@
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "ContextMenuManager.h"
 
 using namespace PLAYLIST;
@@ -373,10 +373,10 @@ void CGUIWindowVideoPlaylist::RemovePlayListItem(int iItem)
 void CGUIWindowVideoPlaylist::SavePlayList()
 {
   std::string strNewFileName;
-  if (CGUIKeyboardFactory::ShowAndGetInput(strNewFileName, g_localizeStrings.Get(16012), false))
+  if (CGUIKeyboardFactory::ShowAndGetInput(strNewFileName, CVariant{g_localizeStrings.Get(16012)}, false))
   {
     // need 2 rename it
-    std::string strFolder = URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "video");
+    std::string strFolder = URIUtils::AddFileToFolder(CSettings::Get().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "video");
     strNewFileName = CUtil::MakeLegalFileName(strNewFileName);
     strNewFileName += ".m3u";
     std::string strPath = URIUtils::AddFileToFolder(strFolder, strNewFileName);

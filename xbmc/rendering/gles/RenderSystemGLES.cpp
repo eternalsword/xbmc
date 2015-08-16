@@ -88,11 +88,24 @@ bool CRenderSystemGLES::InitRenderSystem()
   }
   
   // Get our driver vendor and renderer
-  m_RenderVendor = (const char*) glGetString(GL_VENDOR);
-  m_RenderRenderer = (const char*) glGetString(GL_RENDERER);
+  const char *tmpVendor = (const char*) glGetString(GL_VENDOR);
+  m_RenderVendor.clear();
+  if (tmpVendor != NULL)
+    m_RenderVendor = tmpVendor;
+
+  const char *tmpRenderer = (const char*) glGetString(GL_RENDERER);
+  m_RenderRenderer.clear();
+  if (tmpRenderer != NULL)
+    m_RenderRenderer = tmpRenderer;
 
   m_RenderExtensions  = " ";
-  m_RenderExtensions += (const char*) glGetString(GL_EXTENSIONS);
+
+  const char *tmpExtensions = (const char*) glGetString(GL_EXTENSIONS);
+  if (tmpExtensions != NULL)
+  {
+    m_RenderExtensions += tmpExtensions;
+  }
+
   m_RenderExtensions += " ";
 
   LogGraphicsInfo();
@@ -573,7 +586,7 @@ void CRenderSystemGLES::InitialiseGUIShader()
     m_pGUIshader = new CGUIShader*[SM_ESHADERCOUNT];
     for (int i = 0; i < SM_ESHADERCOUNT; i++)
     {
-      if (i == SM_TEXTURE_RGBA_OES)
+      if (i == SM_TEXTURE_RGBA_OES || i == SM_TEXTURE_RGBA_BOB_OES)
       {
         if (!g_Windowing.IsExtSupported("GL_OES_EGL_image_external"))
         {

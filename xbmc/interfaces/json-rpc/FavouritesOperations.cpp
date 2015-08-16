@@ -21,10 +21,10 @@
 #include "FavouritesOperations.h"
 #include "filesystem/FavouritesDirectory.h"
 #include "input/ButtonTranslator.h"
-#include "utils/RegExp.h"
 #include "utils/StringUtils.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "guilib/WindowIDs.h"
 #include <vector>
 

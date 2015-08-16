@@ -45,7 +45,7 @@ class CDVDInputStreamPVRManager
 public:
   CDVDInputStreamPVRManager(IDVDPlayer* pPlayer);
   virtual ~CDVDInputStreamPVRManager();
-  virtual bool Open(const char* strFile, const std::string &content);
+  virtual bool Open(const char* strFile, const std::string &content, bool contentLookup);
   virtual void Close();
   virtual int Read(uint8_t* buf, int buf_size);
   virtual int64_t Seek(int64_t offset, int whence);
@@ -59,7 +59,7 @@ public:
   bool                SelectChannel(const PVR::CPVRChannelPtr &channel);
   bool                NextChannel(bool preview = false);
   bool                PrevChannel(bool preview = false);
-  PVR::CPVRChannelPtr GetSelectedChannel() const;
+  PVR::CPVRChannelPtr GetSelectedChannel();
 
   int             GetTotalTime();
   int             GetTime();

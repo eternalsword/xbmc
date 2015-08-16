@@ -22,47 +22,39 @@
 #include "system.h"
 #include "GUIWindowFullScreen.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
-#include "Util.h"
+#include "messaging/ApplicationMessenger.h"
 #ifdef HAS_VIDEO_PLAYBACK
 #include "cores/VideoRenderers/RenderManager.h"
 #endif
 #include "GUIInfoManager.h"
 #include "guilib/GUIProgressControl.h"
-#include "guilib/GUIAudioManager.h"
 #include "guilib/GUILabelControl.h"
 #include "video/dialogs/GUIDialogVideoOSD.h"
-#include "guilib/GUIFontManager.h"
-#include "guilib/GUITextLayout.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
 #include "video/dialogs/GUIDialogFullScreenInfo.h"
-#include "dialogs/GUIDialogNumeric.h"
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
 #include "video/VideoReferenceClock.h"
-#include "settings/AdvancedSettings.h"
 #include "utils/CPUInfo.h"
 #include "guilib/LocalizeStrings.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "utils/TimeUtils.h"
-#include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
 #include "XBDateTime.h"
 #include "input/ButtonTranslator.h"
 #include "windowing/WindowingFactory.h"
 #include "cores/IPlayer.h"
-#include "filesystem/File.h"
-#include "utils/SeekHandler.h"
+#include "guiinfo/GUIInfoLabels.h"
 
 #include <stdio.h>
 #include <algorithm>
 #if defined(TARGET_DARWIN)
 #include "linux/LinuxResourceCounter.h"
 #endif
+
+using namespace KODI::MESSAGING;
 
 #define BLUE_BAR                          0
 #define LABEL_ROW1                       10
@@ -130,6 +122,17 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
     }
   }
 
+  if (CSettings::Get().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH) &&
+      g_infoManager.IsPlayerChannelPreviewActive() &&
+      CButtonTranslator::GetInstance().GetGlobalAction(action.GetButtonCode()).GetID() == ACTION_SELECT_ITEM)
+  {
+    // If confirm channel switch is active, channel preview is currently shown
+    // and the button that caused this action matches global action "Select" (OK)
+    // switch to the channel currently displayed within the preview.
+    g_application.m_pPlayer->SwitchChannel(g_application.CurrentFileItem().GetPVRChannelInfoTag());
+    return true;
+  }
+
   switch (action.GetID())
   {
   case ACTION_SHOW_OSD:
@@ -191,7 +194,7 @@ bool CGUIWindowFullScreen::OnAction(const CAction &action)
       if (pDialog)
       {
         CFileItem item(g_application.CurrentFileItem());
-        pDialog->DoModal();
+        pDialog->Open();
         return true;
       }
       break;
@@ -431,9 +434,8 @@ void CGUIWindowFullScreen::FrameMove()
                                        , clockspeed - 100.0
                                        , g_renderManager.GetVSyncState().c_str());
 
-      strGeneralFPS = StringUtils::Format("%s\nW( fps:%02.2f %s )\n%s"
+      strGeneralFPS = StringUtils::Format("%s\nW( %s )\n%s"
                                           , strGeneral.c_str()
-                                          , g_infoManager.GetFPS()
                                           , strCores.c_str(), strClock.c_str() );
 
       CGUIMessage msg(GUI_MSG_LABEL_SET, GetID(), LABEL_ROW3);
@@ -647,7 +649,7 @@ void CGUIWindowFullScreen::ToggleOSD()
     if (pOSD->IsDialogRunning())
       pOSD->Close();
     else
-      pOSD->DoModal();
+      pOSD->Open();
   }
 
   MarkDirtyRegion();
@@ -659,6 +661,6 @@ void CGUIWindowFullScreen::TriggerOSD()
   if (pOSD && !pOSD->IsDialogRunning())
   {
     pOSD->SetAutoClose(3000);
-    pOSD->DoModal();
+    pOSD->Open();
   }
 }

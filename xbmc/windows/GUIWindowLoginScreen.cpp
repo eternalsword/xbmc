@@ -20,12 +20,11 @@
 
 #include "system.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "GUIWindowLoginScreen.h"
 #include "profiles/Profile.h"
 #include "profiles/ProfilesManager.h"
 #include "profiles/dialogs/GUIDialogProfileSettings.h"
-#include "profiles/windows/GUIWindowSettingsProfile.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "GUIPassword.h"
 #ifdef HAS_JSONRPC
@@ -35,10 +34,10 @@
 #include "utils/log.h"
 #include "utils/Weather.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "network/Network.h"
 #include "addons/Skin.h"
 #include "guilib/GUIMessage.h"
-#include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/StereoscopicsManager.h"
 #include "dialogs/GUIDialogOK.h"
@@ -50,6 +49,9 @@
 #include "view/ViewState.h"
 #include "pvr/PVRManager.h"
 #include "ContextMenuManager.h"
+#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
+
+using namespace KODI::MESSAGING;
 
 #define CONTROL_BIG_LIST               52
 #define CONTROL_LABEL_HEADER            2
@@ -114,7 +116,7 @@ bool CGUIWindowLoginScreen::OnMessage(CGUIMessage& message)
           else
           {
             if (!bCanceled && iItem != 0)
-              CGUIDialogOK::ShowAndGetInput(20068,20117,20022,20022);
+              CGUIDialogOK::ShowAndGetInput(CVariant{20068}, CVariant{20117});
           }
         }
       }
@@ -239,9 +241,9 @@ bool CGUIWindowLoginScreen::OnPopupMenu(int iItem)
   if (choice == 2)
   {
     if (g_passwordManager.CheckLock(CProfilesManager::Get().GetMasterProfile().getLockMode(),CProfilesManager::Get().GetMasterProfile().getLockCode(),20075))
-      g_passwordManager.iMasterLockRetriesLeft = CSettings::Get().GetInt("masterlock.maxretries");
+      g_passwordManager.iMasterLockRetriesLeft = CSettings::Get().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES);
     else // be inconvenient
-      CApplicationMessenger::Get().Shutdown();
+      CApplicationMessenger::Get().PostMsg(TMSG_SHUTDOWN);
 
     return true;
   }
@@ -255,7 +257,7 @@ bool CGUIWindowLoginScreen::OnPopupMenu(int iItem)
     m_vecItems->Get(iItem)->Select(bSelect);
 
   if (choice >= CONTEXT_BUTTON_FIRST_ADDON)
-    return CContextMenuManager::Get().Execute(choice, pItem);
+    return CContextMenuManager::Get().OnClick(choice, pItem);
   return false;
 }
 
@@ -276,6 +278,9 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   // stop PVR related services
   g_application.StopPVRManager();
+
+  // stop audio DSP services with a blocking message
+  CApplicationMessenger::Get().SendMsg(TMSG_SETAUDIODSPSTATE, ACTIVE_AE_DSP_STATE_OFF);
 
   if (profile != 0 || !CProfilesManager::Get().IsMasterProfile())
   {
@@ -303,8 +308,7 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   // reload the add-ons, or we will first load all add-ons from the master account without checking disabled status
   ADDON::CAddonMgr::Get().ReInit();
 
-  bool fallbackLanguage = false;
-  if (!g_application.LoadLanguage(true, fallbackLanguage))
+  if (!g_application.LoadLanguage(true))
   {
     CLog::Log(LOGFATAL, "CGUIWindowLoginScreen: unable to load language for profile \"%s\"", CProfilesManager::Get().GetCurrentProfile().getName().c_str());
     return;
@@ -312,9 +316,6 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   g_weatherManager.Refresh();
   g_application.SetLoggingIn(true);
-
-  if (fallbackLanguage)
-    CGUIDialogOK::ShowAndGetInput("Failed to load language", "We were unable to load your configured language. Please check your language settings.");
 
 #ifdef HAS_JSONRPC
   JSONRPC::CJSONRPC::Initialize();
@@ -326,8 +327,22 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   // start PVR related services
   g_application.StartPVRManager();
 
-  g_windowManager.ChangeActiveWindow(g_SkinInfo->GetFirstWindow());
+  int firstWindow = g_SkinInfo->GetFirstWindow();
+  // the startup window is considered part of the initialization as it most likely switches to the final window
+  bool uiInitializationFinished = firstWindow != WINDOW_STARTUP_ANIM;
+
+  g_windowManager.ChangeActiveWindow(firstWindow);
 
   g_application.UpdateLibraries();
   CStereoscopicsManager::Get().Initialize();
+
+  // start audio DSP related services with a blocking message
+  CApplicationMessenger::Get().SendMsg(TMSG_SETAUDIODSPSTATE, ACTIVE_AE_DSP_STATE_ON);
+
+  // if the user interfaces has been fully initialized let everyone know
+  if (uiInitializationFinished)
+  {
+    CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UI_READY);
+    g_windowManager.SendThreadMessage(msg);
+  }
 }

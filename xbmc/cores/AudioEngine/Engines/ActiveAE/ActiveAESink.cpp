@@ -27,6 +27,7 @@
 #include "cores/AudioEngine/AEResampleFactory.h"
 
 #include "settings/Settings.h"
+#include "utils/log.h"
 
 #include <new> // for std::bad_alloc
 #include <algorithm>
@@ -570,13 +571,13 @@ void CActiveAESink::EnumerateSinkList(bool force)
   CAESinkFactory::EnumerateEx(m_sinkInfoList);
   while(m_sinkInfoList.size() == 0 && c_retry > 0)
   {
-    CLog::Log(LOGDEBUG, "No Devices found - retry: %d", c_retry);
+    CLog::Log(LOGNOTICE, "No Devices found - retry: %d", c_retry);
     Sleep(1500);
     c_retry--;
     // retry the enumeration
     CAESinkFactory::EnumerateEx(m_sinkInfoList, true);
   }
-  CLog::Log(LOGDEBUG, "Found %lu Lists of Devices", m_sinkInfoList.size());
+  CLog::Log(LOGNOTICE, "Found %lu Lists of Devices", m_sinkInfoList.size());
   PrintSinks();
 }
 
@@ -584,16 +585,16 @@ void CActiveAESink::PrintSinks()
 {
   for (AESinkInfoList::iterator itt = m_sinkInfoList.begin(); itt != m_sinkInfoList.end(); ++itt)
   {
-    CLog::Log(LOGDEBUG, "Enumerated %s devices:", itt->m_sinkName.c_str());
+    CLog::Log(LOGNOTICE, "Enumerated %s devices:", itt->m_sinkName.c_str());
     int count = 0;
     for (AEDeviceInfoList::iterator itt2 = itt->m_deviceInfoList.begin(); itt2 != itt->m_deviceInfoList.end(); ++itt2)
     {
-      CLog::Log(LOGDEBUG, "    Device %d", ++count);
+      CLog::Log(LOGNOTICE, "    Device %d", ++count);
       CAEDeviceInfo& info = *itt2;
       std::stringstream ss((std::string)info);
       std::string line;
       while(std::getline(ss, line, '\n'))
-        CLog::Log(LOGDEBUG, "        %s", line.c_str());
+        CLog::Log(LOGNOTICE, "        %s", line.c_str());
     }
   }
 }
@@ -921,7 +922,7 @@ void CActiveAESink::SetSilenceTimer()
   if (m_extStreaming)
     m_extSilenceTimeout = XbmcThreads::EndTime::InfiniteValue;
   else if (m_extAppFocused)
-    m_extSilenceTimeout = CSettings::Get().GetInt("audiooutput.streamsilence") * 60000;
+    m_extSilenceTimeout = CSettings::Get().GetInt(CSettings::SETTING_AUDIOOUTPUT_STREAMSILENCE) * 60000;
   else
     m_extSilenceTimeout = 0;
   m_extSilenceTimer.Set(m_extSilenceTimeout);

@@ -15,7 +15,7 @@ DEPENDS = \
 	python26 libshairplay \
 	libplist libcec libbluray boost tinyxml dummy-libxbmc \
 	libamplayer libssh taglib libusb libnfs libmp3lame \
-	pythonmodule-pil libxslt ffmpeg
+	pythonmodule-pil libxslt ffmpeg platform crossguid
 
 FFMPEG_DEPENDS = gnutls
 
@@ -56,6 +56,7 @@ endif
 ALSA_LIB=
 LINUX_SYSTEM_LIBS=
 ifeq ($(OS),linux)
+  DEPENDS += libuuid
   #not for raspberry pi
   ifneq ($(TARGET_PLATFORM),raspberry-pi)
     DEPENDS += libsdl2 linux-system-libs
@@ -97,6 +98,10 @@ pythonmodule-pil: $(ZLIB) libjpeg-turbo libpng freetype2 python26
 libsdl2: $(LINUX_SYSTEM_LIBS)
 libxslt: libgcrypt
 ffmpeg: $(ICONV) $(ZLIB) bzip2 libvorbis $(FFMPEG_DEPENDS)
+libcec: platform
+ifeq ($(OS),linux)
+crossguid: libuuid
+endif
 
 .installed-$(PLATFORM): $(DEPENDS)
 	touch $@
@@ -131,6 +136,10 @@ linux-system-libs:
 	[ -f $(PREFIX)/lib/pkgconfig/xdmcp.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/xdmcp.pc $(PREFIX)/lib/pkgconfig/xdmcp.pc
 	[ -f $(PREFIX)/lib/pkgconfig/xext.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/xext.pc $(PREFIX)/lib/pkgconfig/xext.pc
 	[ -f $(PREFIX)/lib/pkgconfig/xextproto.pc ] || ln -s /usr/share/pkgconfig/xextproto.pc $(PREFIX)/lib/pkgconfig/xextproto.pc
+	[ -f $(PREFIX)/lib/pkgconfig/xrandr.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/xrandr.pc $(PREFIX)/lib/pkgconfig/xrandr.pc
+	[ -f $(PREFIX)/lib/pkgconfig/xrender.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/xrender.pc $(PREFIX)/lib/pkgconfig/xrender.pc
+	[ -f $(PREFIX)/lib/pkgconfig/randrproto.pc ] || ln -s /usr/share/pkgconfig/randrproto.pc $(PREFIX)/lib/pkgconfig/randrproto.pc
+	[ -f $(PREFIX)/lib/pkgconfig/renderproto.pc ] || ln -s /usr/share/pkgconfig/renderproto.pc $(PREFIX)/lib/pkgconfig/renderproto.pc
 	[ -f $(PREFIX)/lib/pkgconfig/xt.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/xt.pc $(PREFIX)/lib/pkgconfig/xt.pc
 	[ -f $(PREFIX)/lib/pkgconfig/ice.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/ice.pc $(PREFIX)/lib/pkgconfig/ice.pc
 	[ -f $(PREFIX)/lib/pkgconfig/sm.pc ] || ln -s /usr/lib/$(HOST)/pkgconfig/sm.pc $(PREFIX)/lib/pkgconfig/sm.pc

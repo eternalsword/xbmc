@@ -28,6 +28,7 @@
 
 class TiXmlElement;
 class CAddonCallbacksAddon;
+class CVariant;
 
 typedef struct cp_plugin_info_t cp_plugin_info_t;
 typedef struct cp_extension_t cp_extension_t;
@@ -41,6 +42,13 @@ namespace ADDON
 const std::string   TranslateType(const TYPE &type, bool pretty=false);
 const std::string   GetIcon(const TYPE &type);
       TYPE          TranslateType(const std::string &string);
+
+void OnEnabled(const std::string& id);
+void OnDisabled(const std::string& id);
+void OnPreInstall(const AddonPtr& addon);
+void OnPostInstall(const AddonPtr& addon, bool update, bool modal);
+void OnPreUnInstall(const AddonPtr& addon);
+void OnPostUnInstall(const AddonPtr& addon);
 
 class AddonProps : public ISerializable
 {
@@ -107,13 +115,13 @@ public:
    \return true if the addon has settings, false otherwise
    \sa LoadSettings, LoadUserSettings, SaveSettings, HasUserSettings, GetSetting, UpdateSetting
    */
-  bool HasSettings();
+  virtual bool HasSettings();
 
   /*! \brief Check whether the user has configured this addon or not
    \return true if previously saved settings are found, false otherwise
    \sa LoadSettings, LoadUserSettings, SaveSettings, HasSettings, GetSetting, UpdateSetting
    */
-  bool HasUserSettings();
+  virtual bool HasUserSettings();
 
   /*! \brief Save any user configured settings
    \sa LoadSettings, LoadUserSettings, HasSettings, HasUserSettings, GetSetting, UpdateSetting
@@ -125,7 +133,7 @@ public:
    \param value the value that the setting should take
    \sa LoadSettings, LoadUserSettings, SaveSettings, HasSettings, HasUserSettings, GetSetting
    */
-  void UpdateSetting(const std::string& key, const std::string& value);
+  virtual void UpdateSetting(const std::string& key, const std::string& value);
 
   /*! \brief Retrieve a particular settings value
    If a previously configured user setting is available, we return it's value, else we return the default (if available)
@@ -140,12 +148,14 @@ public:
 
   // properties
   TYPE Type() const { return m_props.type; }
+  virtual TYPE FullType() const { return Type(); }
   bool IsType(TYPE type) const { return type == m_props.type; }
   AddonProps Props() const { return m_props; }
   AddonProps& Props() { return m_props; }
   const std::string ID() const { return m_props.id; }
   const std::string Name() const { return m_props.name; }
-  bool Enabled() const { return m_enabled; }
+  /*! This lies. Ask CAddonMgr */
+  bool Enabled() const { return true; }
   virtual bool IsInUse() const { return false; };
   const AddonVersion Version() const { return m_props.version; }
   const AddonVersion MinVersion() const { return m_props.minversion; }
@@ -176,8 +186,6 @@ public:
   bool MeetsVersion(const AddonVersion &version) const;
   virtual bool ReloadSettings();
 
-  void MarkAsDisabled() { m_enabled = false; }
-
   /*! \brief callback for when this add-on is disabled.
    Use to perform any needed actions (e.g. stop a service)
    */
@@ -192,9 +200,8 @@ public:
    */
   virtual AddonPtr GetRunningInstance() const { return AddonPtr(); }
 
-  /*! \brief callbacks for special install/uninstall behaviour */
-  virtual bool OnPreInstall() { return false; };
-  virtual void OnPostInstall(bool restart, bool update, bool modal) {};
+  virtual void OnPreInstall() {};
+  virtual void OnPostInstall(bool update, bool modal) {};
   virtual void OnPreUnInstall() {};
   virtual void OnPostUnInstall() {};
   virtual bool CanInstall(const std::string& referer) { return true; }
@@ -215,7 +222,12 @@ protected:
    \return true if user settings exist, false otherwise
    \sa LoadSettings, SaveSettings, HasSettings, HasUserSettings, GetSetting, UpdateSetting
    */
-  bool LoadUserSettings();
+  virtual bool LoadUserSettings();
+
+  /* \brief Whether there are settings to be saved
+   \sa SaveSettings
+   */
+  virtual bool HasSettingsToSave() const;
 
   /*! \brief Parse settings from an XML document
    \param doc XML document to parse for settings
@@ -223,13 +235,13 @@ protected:
    \return true if settings are loaded, false otherwise
    \sa SettingsToXML
    */
-  bool SettingsFromXML(const CXBMCTinyXML &doc, bool loadDefaults = false);
+  virtual bool SettingsFromXML(const CXBMCTinyXML &doc, bool loadDefaults = false);
 
-  /*! \brief Parse settings into an XML document
+  /*! \brief Write settings into an XML document
    \param doc XML document to receive the settings
    \sa SettingsFromXML
    */
-  void SettingsToXML(CXBMCTinyXML &doc) const;
+  virtual void SettingsToXML(CXBMCTinyXML &doc) const;
 
   CXBMCTinyXML      m_addonXmlDoc;
   std::string       m_strLibName;
@@ -242,11 +254,6 @@ private:
   std::string        m_userSettingsPath;
   void BuildProfilePath();
 
-  virtual bool IsAddonLibrary() { return false; }
-
-  void Enable() { LoadStrings(); m_enabled = true; }
-  void Disable() { m_enabled = false; ClearStrings();}
-
   virtual bool LoadStrings();
   virtual void ClearStrings();
 
@@ -255,7 +262,6 @@ private:
   bool m_hasSettings;
 
   std::string m_profile;
-  bool        m_enabled;
   CLocalizeStrings  m_strings;
   std::map<std::string, std::string> m_settings;
 };
@@ -269,7 +275,6 @@ public:
   virtual AddonPtr Clone() const;
 
 private:
-  virtual bool IsAddonLibrary() { return true; }
   TYPE SetAddonType();
   const TYPE m_addonType; // addon type this library enhances
 };

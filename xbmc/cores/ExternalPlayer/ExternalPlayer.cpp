@@ -20,8 +20,6 @@
 
 #include "threads/SystemClock.h"
 #include "system.h"
-#include "signal.h"
-#include "limits.h"
 #include "CompileInfo.h"
 #include "threads/SingleLock.h"
 #include "ExternalPlayer.h"
@@ -36,8 +34,8 @@
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "utils/XMLUtils.h"
-#include "utils/TimeUtils.h"
 #include "utils/log.h"
+#include "utils/Variant.h"
 #include "cores/AudioEngine/AEFactory.h"
 #include "input/InputManager.h"
 #if defined(TARGET_WINDOWS)
@@ -341,13 +339,14 @@ void CExternalPlayer::Process()
     {
       CSingleLock lock(g_graphicsContext);
       m_dialog = (CGUIDialogOK *)g_windowManager.GetWindow(WINDOW_DIALOG_OK);
-      m_dialog->SetHeading(23100);
-      m_dialog->SetLine(1, 23104);
-      m_dialog->SetLine(2, 23105);
-      m_dialog->SetLine(3, 23106);
+      m_dialog->SetHeading(CVariant{23100});
+      m_dialog->SetLine(1, CVariant{23104});
+      m_dialog->SetLine(2, CVariant{23105});
+      m_dialog->SetLine(3, CVariant{23106});
     }
 
-    if (!m_bAbortRequest) m_dialog->DoModal();
+    if (!m_bAbortRequest)
+      m_dialog->Open();
   }
 
   m_bIsPlaying = false;
@@ -484,14 +483,14 @@ BOOL CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strP
 {
   CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
 
-  int ret = CXBMCApp::StartActivity(strSwitches, "android.intent.action.VIEW", "video/*", strPath);
+  bool ret = CXBMCApp::StartActivity(strSwitches, "android.intent.action.VIEW", "video/*", strPath);
 
-  if (ret != 0)
+  if (!ret)
   {
-    CLog::Log(LOGNOTICE, "%s: Failure: %d", __FUNCTION__, ret);
+    CLog::Log(LOGNOTICE, "%s: Failure", __FUNCTION__);
   }
 
-  return ret == 0;
+  return ret;
 }
 #endif
 

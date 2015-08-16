@@ -26,12 +26,12 @@
 #include "threads/Thread.h"
 #include "interfaces/IAnnouncer.h"
 #include "interfaces/generic/ILanguageInvocationHandler.h"
-#include "addons/IAddon.h"
 
 #include <memory>
 #include <vector>
 
 class CPythonInvoker;
+class CVariant;
 
 typedef struct {
   int id;

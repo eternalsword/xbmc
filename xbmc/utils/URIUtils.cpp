@@ -27,7 +27,6 @@
 #include "filesystem/StackDirectory.h"
 #include "network/DNSNameCache.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/MediaSettings.h"
 #include "URL.h"
 #include "StringUtils.h"
 
@@ -267,7 +266,8 @@ bool URIUtils::HasParentInHostname(const CURL& url)
       || url.IsProtocol("rar")
       || url.IsProtocol("apk")
       || url.IsProtocol("bluray")
-      || url.IsProtocol("udf");
+      || url.IsProtocol("udf")
+      || url.IsProtocol("xbt");
 }
 
 bool URIUtils::HasEncodedHostname(const CURL& url)
@@ -955,24 +955,12 @@ bool URIUtils::IsUPnP(const std::string& strFile)
   return IsProtocol(strFile, "upnp");
 }
 
-bool URIUtils::IsHDHomeRun(const std::string& strFile)
-{
-  return IsProtocol(strFile, "hdhomerun");
-}
-
-bool URIUtils::IsSlingbox(const std::string& strFile)
-{
-  return IsProtocol(strFile, "sling");
-}
-
 bool URIUtils::IsLiveTV(const std::string& strFile)
 {
   std::string strFileWithoutSlash(strFile);
   RemoveSlashAtEnd(strFileWithoutSlash);
 
-  if (IsHDHomeRun(strFile)
-  || IsSlingbox(strFile)
-  || IsProtocol(strFile, "sap")
+  if (IsProtocol(strFile, "sap")
   ||(StringUtils::EndsWithNoCase(strFileWithoutSlash, ".pvr") && !PathStarts(strFileWithoutSlash, "pvr://recordings")))
     return true;
 

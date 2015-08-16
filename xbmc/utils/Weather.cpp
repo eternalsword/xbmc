@@ -42,7 +42,6 @@
 #include "log.h"
 #include "addons/AddonManager.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
-#include "CharsetConverter.h"
 #include "addons/GUIDialogAddonSettings.h"
 
 using namespace std;
@@ -58,16 +57,12 @@ using namespace XFILE;
 #define LOCALIZED_TOKEN_FIRSTID4    71
 #define LOCALIZED_TOKEN_LASTID4     97
 
+static const std::string IconAddonPath = "resource://resource.images.weathericons.default";
+
 /*
 FIXME'S
 >strings are not centered
 */
-
-#define WEATHER_BASE_PATH "special://temp/weather/"
-#define WEATHER_ICON_PATH "special://temp/weather/"
-#define WEATHER_SOURCE_FILE "special://xbmc/media/weather.zip"
-
-bool CWeatherJob::m_imagesOkay = false;
 
 CWeatherJob::CWeatherJob(int location)
 {
@@ -81,7 +76,7 @@ bool CWeatherJob::DoWork()
     return false;
 
   AddonPtr addon;
-  if (!ADDON::CAddonMgr::Get().GetAddon(CSettings::Get().GetString("weather.addon"), addon, ADDON_SCRIPT_WEATHER))
+  if (!ADDON::CAddonMgr::Get().GetAddon(CSettings::Get().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER))
     return false;
 
   // initialize our sys.argv variables
@@ -102,12 +97,6 @@ bool CWeatherJob::DoWork()
       if (!CScriptInvocationManager::Get().IsRunning(scriptId))
         break;
       Sleep(100);
-    }
-    if (!m_imagesOkay)
-    {
-      CDirectory::Create(WEATHER_BASE_PATH);
-      g_ZipManager.ExtractArchive(WEATHER_SOURCE_FILE, WEATHER_BASE_PATH);
-      m_imagesOkay = true;
     }
 
     SetFromProperties();
@@ -162,8 +151,8 @@ void CWeatherJob::FormatTemperature(std::string &text, int temp)
 void CWeatherJob::LoadLocalizedToken()
 {
   // We load the english strings in to get our tokens
-  std::string language = CORE_LANGUAGE_DEFAULT;
-  CSettingString* languageSetting = static_cast<CSettingString*>(CSettings::Get().GetSetting("locale.language"));
+  std::string language = LANGUAGE_DEFAULT;
+  CSettingString* languageSetting = static_cast<CSettingString*>(CSettings::Get().GetSetting(CSettings::SETTING_LOCALE_LANGUAGE));
   if (languageSetting != NULL)
     language = languageSetting->GetDefault();
 
@@ -249,7 +238,7 @@ static std::string ConstructPath(std::string in) // copy intended
   if (in.empty() || in == "N/A")
     in = "na.png";
 
-  return URIUtils::AddFileToFolder(WEATHER_ICON_PATH,in);
+  return URIUtils::AddFileToFolder(IconAddonPath, in);
 }
 
 void CWeatherJob::SetFromProperties()
@@ -323,7 +312,7 @@ CWeather::~CWeather(void)
 std::string CWeather::BusyInfo(int info) const
 {
   if (info == WEATHER_IMAGE_CURRENT_ICON)
-    return URIUtils::AddFileToFolder(WEATHER_ICON_PATH,"na.png");
+    return URIUtils::AddFileToFolder(IconAddonPath, "na.png");
 
   return CInfoLoader::BusyInfo(info);
 }
@@ -382,7 +371,7 @@ const day_forecast &CWeather::GetForecast(int day) const
  */
 void CWeather::SetArea(int iLocation)
 {
-  CSettings::Get().SetInt("weather.currentlocation", iLocation);
+  CSettings::Get().SetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION, iLocation);
   CSettings::Get().Save();
 }
 
@@ -392,7 +381,7 @@ void CWeather::SetArea(int iLocation)
  */
 int CWeather::GetArea() const
 {
-  return CSettings::Get().GetInt("weather.currentlocation");
+  return CSettings::Get().GetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION);
 }
 
 CJob *CWeather::GetJob() const
@@ -412,7 +401,7 @@ void CWeather::OnSettingChanged(const CSetting *setting)
     return;
 
   const std::string settingId = setting->GetId();
-  if (settingId == "weather.addon")
+  if (settingId == CSettings::SETTING_WEATHER_ADDON)
   {
     // clear "WeatherProviderLogo" property that some weather addons set
     CGUIWindow* window = g_windowManager.GetWindow(WINDOW_WEATHER);
@@ -427,10 +416,10 @@ void CWeather::OnSettingAction(const CSetting *setting)
     return;
 
   const std::string settingId = setting->GetId();
-  if (settingId == "weather.addonsettings")
+  if (settingId == CSettings::SETTING_WEATHER_ADDONSETTINGS)
   {
     AddonPtr addon;
-    if (CAddonMgr::Get().GetAddon(CSettings::Get().GetString("weather.addon"), addon, ADDON_SCRIPT_WEATHER) && addon != NULL)
+    if (CAddonMgr::Get().GetAddon(CSettings::Get().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER) && addon != NULL)
     { // TODO: maybe have ShowAndGetInput return a bool if settings changed, then only reset weather if true.
       CGUIDialogAddonSettings::ShowAndGetInput(addon);
       Refresh();

@@ -23,7 +23,7 @@
 #include "Application.h"
 #include "InputManager.h"
 #include "input/Key.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "guilib/Geometry.h"
 #include "guilib/GUIAudioManager.h"
 #include "guilib/GUIControl.h"
@@ -73,6 +73,7 @@
 using EVENTSERVER::CEventServer;
 #endif
 
+using namespace KODI::MESSAGING;
 using PERIPHERALS::CPeripherals;
 
 CInputManager& CInputManager::Get()
@@ -95,7 +96,7 @@ void CInputManager::InitializeInputs()
   m_Keyboard.Initialize();
 
   m_Mouse.Initialize();
-  m_Mouse.SetEnabled(CSettings::Get().GetBool("input.enablemouse"));
+  m_Mouse.SetEnabled(CSettings::Get().GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
 }
 
 void CInputManager::ReInitializeJoystick()
@@ -457,11 +458,30 @@ bool CInputManager::OnEvent(XBMC_Event& newEvent)
   switch (newEvent.type)
   {
   case XBMC_KEYDOWN:
+  {
     m_Keyboard.ProcessKeyDown(newEvent.key.keysym);
-    OnKey(m_Keyboard.TranslateKey(newEvent.key.keysym));
+    CKey key = m_Keyboard.TranslateKey(newEvent.key.keysym);
+    if (!CButtonTranslator::GetInstance().HasLonpressMapping(g_windowManager.GetActiveWindowID(), key))
+    {
+      m_LastKey.Reset();
+      OnKey(key);
+    }
+    else
+    {
+      if (key.GetButtonCode() != m_LastKey.GetButtonCode() && key.GetButtonCode() & CKey::MODIFIER_LONG)
+      {
+        m_LastKey = key;  // OnKey is reentrant; need to do this before entering
+        OnKey(key);
+      }
+      m_LastKey = key;
+    }
     break;
+  }
   case XBMC_KEYUP:
     m_Keyboard.ProcessKeyUp();
+    if (m_LastKey.GetButtonCode() != KEY_INVALID && !(m_LastKey.GetButtonCode() & CKey::MODIFIER_LONG))
+      OnKey(m_LastKey);
+    m_LastKey.Reset();
     break;
   case XBMC_MOUSEBUTTONDOWN:
   case XBMC_MOUSEBUTTONUP:
@@ -476,12 +496,13 @@ bool CInputManager::OnEvent(XBMC_Event& newEvent)
       g_application.OnAction(CAction(ACTION_MOUSE_MOVE, 0, newEvent.touch.x, newEvent.touch.y, 0, 0));
     }
     int actionId = 0;
+    std::string actionString;
     if (newEvent.touch.action == ACTION_GESTURE_BEGIN || newEvent.touch.action == ACTION_GESTURE_END)
       actionId = newEvent.touch.action;
     else
     {
       int iWin = g_windowManager.GetActiveWindowID();
-      CButtonTranslator::GetInstance().TranslateTouchAction(iWin, newEvent.touch.action, newEvent.touch.pointers, actionId);
+      CButtonTranslator::GetInstance().TranslateTouchAction(iWin, newEvent.touch.action, newEvent.touch.pointers, actionId, actionString);
     }
 
     if (actionId <= 0)
@@ -489,9 +510,17 @@ bool CInputManager::OnEvent(XBMC_Event& newEvent)
 
     if ((actionId >= ACTION_TOUCH_TAP && actionId <= ACTION_GESTURE_END)
         || (actionId >= ACTION_MOUSE_START && actionId <= ACTION_MOUSE_END))
-        CApplicationMessenger::Get().SendAction(CAction(actionId, 0, newEvent.touch.x, newEvent.touch.y, newEvent.touch.x2, newEvent.touch.y2), WINDOW_INVALID, false);
+    {
+      auto action = new CAction(actionId, 0, newEvent.touch.x, newEvent.touch.y, newEvent.touch.x2, newEvent.touch.y2);
+      CApplicationMessenger::Get().PostMsg(TMSG_GUI_ACTION, WINDOW_INVALID, -1, static_cast<void*>(action));
+    }
     else
-      CApplicationMessenger::Get().SendAction(CAction(actionId), WINDOW_INVALID, false);
+    {
+      if (actionId == ACTION_BUILT_IN_FUNCTION && !actionString.empty())
+        CApplicationMessenger::Get().PostMsg(TMSG_GUI_ACTION, WINDOW_INVALID, -1, static_cast<void*>(new CAction(actionId, actionString)));
+      else
+        CApplicationMessenger::Get().PostMsg(TMSG_GUI_ACTION, WINDOW_INVALID, -1, static_cast<void*>(new CAction(actionId)));
+    }
 
     // Post an unfocus message for touch device after the action.
     if (newEvent.touch.action == ACTION_GESTURE_END || newEvent.touch.action == ACTION_TOUCH_TAP)
@@ -535,12 +564,14 @@ bool CInputManager::OnKey(const CKey& key)
     if (StringUtils::StartsWithNoCase(action.GetName(), "CECToggleState"))
     {
       CLog::LogF(LOGDEBUG, "action %s [%d], toggling state of playing device", action.GetName().c_str(), action.GetID());
-      if (!CApplicationMessenger::Get().CECToggleState())
+      bool result;
+      CApplicationMessenger::Get().SendMsg(TMSG_CECTOGGLESTATE, 0, 0, static_cast<void*>(&result));
+      if (!result)
         return true;
     }
     else
     {
-      CApplicationMessenger::Get().CECStandby();
+      CApplicationMessenger::Get().PostMsg(TMSG_CECSTANDBY);
       return true;
     }
   }
@@ -824,11 +855,11 @@ void CInputManager::OnSettingChanged(const CSetting *setting)
     return;
 
   const std::string &settingId = setting->GetId();
-  if (settingId == "input.enablemouse")
+  if (settingId == CSettings::SETTING_INPUT_ENABLEMOUSE)
     m_Mouse.SetEnabled(dynamic_cast<const CSettingBool*>(setting)->GetValue());
 
 #if defined(HAS_SDL_JOYSTICK)
-  if (settingId == "input.enablejoystick")
+  if (settingId == CSettings::SETTING_INPUT_ENABLEJOYSTICK)
     m_Joystick.SetEnabled(dynamic_cast<const CSettingBool*>(setting)->GetValue() &&
     PERIPHERALS::CPeripheralImon::GetCountOfImonsConflictWithDInput() == 0);
 #endif

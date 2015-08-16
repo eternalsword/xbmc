@@ -28,12 +28,9 @@
 #include "FileItem.h"
 #include "music/Album.h"
 #include "music/Artist.h"
-#include "settings/Settings.h"
-#include "utils/log.h"
 
 #include <vector>
 
-using namespace std;
 using namespace XFILE;
 using namespace ADDON;
 
@@ -90,7 +87,7 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath, const ScraperPt
     }
   }
 
-  vector<ScraperPtr> vecScrapers;
+  std::vector<ScraperPtr> vecScrapers;
 
   // add selected scraper - first proirity
   if (m_info)

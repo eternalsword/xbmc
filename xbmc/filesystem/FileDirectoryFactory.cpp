@@ -20,7 +20,6 @@
 
 
 #include "system.h"
-#include "Util.h"
 #include "utils/URIUtils.h"
 #include "FileDirectoryFactory.h"
 #ifdef HAS_FILESYSTEM
@@ -33,6 +32,7 @@
 #if defined(TARGET_ANDROID)
 #include "APKDirectory.h"
 #endif
+#include "XbtDirectory.h"
 #include "ZipDirectory.h"
 #include "SmartPlaylistDirectory.h"
 #include "playlists/SmartPlayList.h"
@@ -40,8 +40,6 @@
 #include "playlists/PlayListFactory.h"
 #include "Directory.h"
 #include "File.h"
-#include "ZipManager.h"
-#include "settings/AdvancedSettings.h"
 #include "FileItem.h"
 #include "utils/StringUtils.h"
 #include "URL.h"
@@ -187,6 +185,13 @@ IFileDirectory* CFileDirectoryFactory::Create(const CURL& url, CFileItem* pItem,
 #endif
     }
     return NULL;
+  }
+  if (url.IsFileType("xbt"))
+  {
+    CURL xbtUrl = URIUtils::CreateArchivePath("xbt", url);
+    pItem->SetURL(xbtUrl);
+
+    return new CXbtDirectory();
   }
   if (url.IsFileType("xsp"))
   { // XBMC Smart playlist - just XML renamed to XSP

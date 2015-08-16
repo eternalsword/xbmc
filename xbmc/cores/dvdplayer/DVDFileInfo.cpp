@@ -18,8 +18,8 @@
  *
  */
 
+#include <string>
 #include <cstdlib>
-
 #include "threads/SystemClock.h"
 #include "DVDFileInfo.h"
 #include "FileItem.h"
@@ -28,10 +28,8 @@
 #include "video/VideoInfoTag.h"
 #include "filesystem/StackDirectory.h"
 #include "utils/log.h"
-#include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
 
-#include "DVDClock.h"
 #include "DVDStreamInfo.h"
 #include "DVDInputStreams/DVDInputStream.h"
 #ifdef HAVE_LIBBLURAY
@@ -55,7 +53,6 @@
 #include "TextureCache.h"
 #include "Util.h"
 #include "utils/LangCodeExpander.h"
-#include "pvr/PVRManager.h"
 
 
 bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
@@ -67,7 +64,7 @@ bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
   if (!input.get())
     return false;
 
-  if (!input->Open(path.c_str(), ""))
+  if (!input->Open(path.c_str(), "", true))
     return false;
 
   demux.reset(CDVDFactoryDemuxer::CreateDemuxer(input.get(), true));
@@ -123,7 +120,7 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
     return false;
   }
 
-  if (!pInputStream->Open(strPath.c_str(), ""))
+  if (!pInputStream->Open(strPath.c_str(), "", true))
   {
     CLog::Log(LOGERROR, "InputStream: Error opening, %s", redactPath.c_str());
     if (pInputStream)
@@ -349,7 +346,13 @@ bool CDVDFileInfo::GetFileStreamDetails(CFileItem *pItem)
   if (!pInputStream)
     return false;
 
-  if (pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD) || !pInputStream->Open(playablePath.c_str(), ""))
+  if (pInputStream->IsStreamType(DVDSTREAM_TYPE_PVRMANAGER))
+  {
+    delete pInputStream;
+    return false;
+  }
+
+  if (pInputStream->IsStreamType(DVDSTREAM_TYPE_DVD) || !pInputStream->Open(playablePath.c_str(), "", true))
   {
     delete pInputStream;
     return false;

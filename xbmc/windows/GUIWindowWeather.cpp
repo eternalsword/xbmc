@@ -24,14 +24,11 @@
 #include "GUIWindowWeather.h"
 #include "utils/Weather.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #ifdef HAS_PYTHON
-#include "interfaces/python/XBPython.h"
 #endif
 #include "LangInfo.h"
-#include "utils/log.h"
-#include "utils/SystemInfo.h"
 #include "utils/StringUtils.h"
-#include "addons/AddonManager.h"
 
 using namespace ADDON;
 

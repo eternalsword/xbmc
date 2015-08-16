@@ -33,7 +33,6 @@
 #include "GUIWindowKaraokeLyrics.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "utils/TimeUtils.h"
 
 CKaraokeLyricsManager::CKaraokeLyricsManager()
 {
@@ -64,7 +63,7 @@ bool CKaraokeLyricsManager::Start(const std::string & strSongPath)
     Stop();  // shouldn't happen, but...
 
   // If disabled by configuration, do nothing
-  if ( !CSettings::Get().GetBool("karaoke.enabled") )
+  if ( !CSettings::Get().GetBool(CSettings::SETTING_KARAOKE_ENABLED) )
     return false;
 
   m_Lyrics = CKaraokeLyricsFactory::CreateLyrics( strSongPath );
@@ -144,7 +143,7 @@ void CKaraokeLyricsManager::ProcessSlow()
     return;
   }
 
-  if ( !m_karaokeSongPlayed || !CSettings::Get().GetBool("karaoke.autopopupselector") )
+  if ( !m_karaokeSongPlayed || !CSettings::Get().GetBool(CSettings::SETTING_KARAOKE_AUTOPOPUPSELECTOR) )
     return;
 
   // If less than 750ms passed return; we're still processing STOP events
@@ -156,7 +155,7 @@ void CKaraokeLyricsManager::ProcessSlow()
   CGUIDialogKaraokeSongSelectorLarge * selector =
       (CGUIDialogKaraokeSongSelectorLarge*)g_windowManager.GetWindow( WINDOW_DIALOG_KARAOKE_SELECTOR );
 
-  selector->DoModal();
+  selector->Open();
 }
 
 void CKaraokeLyricsManager::SetPaused(bool now_paused)

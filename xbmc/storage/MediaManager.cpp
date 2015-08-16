@@ -31,6 +31,8 @@
 #ifdef HAS_DVD_DRIVE
 #ifndef TARGET_WINDOWS
 // TODO: switch all ports to use auto sources
+#include <map>
+#include <utility>
 #include "DetectDVDType.h"
 #include "filesystem/iso9660.h"
 #endif
@@ -47,10 +49,7 @@
 #include "utils/StringUtils.h"
 #include "AutorunMediaJob.h"
 
-#include "FileItem.h"
 #include "filesystem/File.h"
-#include "filesystem/DirectoryFactory.h"
-#include "filesystem/Directory.h"
 
 #include "cores/dvdplayer/DVDInputStreams/DVDInputStreamNavigator.h"
 
@@ -68,7 +67,9 @@
 #include "windows/Win32StorageProvider.h"
 #endif
 
-using namespace std;
+#include <string>
+#include <vector>
+
 using namespace XFILE;
 
 #ifdef HAS_DVD_DRIVE
@@ -161,7 +162,7 @@ bool CMediaManager::SaveSources()
   TiXmlNode *pNetworkNode = pRoot->InsertEndChild(networkNode);
   if (pNetworkNode)
   {
-    for (vector<CNetworkLocation>::iterator it = m_locations.begin(); it != m_locations.end(); ++it)
+    for (std::vector<CNetworkLocation>::iterator it = m_locations.begin(); it != m_locations.end(); ++it)
     {
       TiXmlElement locationNode("location");
       locationNode.SetAttribute("id", (*it).id);
@@ -542,7 +543,7 @@ std::string CMediaManager::GetDiskUniqueId(const std::string& devicePath)
 
 
   CDVDInputStreamNavigator dvdNavigator(NULL);
-  dvdNavigator.Open(pathVideoTS.c_str(), "");
+  dvdNavigator.Open(pathVideoTS.c_str(), "", true);
   std::string labelString;
   dvdNavigator.GetDVDTitleString(labelString);
   std::string serialString;
@@ -678,8 +679,8 @@ std::vector<std::string> CMediaManager::GetDiskUsage()
 void CMediaManager::OnStorageAdded(const std::string &label, const std::string &path)
 {
 #ifdef HAS_DVD_DRIVE
-  if (CSettings::Get().GetInt("audiocds.autoaction") != AUTOCD_NONE || CSettings::Get().GetBool("dvds.autorun"))
-    if (CSettings::Get().GetInt("audiocds.autoaction") == AUTOCD_RIP)
+  if (CSettings::Get().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) != AUTOCD_NONE || CSettings::Get().GetBool(CSettings::SETTING_DVDS_AUTORUN))
+    if (CSettings::Get().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) == AUTOCD_RIP)
       CJobManager::GetInstance().AddJob(new CAutorunMediaJob(label, path), this, CJob::PRIORITY_LOW);
     else
       CJobManager::GetInstance().AddJob(new CAutorunMediaJob(label, path), this, CJob::PRIORITY_HIGH);

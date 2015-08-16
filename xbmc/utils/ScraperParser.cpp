@@ -25,11 +25,9 @@
 #include "HTMLUtil.h"
 #include "addons/Scraper.h"
 #include "URL.h"
-#include "Util.h"
 #include "utils/StringUtils.h"
 #include "log.h"
 #include "CharsetConverter.h"
-#include "utils/StringUtils.h"
 #include "utils/XSLTUtils.h"
 #include "utils/XMLUtils.h"
 #include <sstream>
@@ -577,7 +575,7 @@ void CScraperParser::ClearBuffers()
 void CScraperParser::GetBufferParams(bool* result, const char* attribute, bool defvalue)
 {
   for (int iBuf=0;iBuf<MAX_SCRAPER_BUFFERS;++iBuf)
-    result[iBuf] = defvalue;;
+    result[iBuf] = defvalue;
   if (attribute)
   {
     vector<std::string> vecBufs;

@@ -18,6 +18,11 @@
  *
  */
 
+#include <algorithm>
+#include <string>
+#include <vector>
+#include <utility>
+
 #include <limits.h>
 
 #include "system.h"
@@ -36,19 +41,17 @@
 #include "utils/URIUtils.h"
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
+#include "utils/Variant.h"
 #include "filesystem/SpecialProtocol.h"
 #include "addons/IAddon.h"
 #include "addons/AddonManager.h"
 #include "addons/AudioDecoder.h"
-#include "addons/GUIDialogAddonSettings.h"
-#include "CompileInfo.h"
 #if defined(TARGET_DARWIN_IOS)
 #include "osx/DarwinUtils.h"
 #endif
 
 using namespace ADDON;
 using namespace XFILE;
-using namespace std;
 
 CAdvancedSettings::CAdvancedSettings()
 {
@@ -67,7 +70,7 @@ void CAdvancedSettings::OnSettingsLoaded()
   CLog::Log(LOGNOTICE, "Default Audio Player: %s", m_audioDefaultPlayer.c_str());
 
   // setup any logging...
-  if (CSettings::Get().GetBool("debug.showloginfo"))
+  if (CSettings::Get().GetBool(CSettings::SETTING_DEBUG_SHOWLOGINFO))
   {
     m_logLevel = std::max(m_logLevelHint, LOG_LEVEL_DEBUG_FREEMEM);
     CLog::Log(LOGNOTICE, "Enabled debug logging due to GUI setting (%d)", m_logLevel);
@@ -79,8 +82,8 @@ void CAdvancedSettings::OnSettingsLoaded()
   }
   CLog::SetLogLevel(m_logLevel);
 
-  m_extraLogEnabled = CSettings::Get().GetBool("debug.extralogging");
-  setExtraLogLevel(CSettings::Get().GetList("debug.setextraloglevel"));
+  m_extraLogEnabled = CSettings::Get().GetBool(CSettings::SETTING_DEBUG_EXTRALOGGING);
+  setExtraLogLevel(CSettings::Get().GetList(CSettings::SETTING_DEBUG_SETEXTRALOGLEVEL));
 }
 
 void CAdvancedSettings::OnSettingsUnloaded()
@@ -94,11 +97,11 @@ void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
     return;
 
   const std::string &settingId = setting->GetId();
-  if (settingId == "debug.showloginfo")
+  if (settingId == CSettings::SETTING_DEBUG_SHOWLOGINFO)
     SetDebugMode(((CSettingBool*)setting)->GetValue());
-  else if (settingId == "debug.extralogging")
+  else if (settingId == CSettings::SETTING_DEBUG_EXTRALOGGING)
     m_extraLogEnabled = static_cast<const CSettingBool*>(setting)->GetValue();
-  else if (settingId == "debug.setextraloglevel")
+  else if (settingId == CSettings::SETTING_DEBUG_SETEXTRALOGLEVEL)
     setExtraLogLevel(CSettingUtils::GetList(static_cast<const CSettingList*>(setting)));
 }
 
@@ -116,7 +119,7 @@ void CAdvancedSettings::Initialize()
   m_limiterHold = 0.025f;
   m_limiterRelease = 0.1f;
 
-  m_seekSteps = { 7, 15, 30, 60, 180, 300, 600, 900, 1800 };
+  m_seekSteps = { 10, 30, 60, 180, 300, 600, 1800 };
 
   m_omxHWAudioDecode = false;
   m_omxDecodeStartWithValidFrame = true;
@@ -166,7 +169,7 @@ void CAdvancedSettings::Initialize()
   m_DXVACheckCompatibilityPresent = false;
   m_DXVAForceProcessorRenderer = true;
   m_DXVANoDeintProcForProgressive = false;
-  m_DXVAAllowHqScaling = false;
+  m_DXVAAllowHqScaling = true;
   m_videoFpsDetect = 1;
   m_videoBusyDialogDelay_ms = 500;
   m_stagefrightConfig.useAVCcodec = -1;
@@ -255,6 +258,7 @@ void CAdvancedSettings::Initialize()
   m_fanartRes = 1080;
   m_imageRes = 720;
   m_useDDSFanart = false;
+  m_imageScalingAlgorithm = CPictureScalingAlgorithm::Default;
 
   m_sambaclienttimeout = 10;
   m_sambadoscodepage = "";
@@ -276,6 +280,7 @@ void CAdvancedSettings::Initialize()
   m_prioritiseAPEv2tags = false;
   m_musicItemSeparator = " / ";
   m_videoItemSeparator = " / ";
+  m_iMusicLibraryDateAdded = 1; // prefer mtime over ctime and current time
 
   m_bVideoLibraryAllItemsOnBottom = false;
   m_iVideoLibraryRecentlyAddedItems = 25;
@@ -319,12 +324,10 @@ void CAdvancedSettings::Initialize()
   m_playlistTimeout = 20; // 20 seconds timeout
   m_GLRectangleHack = false;
   m_iSkipLoopFilter = 0;
-  m_AllowD3D9Ex = true;
-  m_ForceD3D9Ex = false;
-  m_AllowDynamicTextures = true;
   m_RestrictCapsMask = 0;
   m_sleepBeforeFlip = 0;
   m_bVirtualShares = true;
+  m_bAllowDeferredRendering = true;
 
 //caused lots of jerks
 //#ifdef TARGET_WINDOWS
@@ -387,6 +390,8 @@ void CAdvancedSettings::Initialize()
   m_stereoscopicregex_3d = "[-. _]3d[-. _]";
   m_stereoscopicregex_sbs = "[-. _]h?sbs[-. _]";
   m_stereoscopicregex_tab = "[-. _]h?tab[-. _]";
+
+  m_videoAssFixedWorks = false;
 
   m_logLevelHint = m_logLevel = LOG_LEVEL_NORMAL;
   m_extraLogEnabled = false;
@@ -523,6 +528,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   pElement = pRootElement->FirstChildElement("video");
   if (pElement)
   {
+    XMLUtils::GetBoolean(pElement, "assfixedworks", m_videoAssFixedWorks);
     XMLUtils::GetString(pElement, "stereoscopicregex3d", m_stereoscopicregex_3d);
     XMLUtils::GetString(pElement, "stereoscopicregexsbs", m_stereoscopicregex_sbs);
     XMLUtils::GetString(pElement, "stereoscopicregextab", m_stereoscopicregex_tab);
@@ -737,6 +743,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     XMLUtils::GetString(pElement, "albumformat", m_strMusicLibraryAlbumFormat);
     XMLUtils::GetString(pElement, "albumformatright", m_strMusicLibraryAlbumFormatRight);
     XMLUtils::GetString(pElement, "itemseparator", m_musicItemSeparator);
+    XMLUtils::GetInt(pElement, "dateadded", m_iMusicLibraryDateAdded);
   }
 
   pElement = pRootElement->FirstChildElement("videolibrary");
@@ -819,7 +826,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     const char* hide = pElement->Attribute("hide");
     if (hide == NULL || strnicmp("false", hide, 4) != 0)
     {
-      CSetting *setting = CSettings::Get().GetSetting("debug.showloginfo");
+      CSetting *setting = CSettings::Get().GetSetting(CSettings::SETTING_DEBUG_SHOWLOGINFO);
       if (setting != NULL)
         setting->SetVisible(false);
     }
@@ -850,13 +857,11 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   XMLUtils::GetInt(pRootElement,"skiploopfilter", m_iSkipLoopFilter, -16, 48);
   XMLUtils::GetFloat(pRootElement, "forcedswaptime", m_ForcedSwapTime, 0.0, 100.0);
 
-  XMLUtils::GetBoolean(pRootElement,"allowd3d9ex", m_AllowD3D9Ex);
-  XMLUtils::GetBoolean(pRootElement,"forced3d9ex", m_ForceD3D9Ex);
-  XMLUtils::GetBoolean(pRootElement,"allowdynamictextures", m_AllowDynamicTextures);
   XMLUtils::GetUInt(pRootElement,"restrictcapsmask", m_RestrictCapsMask);
   XMLUtils::GetFloat(pRootElement,"sleepbeforeflip", m_sleepBeforeFlip, 0.0f, 1.0f);
   XMLUtils::GetBoolean(pRootElement,"virtualshares", m_bVirtualShares);
   XMLUtils::GetUInt(pRootElement, "packagefoldersize", m_addonPackageFolderSize);
+  XMLUtils::GetBoolean(pRootElement, "allowdeferredrendering", m_bAllowDeferredRendering);
 
   // EPG
   pElement = pRootElement->FirstChildElement("epg");
@@ -972,7 +977,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
         CLog::Log(LOGDEBUG,"  Registering substition pair:");
         CLog::Log(LOGDEBUG,"    From: [%s]", strFrom.c_str());
         CLog::Log(LOGDEBUG,"    To:   [%s]", strTo.c_str());
-        m_pathSubstitutions.push_back(make_pair(strFrom,strTo));
+        m_pathSubstitutions.push_back(std::make_pair(strFrom,strTo));
       }
       else
       {
@@ -995,6 +1000,8 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
 #if !defined(TARGET_RASPBERRY_PI)
   XMLUtils::GetBoolean(pRootElement, "useddsfanart", m_useDDSFanart);
 #endif
+  if (XMLUtils::GetString(pRootElement, "imagescalingalgorithm", tmp))
+    m_imageScalingAlgorithm = CPictureScalingAlgorithm::FromString(tmp);
   XMLUtils::GetBoolean(pRootElement, "playlistasfolders", m_playlistAsFolders);
   XMLUtils::GetBoolean(pRootElement, "detectasudf", m_detectAsUdf);
 
@@ -1108,6 +1115,22 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     XMLUtils::GetBoolean(pDatabase, "compression", m_databaseTV.compression);
   }
 
+  pDatabase = pRootElement->FirstChildElement("adspdatabase");
+  if (pDatabase)
+  {
+    XMLUtils::GetString(pDatabase, "type", m_databaseADSP.type);
+    XMLUtils::GetString(pDatabase, "host", m_databaseADSP.host);
+    XMLUtils::GetString(pDatabase, "port", m_databaseADSP.port);
+    XMLUtils::GetString(pDatabase, "user", m_databaseADSP.user);
+    XMLUtils::GetString(pDatabase, "pass", m_databaseADSP.pass);
+    XMLUtils::GetString(pDatabase, "name", m_databaseADSP.name);
+    XMLUtils::GetString(pDatabase, "key", m_databaseADSP.key);
+    XMLUtils::GetString(pDatabase, "cert", m_databaseADSP.cert);
+    XMLUtils::GetString(pDatabase, "ca", m_databaseADSP.ca);
+    XMLUtils::GetString(pDatabase, "capath", m_databaseADSP.capath);
+    XMLUtils::GetString(pDatabase, "ciphers", m_databaseADSP.ciphers);
+  }
+
   pDatabase = pRootElement->FirstChildElement("epgdatabase");
   if (pDatabase)
   {
@@ -1144,8 +1167,8 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   if (!seekSteps.empty())
   {
     m_seekSteps.clear();
-    std::vector<string> steps = StringUtils::Split(seekSteps, ',');
-    for(std::vector<string>::iterator it = steps.begin(); it != steps.end(); ++it)
+    std::vector<std::string> steps = StringUtils::Split(seekSteps, ',');
+    for(std::vector<std::string>::iterator it = steps.begin(); it != steps.end(); ++it)
       m_seekSteps.push_back(atoi((*it).c_str()));
   }
 
@@ -1278,8 +1301,8 @@ void CAdvancedSettings::GetCustomExtensions(TiXmlElement *pRootElement, std::str
     extensions += "|" + extraExtensions;
   if (XMLUtils::GetString(pRootElement, "remove", extraExtensions) && !extraExtensions.empty())
   {
-    vector<string> exts = StringUtils::Split(extraExtensions, '|');
-    for (vector<string>::const_iterator i = exts.begin(); i != exts.end(); ++i)
+    std::vector<std::string> exts = StringUtils::Split(extraExtensions, '|');
+    for (std::vector<std::string>::const_iterator i = exts.begin(); i != exts.end(); ++i)
     {
       size_t iPos = extensions.find(*i);
       if (iPos != std::string::npos)

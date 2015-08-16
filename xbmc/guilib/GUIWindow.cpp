@@ -22,7 +22,6 @@
 #include "GUIWindow.h"
 #include "GUIWindowManager.h"
 #include "input/Key.h"
-#include "LocalizeStrings.h"
 #include "GUIControlFactory.h"
 #include "GUIControlGroup.h"
 #include "GUIControlProfiler.h"
@@ -36,7 +35,7 @@
 #include "utils/XMLUtils.h"
 #include "GUIAudioManager.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "utils/Variant.h"
 #include "utils/StringUtils.h"
 
@@ -45,6 +44,7 @@
 #endif
 
 using namespace std;
+using namespace KODI::MESSAGING;
 
 bool CGUIWindow::icompare::operator()(const std::string &s1, const std::string &s2) const
 {
@@ -63,7 +63,7 @@ CGUIWindow::CGUIWindow(int id, const std::string &xmlFile)
   m_loadType = LOAD_EVERY_TIME;
   m_closing = false;
   m_active = false;
-  m_renderOrder = 0;
+  m_renderOrder = RENDER_ORDER_WINDOW;
   m_dynamicResourceAlloc = true;
   m_previousWindow = WINDOW_INVALID;
   m_animationsEnabled = true;
@@ -71,6 +71,8 @@ CGUIWindow::CGUIWindow(int id, const std::string &xmlFile)
   m_exclusiveMouseControl = 0;
   m_clearBackground = 0xff000000; // opaque black -> always clear
   m_windowXMLRootElement = NULL;
+  m_menuControlID = 0;
+  m_menuLastFocusedControlID = 0;
 }
 
 CGUIWindow::~CGUIWindow(void)
@@ -204,6 +206,10 @@ bool CGUIWindow::Load(TiXmlElement* pRootElement)
       if (always && strcmpi(always, "true") == 0)
         m_defaultAlways = true;
       m_defaultControl = atoi(pChild->FirstChild()->Value());
+    }
+    else if(strValue == "menucontrol" && pChild->FirstChild())
+    {
+      m_menuControlID = atoi(pChild->FirstChild()->Value());
     }
     else if (strValue == "visible" && pChild->FirstChild())
     {
@@ -402,7 +408,11 @@ void CGUIWindow::Close(bool forceClose /*= false*/, int nextWindowID /*= 0*/, bo
   {
     // make sure graphics lock is not held
     CSingleExit leaveIt(g_graphicsContext);
-    CApplicationMessenger::Get().Close(this, forceClose, bWait, nextWindowID, enableSound);
+    int param2 = (forceClose ? 0x01 : 0) | (enableSound ? 0x02 : 0);
+    if (bWait)
+      CApplicationMessenger::Get().SendMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
+    else
+      CApplicationMessenger::Get().PostMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
   }
   else
     Close_Internal(forceClose, nextWindowID, enableSound);
@@ -428,8 +438,39 @@ bool CGUIWindow::OnAction(const CAction &action)
   }
 
   // default implementations
-  if (action.GetID() == ACTION_NAV_BACK || action.GetID() == ACTION_PREVIOUS_MENU)
-    return OnBack(action.GetID());
+  switch(action.GetID())
+  {
+    case ACTION_NAV_BACK:
+    case ACTION_PREVIOUS_MENU:
+      return OnBack(action.GetID());
+    case ACTION_MENU:
+      if (m_menuControlID > 0)
+      {
+        CGUIControl *menu = GetControl(m_menuControlID);
+        if (menu)
+        {
+          int focusControlId;
+          if (!menu->HasFocus())
+          {
+            // focus the menu control
+            focusControlId = m_menuControlID;
+            // To support a toggle behaviour we store the last focused control id
+            // to restore (focus) this control if the menu control has the focus
+            // while you press the menu button again.
+            m_menuLastFocusedControlID = GetFocusedControlID();
+          }
+          else
+          {
+            // restore the last focused control or if not exists use the default control
+            focusControlId = m_menuLastFocusedControlID > 0 ? m_menuLastFocusedControlID : m_defaultControl;
+          }
+
+          CGUIMessage msg = CGUIMessage(GUI_MSG_SETFOCUS, GetID(), focusControlId);
+          return OnMessage(msg);
+        }
+      }
+      break;
+  }
 
   return false;
 }
@@ -751,7 +792,7 @@ void CGUIWindow::AllocResources(bool forceLoad /*= FALSE */)
   else
   {
     CLog::Log(LOGDEBUG,"Window %s was already loaded", GetProperty("xmlfile").c_str());
-    CLog::Log(LOGDEBUG,"Alloc resources: %.2fm", 1000.f * (end - start) / freq);
+    CLog::Log(LOGDEBUG,"Alloc resources: %.2fms", 1000.f * (end - start) / freq);
   }
 #endif
   m_bAllocated = true;
@@ -954,7 +995,7 @@ bool CGUIWindow::OnMove(int fromControl, int moveAction)
 
 void CGUIWindow::SetDefaults()
 {
-  m_renderOrder = 0;
+  m_renderOrder = RENDER_ORDER_WINDOW;
   m_defaultAlways = false;
   m_defaultControl = 0;
   m_posX = m_posY = m_width = m_height = 0;
@@ -966,6 +1007,8 @@ void CGUIWindow::SetDefaults()
   m_animationsEnabled = true;
   m_clearBackground = 0xff000000; // opaque black -> clear
   m_hitRect.SetRect(0, 0, (float)m_coordsRes.iWidth, (float)m_coordsRes.iHeight);
+  m_menuControlID = 0;
+  m_menuLastFocusedControlID = 0;
 }
 
 CRect CGUIWindow::GetScaledBounds() const

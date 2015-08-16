@@ -29,11 +29,8 @@
 #include "cores/dvdplayer/DVDCodecs/DVDFactoryCodec.h"
 #include "music/tags/TagLoaderTagLib.h"
 #include "utils/log.h"
-#include "settings/Settings.h"
 #include "URL.h"
 #include "utils/StringUtils.h"
-
-#include "AudioDecoder.h"
 
 DVDPlayerCodec::DVDPlayerCodec()
 {
@@ -90,7 +87,9 @@ bool DVDPlayerCodec::Init(const std::string &strFile, unsigned int filecache)
     return false;
   }
 
-  if (!m_pInputStream->Open(strFileToOpen.c_str(), m_strContentType))
+  // TODO:
+  // convey CFileItem::ContentLookup() into Open()
+  if (!m_pInputStream->Open(strFileToOpen.c_str(), m_strContentType, true))
   {
     CLog::Log(LOGERROR, "%s: Error opening file %s", __FUNCTION__, strFileToOpen.c_str());
     if (m_pInputStream)

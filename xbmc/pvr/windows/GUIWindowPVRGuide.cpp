@@ -20,11 +20,8 @@
 
 #include "GUIWindowPVRGuide.h"
 
-#include "Application.h"
 #include "ContextMenuManager.h"
 #include "GUIUserMessages.h"
-#include "dialogs/GUIDialogOK.h"
-#include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
 #include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
@@ -33,9 +30,10 @@
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "utils/StringUtils.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/timers/PVRTimers.h"
+
+#define MAX_UPDATE_FREQUENCY 3000 // limit to maximum one update/refresh in x milliseconds
 
 using namespace PVR;
 using namespace EPG;
@@ -51,6 +49,19 @@ CGUIWindowPVRGuide::CGUIWindowPVRGuide(bool bRadio) :
 CGUIWindowPVRGuide::~CGUIWindowPVRGuide(void)
 {
   delete m_cachedTimeline;
+}
+
+void CGUIWindowPVRGuide::OnInitWindow()
+{
+  if (m_guiState.get())
+    m_viewControl.SetCurrentView(m_guiState->GetViewAsControl(), false);
+
+  CGUIEPGGridContainer *epgGridContainer =
+    dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+  if (epgGridContainer)
+    epgGridContainer->GoToNow();
+
+  CGUIWindowPVRBase::OnInitWindow();
 }
 
 void CGUIWindowPVRGuide::ResetObservers(void)
@@ -80,15 +91,17 @@ void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &butt
   {
     if (timer->GetPVRTimerInfoTag()->IsRecording())
       buttons.Add(CONTEXT_BUTTON_STOP_RECORD, 19059);  /* stop recording */
-    else
+    else if (timer->GetPVRTimerInfoTag()->HasTimerType() &&
+             !timer->GetPVRTimerInfoTag()->GetTimerType()->IsReadOnly())
       buttons.Add(CONTEXT_BUTTON_STOP_RECORD, 19060);  /* delete timer */
   }
   else if (pItem->HasEPGInfoTag() && pItem->GetEPGInfoTag()->EndAsLocalTime() > CDateTime::GetCurrentDateTime())
   {
     if (pItem->GetEPGInfoTag()->StartAsLocalTime() < CDateTime::GetCurrentDateTime())
       buttons.Add(CONTEXT_BUTTON_START_RECORD, 264);   /* record */
-    else
-      buttons.Add(CONTEXT_BUTTON_START_RECORD, 19061); /* add timer */
+
+    buttons.Add(CONTEXT_BUTTON_START_RECORD, 19061);   /* add timer */
+    buttons.Add(CONTEXT_BUTTON_ADVANCED_RECORD, 841);  /* add custom timer */
   }
 
   buttons.Add(CONTEXT_BUTTON_INFO, 19047);              /* epg info */
@@ -126,11 +139,35 @@ void CGUIWindowPVRGuide::UpdateSelectedItemPath()
     CGUIWindowPVRBase::UpdateSelectedItemPath();
 }
 
+bool CGUIWindowPVRGuide::GetDirectory(const std::string &strDirectory, CFileItemList &items)
+{
+  switch (m_viewControl.GetCurrentControl())
+  {
+    case GUIDE_VIEW_TIMELINE:
+      GetViewTimelineItems(items);
+      break;
+    case GUIDE_VIEW_NOW:
+      GetViewNowItems(items);
+      break;
+    case GUIDE_VIEW_NEXT:
+      GetViewNextItems(items);
+      break;
+    case GUIDE_VIEW_CHANNEL:
+      GetViewChannelItems(items);
+      break;
+    default:
+      CLog::Log(LOGERROR, "CGUIWindowPVRGuide - %s - Unknown view control. Unable to fill item list.", __FUNCTION__);
+      break;
+  }
+
+  m_bUpdateRequired = false;
+  return true;
+}
+
 bool CGUIWindowPVRGuide::OnAction(const CAction &action)
 {
   switch (action.GetID())
   {
-    case REMOTE_0:
     case REMOTE_1:
     case REMOTE_2:
     case REMOTE_3:
@@ -150,6 +187,9 @@ bool CGUIWindowPVRGuide::OnAction(const CAction &action)
 
 bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
 {
+  if (!IsValidMessage(message))
+    return false;
+  
   bool bReturn = false;
   switch (message.GetMessage())
   {
@@ -166,7 +206,7 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
           {
             case ACTION_SELECT_ITEM:
             case ACTION_MOUSE_LEFT_CLICK:
-              switch(CSettings::Get().GetInt("epg.selectaction"))
+              switch(CSettings::Get().GetInt(CSettings::SETTING_EPG_SELECTACTION))
               {
                 case EPG_SELECT_ACTION_CONTEXT_MENU:
                   OnPopupMenu(iItem);
@@ -223,6 +263,7 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
     {
       // let's set the view mode first before update
       CGUIWindowPVRBase::OnMessage(message);
+      m_nextUpdateTimeout.SetExpired();
       Refresh(true);
       bReturn = true;
       break;
@@ -235,9 +276,12 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
         case ObservableMessageEpgContainer:
         {
           m_bUpdateRequired = true;
-          /* update the current window if the EPG timeline view is visible */
-          if (IsActive() && m_viewControl.GetCurrentControl() == GUIDE_VIEW_TIMELINE)
+          // do not allow more than MAX_UPDATE_FREQUENCY updates
+          if (IsActive() && m_nextUpdateTimeout.IsTimePast())
+          {
             Refresh(true);
+            m_nextUpdateTimeout.Set(MAX_UPDATE_FREQUENCY);
+          }
           bReturn = true;
           break;
         }
@@ -273,7 +317,7 @@ bool CGUIWindowPVRGuide::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       CGUIWindowPVRBase::OnContextButton(itemNumber, button);
 }
 
-void CGUIWindowPVRGuide::UpdateViewChannel()
+void CGUIWindowPVRGuide::GetViewChannelItems(CFileItemList &items)
 {
   CPVRChannelPtr currentChannel(g_PVRManager.GetCurrentChannel());
 
@@ -281,47 +325,42 @@ void CGUIWindowPVRGuide::UpdateViewChannel()
     SET_CONTROL_LABEL(CONTROL_LABEL_HEADER1, currentChannel->ChannelName().c_str());
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetGroup()->GroupName());
 
-  m_vecItems->Clear();
-  if (!currentChannel || g_PVRManager.GetCurrentEpg(*m_vecItems) == 0)
+  items.Clear();
+  if (!currentChannel || g_PVRManager.GetCurrentEpg(items) == 0)
   {
     CFileItemPtr item;
     item.reset(new CFileItem("pvr://guide/channel/empty.epg", false));
     item->SetLabel(g_localizeStrings.Get(19028));
     item->SetLabelPreformated(true);
-    m_vecItems->Add(item);
+    items.Add(item);
   }
-
-  m_viewControl.SetItems(*m_vecItems);
 }
 
-void CGUIWindowPVRGuide::UpdateViewNow()
+void CGUIWindowPVRGuide::GetViewNowItems(CFileItemList &items)
 {
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER1, g_localizeStrings.Get(19030));
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetGroup()->GroupName());
 
-  m_vecItems->Clear();
-  int iEpgItems = GetGroup()->GetEPGNow(*m_vecItems);
-  
+  items.Clear();
+  int iEpgItems = GetGroup()->GetEPGNow(items);
+
   if (iEpgItems == 0)
   {
     CFileItemPtr item;
     item.reset(new CFileItem("pvr://guide/now/empty.epg", false));
     item->SetLabel(g_localizeStrings.Get(19028));
     item->SetLabelPreformated(true);
-    m_vecItems->Add(item);
+    items.Add(item);
   }
-
-  m_viewControl.SetItems(*m_vecItems);
-  m_viewControl.SetSelectedItem(GetSelectedItemPath(m_bRadio));
 }
 
-void CGUIWindowPVRGuide::UpdateViewNext()
+void CGUIWindowPVRGuide::GetViewNextItems(CFileItemList &items)
 {
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER1, g_localizeStrings.Get(19031));
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetGroup()->GroupName());
 
-  m_vecItems->Clear();
-  int iEpgItems = GetGroup()->GetEPGNext(*m_vecItems);
+  items.Clear();
+  int iEpgItems = GetGroup()->GetEPGNext(items);
 
   if (iEpgItems)
   {
@@ -329,14 +368,11 @@ void CGUIWindowPVRGuide::UpdateViewNext()
     item.reset(new CFileItem("pvr://guide/next/empty.epg", false));
     item->SetLabel(g_localizeStrings.Get(19028));
     item->SetLabelPreformated(true);
-    m_vecItems->Add(item);
+    items.Add(item);
   }
-
-  m_viewControl.SetItems(*m_vecItems);
-  m_viewControl.SetSelectedItem(GetSelectedItemPath(m_bRadio));
 }
 
-void CGUIWindowPVRGuide::UpdateViewTimeline()
+void CGUIWindowPVRGuide::GetViewTimelineItems(CFileItemList &items)
 {
   CGUIEPGGridContainer* epgGridContainer = (CGUIEPGGridContainer*) GetControl(m_viewControl.GetCurrentControl());
   if (!epgGridContainer)
@@ -353,60 +389,31 @@ void CGUIWindowPVRGuide::UpdateViewTimeline()
     m_cachedChannelGroup->GetEPGAll(*m_cachedTimeline);
   }
 
-  m_vecItems->Clear();
-  m_vecItems->RemoveDiscCache(GetID());
-  m_vecItems->Assign(*m_cachedTimeline, false);
+  items.Clear();
+  items.RemoveDiscCache(GetID());
+  items.Assign(*m_cachedTimeline, false);
 
   CDateTime startDate(m_cachedChannelGroup->GetFirstEPGDate());
   CDateTime endDate(m_cachedChannelGroup->GetLastEPGDate());
   CDateTime currentDate = CDateTime::GetCurrentDateTime().GetAsUTCDateTime();
-  
+
   if (!startDate.IsValid())
     startDate = currentDate;
-  
+
   if (!endDate.IsValid() || endDate < startDate)
     endDate = startDate;
-  
+
   // limit start to linger time
   CDateTime maxPastDate = currentDate - CDateTimeSpan(0, 0, g_advancedSettings.m_iEpgLingerTime, 0);
   if (startDate < maxPastDate)
     startDate = maxPastDate;
-  
+
   epgGridContainer->SetStartEnd(startDate, endDate);
 
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER1, g_localizeStrings.Get(19032));
   SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetGroup()->GroupName());
-  
-  m_viewControl.SetItems(*m_vecItems);
 
   epgGridContainer->SetChannel(GetSelectedItemPath(m_bRadio));
-}
-
-bool CGUIWindowPVRGuide::Update(const std::string &strDirectory, bool updateFilterPath /* = true */)
-{
-  CSingleLock lock(m_critSection);
-
-  CGUIWindowPVRBase::Update(strDirectory);
-
-  switch (m_viewControl.GetCurrentControl())
-  {
-    case GUIDE_VIEW_TIMELINE:
-      UpdateViewTimeline();
-      break;
-    case GUIDE_VIEW_NOW:
-      UpdateViewNow();
-      break;
-    case GUIDE_VIEW_NEXT:
-      UpdateViewNext();
-      break;
-    case GUIDE_VIEW_CHANNEL:
-      UpdateViewChannel();
-      break;
-  }
-
-  m_bUpdateRequired = false;
-
-  return true;
 }
 
 bool CGUIWindowPVRGuide::OnContextButtonBegin(CFileItem *item, CONTEXT_BUTTON button)
@@ -447,7 +454,7 @@ bool CGUIWindowPVRGuide::OnContextButtonNow(CFileItem *item, CONTEXT_BUTTON butt
     epgGridContainer->GoToNow();
     bReturn = true;
   }
-  
+
   return bReturn;
 }
 
@@ -481,9 +488,10 @@ bool CGUIWindowPVRGuide::OnContextButtonStartRecord(CFileItem *item, CONTEXT_BUT
 {
   bool bReturn = false;
 
-  if (button == CONTEXT_BUTTON_START_RECORD)
+  if ((button == CONTEXT_BUTTON_START_RECORD) ||
+      (button == CONTEXT_BUTTON_ADVANCED_RECORD))
   {
-    StartRecordFile(*item);
+    StartRecordFile(item, button == CONTEXT_BUTTON_ADVANCED_RECORD);
     bReturn = true;
   }
 
@@ -496,7 +504,7 @@ bool CGUIWindowPVRGuide::OnContextButtonStopRecord(CFileItem *item, CONTEXT_BUTT
 
   if (button == CONTEXT_BUTTON_STOP_RECORD)
   {
-    StopRecordFile(*item);
+    StopRecordFile(item);
     bReturn = true;
   }
 

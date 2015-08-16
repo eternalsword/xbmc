@@ -23,14 +23,11 @@
 #include "Util.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "Autorun.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "filesystem/PlaylistFileDirectory.h"
-#include "filesystem/File.h"
-#include "filesystem/SpecialProtocol.h"
-#include "filesystem/Directory.h"
 #include "playlists/PlayListM3U.h"
-#include "guilib/GUIWindowManager.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "FileItem.h"
 #include "settings/Settings.h"
@@ -406,11 +403,11 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
   std::string name = URIUtils::GetFileName(m_strLoadedPlaylist);
   URIUtils::RemoveExtension(name);
 
-  if (CGUIKeyboardFactory::ShowAndGetInput(name, g_localizeStrings.Get(16012), false))
+  if (CGUIKeyboardFactory::ShowAndGetInput(name, CVariant{g_localizeStrings.Get(16012)}, false))
   { // save playlist as an .m3u
     PLAYLIST::CPlayListM3U playlist;
     playlist.Add(*m_playlist);
-    std::string strBase = URIUtils::AddFileToFolder(CSettings::Get().GetString("system.playlistspath"), "music");
+    std::string strBase = URIUtils::AddFileToFolder(CSettings::Get().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH), "music");
     std::string path = URIUtils::AddFileToFolder(strBase, name + ".m3u");
     playlist.Save(path);
     m_strLoadedPlaylist = name;
@@ -420,7 +417,7 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
 void CGUIWindowMusicPlaylistEditor::AppendToPlaylist(CFileItemList &newItems)
 {
   OnRetrieveMusicInfo(newItems);
-  FormatItemLabels(newItems, LABEL_MASKS(CSettings::Get().GetString("musicfiles.trackformat"), CSettings::Get().GetString("musicfiles.trackformatright"), "%L", ""));
+  FormatItemLabels(newItems, LABEL_MASKS(CSettings::Get().GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT), CSettings::Get().GetString(CSettings::SETTING_MUSICFILES_TRACKFORMATRIGHT), "%L", ""));
   m_playlist->Append(newItems);
   UpdatePlaylist();
 }

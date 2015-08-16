@@ -22,16 +22,15 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/GUITexture.h"
 #include "Application.h"
-#include <climits>
 
 CGUIWindowScreensaverDim::CGUIWindowScreensaverDim(void)
-    : CGUIDialog(WINDOW_SCREENSAVER_DIM, "")
+  : CGUIDialog(WINDOW_SCREENSAVER_DIM, "", DialogModalityType::MODELESS)
 {
   m_needsScaling = false;
   m_dimLevel = 100.0f;
   m_animations.push_back(CAnimation::CreateFader(0, 100, 0, 1000, ANIM_TYPE_WINDOW_OPEN));
   m_animations.push_back(CAnimation::CreateFader(100, 0, 0, 1000, ANIM_TYPE_WINDOW_CLOSE));
-  m_renderOrder = INT_MAX;
+  m_renderOrder = RENDER_ORDER_WINDOW_SCREENSAVER;
 }
 
 CGUIWindowScreensaverDim::~CGUIWindowScreensaverDim(void)
@@ -44,7 +43,7 @@ void CGUIWindowScreensaverDim::UpdateVisibility()
   if (level)
   {
     m_dimLevel = level;
-    Show();
+    Open();
   }
   else
     Close();

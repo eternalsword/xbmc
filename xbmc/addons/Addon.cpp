@@ -20,6 +20,8 @@
 
 #include "Addon.h"
 #include "AddonManager.h"
+#include "addons/Service.h"
+#include "ContextMenuManager.h"
 #include "settings/Settings.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
@@ -36,6 +38,7 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "URL.h"
 #include "Util.h"
 #include <vector>
@@ -92,8 +95,10 @@ static const TypeMapping types[] =
    {"xbmc.audioencoder",                 ADDON_AUDIOENCODER,         200,  "DefaultAddonAudioEncoder.png" },
    {"kodi.audiodecoder",                 ADDON_AUDIODECODER,         201,  "DefaultAddonAudioDecoder.png" },
    {"xbmc.service",                      ADDON_SERVICE,             24018, "DefaultAddonService.png" },
+   {"kodi.resource.images",              ADDON_RESOURCE_IMAGES,     24035, "DefaultAddonImages.png" },
    {"kodi.resource.language",            ADDON_RESOURCE_LANGUAGE,   24026, "DefaultAddonLanguage.png" },
    {"kodi.resource.uisounds",            ADDON_RESOURCE_UISOUNDS,   24006, "DefaultAddonUISounds.png" },
+   {"kodi.adsp",                         ADDON_ADSPDLL,             24135, "DefaultAddonAudioDSP.png" },
   };
 
 const std::string TranslateType(const ADDON::TYPE &type, bool pretty/*=false*/)
@@ -268,7 +273,6 @@ CAddon::CAddon(const cp_extension_t *ext)
   Props().libname = m_strLibName;
   BuildProfilePath();
   m_userSettingsPath = URIUtils::AddFileToFolder(Profile(), "settings.xml");
-  m_enabled = true;
   m_hasSettings = true;
   m_hasStrings = false;
   m_checkedStrings = false;
@@ -279,7 +283,6 @@ CAddon::CAddon(const cp_extension_t *ext)
 CAddon::CAddon(const cp_plugin_info_t *plugin)
   : m_props(plugin)
 {
-  m_enabled = true;
   m_hasSettings = false;
   m_hasStrings = false;
   m_checkedStrings = true;
@@ -294,7 +297,6 @@ CAddon::CAddon(const AddonProps &props)
   else m_strLibName = props.libname;
   BuildProfilePath();
   m_userSettingsPath = URIUtils::AddFileToFolder(Profile(), "settings.xml");
-  m_enabled = true;
   m_hasSettings = true;
   m_hasStrings = false;
   m_checkedStrings = false;
@@ -313,7 +315,6 @@ CAddon::CAddon(const CAddon &rhs)
   BuildProfilePath();
   m_userSettingsPath = URIUtils::AddFileToFolder(Profile(), "settings.xml");
   m_strLibName  = rhs.m_strLibName;
-  m_enabled = rhs.Enabled();
   m_hasStrings  = false;
   m_checkedStrings  = false;
 }
@@ -358,6 +359,9 @@ void CAddon::BuildLibName(const cp_extension_t *extension)
     case ADDON_PVRDLL:
       ext = ADDON_PVRDLL_EXT;
       break;
+    case ADDON_ADSPDLL:
+      ext = ADDON_DSP_AUDIO_EXT;
+      break;
     case ADDON_SCRIPT:
     case ADDON_SCRIPT_LIBRARY:
     case ADDON_SCRIPT_LYRICS:
@@ -395,6 +399,7 @@ void CAddon::BuildLibName(const cp_extension_t *extension)
       case ADDON_SCRAPER_TVSHOWS:
       case ADDON_SCRAPER_LIBRARY:
       case ADDON_PVRDLL:
+      case ADDON_ADSPDLL:
       case ADDON_PLUGIN:
       case ADDON_WEB_INTERFACE:
       case ADDON_SERVICE:
@@ -422,7 +427,7 @@ bool CAddon::LoadStrings()
   // Path where the language strings reside
   std::string chosenPath = URIUtils::AddFileToFolder(m_props.path, "resources/language/");
 
-  m_hasStrings = m_strings.Load(chosenPath, CSettings::Get().GetString("locale.language"));
+  m_hasStrings = m_strings.Load(chosenPath, CSettings::Get().GetString(CSettings::SETTING_LOCALE_LANGUAGE));
   return m_checkedStrings = true;
 }
 
@@ -500,9 +505,14 @@ bool CAddon::LoadUserSettings()
   return m_userSettingsLoaded;
 }
 
+bool CAddon::HasSettingsToSave() const
+{
+  return !m_settings.empty();
+}
+
 void CAddon::SaveSettings(void)
 {
-  if (m_settings.empty())
+  if (!HasSettingsToSave())
     return; // no settings to save
 
   // break down the path into directories
@@ -623,6 +633,81 @@ AddonVersion CAddon::GetDependencyVersion(const std::string &dependencyID) const
     return it->second.first;
   return AddonVersion("0.0.0");
 }
+
+void OnEnabled(const std::string& id)
+{
+  // If the addon is a special, call enabled handler
+  AddonPtr addon;
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_PVRDLL) ||
+      CAddonMgr::Get().GetAddon(id, addon, ADDON_ADSPDLL))
+    return addon->OnEnabled();
+
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_SERVICE))
+    std::static_pointer_cast<CService>(addon)->Start();
+
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_CONTEXT_ITEM))
+    CContextMenuManager::Get().Register(std::static_pointer_cast<CContextMenuAddon>(addon));
+}
+
+void OnDisabled(const std::string& id)
+{
+  AddonPtr addon;
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_PVRDLL, false) ||
+      CAddonMgr::Get().GetAddon(id, addon, ADDON_ADSPDLL, false))
+    return addon->OnDisabled();
+
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_SERVICE, false))
+    std::static_pointer_cast<CService>(addon)->Stop();
+
+  if (CAddonMgr::Get().GetAddon(id, addon, ADDON_CONTEXT_ITEM, false))
+    CContextMenuManager::Get().Unregister(std::static_pointer_cast<CContextMenuAddon>(addon));
+}
+
+void OnPreInstall(const AddonPtr& addon)
+{
+  //Before installing we need to stop/unregister any local addon
+  //that have this id, regardless of what the 'new' addon is.
+  AddonPtr localAddon;
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
+    std::static_pointer_cast<CService>(localAddon)->Stop();
+
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_CONTEXT_ITEM))
+    CContextMenuManager::Get().Unregister(std::static_pointer_cast<CContextMenuAddon>(localAddon));
+
+  //Fallback to the pre-install callback in the addon.
+  //BUG: If primary extension point have changed we're calling the wrong method.
+  addon->OnPreInstall();
+}
+
+void OnPostInstall(const AddonPtr& addon, bool update, bool modal)
+{
+  AddonPtr localAddon;
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
+    std::static_pointer_cast<CService>(localAddon)->Start();
+
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_CONTEXT_ITEM))
+    CContextMenuManager::Get().Register(std::static_pointer_cast<CContextMenuAddon>(localAddon));
+
+  addon->OnPostInstall(update, modal);
+}
+
+void OnPreUnInstall(const AddonPtr& addon)
+{
+  AddonPtr localAddon;
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
+    std::static_pointer_cast<CService>(localAddon)->Stop();
+
+  if (CAddonMgr::Get().GetAddon(addon->ID(), localAddon, ADDON_CONTEXT_ITEM))
+    CContextMenuManager::Get().Unregister(std::static_pointer_cast<CContextMenuAddon>(localAddon));
+
+  addon->OnPreUnInstall();
+}
+
+void OnPostUnInstall(const AddonPtr& addon)
+{
+  addon->OnPostUnInstall();
+}
+
 
 /**
  * CAddonLibrary

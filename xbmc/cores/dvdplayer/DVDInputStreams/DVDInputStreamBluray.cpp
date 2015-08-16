@@ -29,14 +29,12 @@
 #include "settings/Settings.h"
 #include "LangInfo.h"
 #include "utils/log.h"
-#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "filesystem/File.h"
 #include "filesystem/Directory.h"
 #include "DllLibbluray.h"
 #include "URL.h"
 #include "guilib/Geometry.h"
-#include "utils/StringUtils.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/LocalizeStrings.h"
 #include "settings/DiscSettings.h"
@@ -255,7 +253,7 @@ BLURAY_TITLE_INFO* CDVDInputStreamBluray::GetTitleFile(const std::string& filena
 }
 
 
-bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content)
+bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content, bool contentLookup)
 {
   if(m_player == NULL)
     return false;
@@ -356,7 +354,7 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
     return false;
   }
 
-  int mode = CSettings::Get().GetInt("disc.playback");
+  int mode = CSettings::Get().GetInt(CSettings::SETTING_DISC_PLAYBACK);
 
   if (URIUtils::HasExtension(filename, ".mpls"))
   {
@@ -386,7 +384,7 @@ bool CDVDInputStreamBluray::Open(const char* strFile, const std::string& content
 
   if(m_navmode)
   {
-    int region = CSettings::Get().GetInt("dvds.playerregion");
+    int region = CSettings::Get().GetInt(CSettings::SETTING_DVDS_PLAYERREGION);
     if(region == 0)
     {
       CLog::Log(LOGWARNING, "CDVDInputStreamBluray::Open - region dvd must be set in setting, assuming region 1");

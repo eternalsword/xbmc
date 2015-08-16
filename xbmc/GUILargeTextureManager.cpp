@@ -31,9 +31,6 @@
 
 #include <cassert>
 
-using namespace std;
-
-
 CImageLoader::CImageLoader(const std::string &path, const bool useCache):
   m_path(path)
 {
@@ -61,7 +58,7 @@ bool CImageLoader::DoWork()
   {
     // direct route - load the image
     unsigned int start = XbmcThreads::SystemClockMillis();
-    m_texture = CBaseTexture::LoadFromFile(loadPath, g_graphicsContext.GetWidth(), g_graphicsContext.GetHeight(), CSettings::Get().GetBool("pictures.useexifrotation"));
+    m_texture = CBaseTexture::LoadFromFile(loadPath, g_graphicsContext.GetWidth(), g_graphicsContext.GetHeight(), CSettings::Get().GetBool(CSettings::SETTING_PICTURES_USEEXIFROTATION));
 
     if (XbmcThreads::SystemClockMillis() - start > 100)
       CLog::Log(LOGDEBUG, "%s - took %u ms to load %s", __FUNCTION__, XbmcThreads::SystemClockMillis() - start, loadPath.c_str());
@@ -226,7 +223,7 @@ void CGUILargeTextureManager::QueueImage(const std::string &path, bool useCache)
   // queue the item
   CLargeTexture *image = new CLargeTexture(path);
   unsigned int jobID = CJobManager::GetInstance().AddJob(new CImageLoader(path, useCache), this, CJob::PRIORITY_NORMAL);
-  m_queued.push_back(make_pair(jobID, image));
+  m_queued.push_back(std::make_pair(jobID, image));
 }
 
 void CGUILargeTextureManager::OnJobComplete(unsigned int jobID, bool success, CJob *job)

@@ -21,15 +21,10 @@
 #include "WINJoystick.h"
 #include "input/ButtonTranslator.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/lib/Setting.h"
 #include "utils/log.h"
-#include "utils/RegExp.h"
 
-#include <math.h>
 #include <memory>
-
 #include <dinput.h>
-#include <dinputd.h>
 
 using namespace std;
 
@@ -123,7 +118,7 @@ BOOL CALLBACK CJoystick::EnumJoysticksCallback( const DIDEVICEINSTANCE* pdidInst
           CLog::Log(LOGNOTICE, __FUNCTION__" : Total Axis: %d Total Hats: %d Total Buttons: %d", diDevCaps.dwAxes, diDevCaps.dwPOVs, diDevCaps.dwButtons);
           p_this->m_pJoysticks.push_back(pJoystick);
           std::string joyName(pdidInstance->tszProductName);
-          p_this->m_JoystickNames.push_back(joyName);;
+          p_this->m_JoystickNames.push_back(joyName);
           p_this->m_Axes.resize(p_this->m_Axes.size() + 6); // dinput hardcodes to 6 axes
           p_this->m_devCaps.push_back(diDevCaps);
 

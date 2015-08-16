@@ -19,7 +19,6 @@
  */
 
 #include "system.h"
-#include "OverlayRenderer.h"
 #include "OverlayRendererUtil.h"
 #include "cores/dvdplayer/DVDCodecs/Overlay/DVDOverlayImage.h"
 #include "cores/dvdplayer/DVDCodecs/Overlay/DVDOverlaySpu.h"
@@ -304,7 +303,7 @@ int GetStereoscopicDepth()
   if(g_graphicsContext.GetStereoMode() != RENDER_STEREO_MODE_MONO
   && g_graphicsContext.GetStereoMode() != RENDER_STEREO_MODE_OFF)
   {
-    depth  = CSettings::Get().GetInt("subtitles.stereoscopicdepth");
+    depth  = CSettings::Get().GetInt(CSettings::SETTING_SUBTITLES_STEREOSCOPICDEPTH);
     depth *= (g_graphicsContext.GetStereoView() == RENDER_STEREO_VIEW_LEFT ? 1 : -1);
   }
 

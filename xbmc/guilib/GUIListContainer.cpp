@@ -20,7 +20,6 @@
 
 #include "system.h"
 #include "GUIListContainer.h"
-#include "GUIListItem.h"
 #include "input/Key.h"
 #include "utils/StringUtils.h"
 
@@ -117,14 +116,6 @@ bool CGUIListContainer::OnMessage(CGUIMessage& message)
     if (message.GetMessage() == GUI_MSG_LABEL_RESET)
     {
       SetCursor(0);
-    }
-    else if (message.GetMessage() == GUI_MSG_SETFOCUS)
-    {
-      if (message.GetParam1()) // subfocus item is specified, so set the offset appropriately
-      {
-        int item = std::min(GetOffset() + (int)message.GetParam1() - 1, (int)m_items.size() - 1);
-        SelectItem(item);
-      }
     }
   }
   return CGUIBaseContainer::OnMessage(message);

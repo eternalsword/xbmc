@@ -79,19 +79,19 @@
           </dependencies>
           <control type="list" format="string" />
         </setting>
-        <setting id="lookandfeel.soundskin" type="string" label="15108" help="36110">
+        <setting id="lookandfeel.soundskin" type="addon" label="15108" help="36110">
           <level>0</level>
           <default>resource.uisounds.confluence</default>
           <constraints>
-            <options>skinsounds</options>
+            <addontype>kodi.resource.uisounds</addontype>
+            <allowempty>true</allowempty>
           </constraints>
-          <dependencies>
-            <dependency type="update" setting="lookandfeel.skin" />
-          </dependencies>
           <updates>
             <update type="change" />
           </updates>
-          <control type="list" format="string" />
+          <control type="button" format="addon">
+            <show more="true" details="true">installed</show>
+          </control>
         </setting>
       </group>
       <group id="2">
@@ -515,7 +515,7 @@
       <group id="2">
         <setting id="videoplayer.seeksteps" type="list[integer]" label="13556" help="37042">
           <level>2</level>
-          <default>-1800,-900,-600,-300,-180,-60,-30,-15,-7,15,30,60,180,300,600,900,1800</default>
+          <default>-600,-300,-180,-60,-30,-10,10,30,60,180,300,600</default>
           <constraints>
             <options>videoseeksteps</options>
             <delimiter>,</delimiter>
@@ -587,6 +587,7 @@
               <option label="630">0</option> <!-- ViewModeNormal -->
               <option label="633">3</option> <!-- ViewModeWideZoom -->
               <option label="634">4</option> <!-- ViewModeStretch16x9 -->
+              <option label="644">7</option> <!-- ViewModeStretch16x9 - nonlinear -->
               <option label="631">1</option> <!-- ViewModeZoom -->
             </options>
           </constraints>
@@ -664,22 +665,8 @@
         </requirement>
       </group>
       <group id="3">
-        <setting id="videoplayer.decodingmethod" type="integer" label="13454" help="36431">
-          <level>2</level>
-          <default>1</default>
-          <constraints>
-            <options>
-              <option label="13455">0</option> <!-- Software     -->
-              <option label="13456">1</option> <!-- Hardware     -->
-            </options>
-          </constraints>
-          <control type="list" format="integer" />
-        </setting>
         <setting id="videoplayer.useamcodec" type="boolean" label="13438" help="36422">
           <requirement>HAVE_AMCODEC</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <updates>
@@ -689,9 +676,6 @@
         </setting>
         <setting id="videoplayer.usevdpau" type="boolean" label="13425" help="36155">
           <requirement>HAVE_LIBVDPAU</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
@@ -702,10 +686,7 @@
           <default>true</default>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
             </dependency>
           </dependencies>
           <control type="toggle" />
@@ -716,10 +697,7 @@
           <default>true</default>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevdpaumpeg2" operator="is">true</dependency>
           </dependencies>
@@ -731,10 +709,7 @@
           <default>false</default>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevdpaumpeg4" operator="is">true</dependency>
           </dependencies>
@@ -746,10 +721,7 @@
           <default>true</default>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevdpau" operator="is">true</condition> <!-- USE VDPAU -->
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevdpauvc1" operator="is">true</dependency>
           </dependencies>
@@ -757,9 +729,6 @@
         </setting>
         <setting id="videoplayer.usevaapi" type="boolean" label="13426" help="36156">
           <requirement>HAVE_LIBVA</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
@@ -768,10 +737,7 @@
           <requirement>HAVE_LIBVA</requirement>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevaapi" operator="is">true</condition>
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevaapi" operator="is">true</condition>
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevaapimpeg2" operator="is">true</dependency>
           </dependencies>
@@ -783,10 +749,7 @@
           <requirement>HAVE_LIBVA</requirement>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevaapi" operator="is">true</condition>
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevaapi" operator="is">true</condition>
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevaapimpeg4" operator="is">true</dependency>
           </dependencies>
@@ -798,10 +761,7 @@
           <requirement>HAVE_LIBVA</requirement>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevaapi" operator="is">true</condition>
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevaapi" operator="is">true</condition>
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevaapivc1" operator="is">true</dependency>
           </dependencies>
@@ -813,10 +773,7 @@
           <requirement>HAVE_LIBVA</requirement>
           <dependencies>
             <dependency type="enable">
-              <and>
-                <condition setting="videoplayer.usevaapi" operator="is">true</condition>
-                <condition setting="videoplayer.decodingmethod" operator="is">1</condition>
-              </and>
+              <condition setting="videoplayer.usevaapi" operator="is">true</condition>
             </dependency>
             <dependency type="visible" on="property" name="codecoptionvisible" setting="videoplayer.usevaapivc1" operator="is">true</dependency>
           </dependencies>
@@ -826,27 +783,18 @@
         </setting>
         <setting id="videoplayer.usedxva2" type="boolean" label="13427" help="36158">
           <requirement>HasDXVA2</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="videoplayer.useomxplayer" type="boolean" label="13458" help="13459">
           <requirement>HAS_OMXPLAYER</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="videoplayer.useomx" type="boolean" label="13430" help="36161">
           <requirement>HAVE_LIBOPENMAX</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
@@ -859,9 +807,6 @@
         </setting>
         <setting id="videoplayer.usevda" type="boolean" label="13429" help="36160">
           <requirement>HasVDA</requirement>
-          <dependencies>
-            <dependency type="enable" setting="videoplayer.decodingmethod" operator="is">1</dependency>
-          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
@@ -967,7 +912,7 @@
           <level>1</level>
           <default>28</default>
           <constraints>
-            <minimum>16</minimum>
+            <minimum>12</minimum>
             <step>2</step>
             <maximum>74</maximum>
           </constraints>
@@ -1034,7 +979,7 @@
           <level>1</level>
           <default>English</default>
           <constraints>
-            <options>iso6391languages</options>
+            <options>streamlanguages</options>
             <delimiter>,</delimiter>
             <minimumitems>1</minimumitems>
           </constraints>
@@ -1353,7 +1298,7 @@
           <default>false</default>
           <control type="toggle" />
         </setting>
-        <setting id="epg.resetepg" type="action" label="19187" help="36225">
+        <setting id="epg.resetepg" type="action" label="19185" help="36225">
           <level>1</level>
           <control type="button" format="action" />
         </setting>
@@ -1490,6 +1435,17 @@
             <formatlabel>14044</formatlabel>
           </control>
         </setting>
+        <setting id="pvrrecord.preventduplicateepisodes" type="integer" label="812" help="36423">
+          <level>2</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="815">0</option>  <!-- record all episodes (no dup detect) -->
+              <option label="816">1</option>  <!-- record only new episodes -->
+            </options>
+          </constraints>
+          <control type="spinner" format="string" />
+        </setting>
       </group>
       <group id="2">
         <setting id="pvrrecord.timernotifications" type="boolean" label="19233" help="36239">
@@ -1618,6 +1574,14 @@
         </setting>
       </group>
     </category>
+    <category id="pvrtimers" label="" help="">
+      <group id="1">
+        <setting id="pvrtimers.timertypefilter" type="boolean" label="" help="">
+          <level>4</level>
+          <default>true</default>
+        </setting>
+      </group>
+    </category>
   </section>
   <section id="music" label="2" help="36253">
     <category id="musiclibrary" label="14022" help="36600">
@@ -1710,7 +1674,7 @@
       <group id="2">
         <setting id="musicplayer.seeksteps" type="list[integer]" label="13556" help="37042">
           <level>2</level>
-          <default>-60,-30,-15,-7,7,15,30,60</default>
+          <default>-60,-30,-10,10,30,60</default>
           <constraints>
             <options>videoseeksteps</options>
             <delimiter>,</delimiter>
@@ -2168,6 +2132,14 @@
         <setting id="services.upnpannounce" type="boolean" parent="services.upnpserver" label="20188" help="36324">
           <level>2</level>
           <default>true</default>
+          <dependencies>
+            <dependency type="enable" setting="services.upnpserver">true</dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
+        <setting id="services.upnplookforexternalsubtitles" type="boolean" parent="services.upnpserver" label="20222" help="36420">
+          <level>2</level>
+          <default>false</default>
           <dependencies>
             <dependency type="enable" setting="services.upnpserver">true</dependency>
           </dependencies>
@@ -2645,6 +2617,43 @@
         </setting>
       </group>
       <group id="2">
+        <setting id="audiooutput.dspaddonsenabled" type="boolean" label="36441" help="36438">
+          <level>0</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.passthrough">audiooutput.dspaddonsenabled</condition>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.ac3passthrough">audiooutput.dspaddonsenabled</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
+        <setting id="audiooutput.dspsettings" type="action" label="36436" help="36437">
+          <level>1</level>
+          <control type="button" format="action" />
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.dspaddonsenabled">audiooutput.dspsettings</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+        <setting id="audiooutput.dspresetdb" type="action" label="334" help="36439">
+          <level>1</level>
+          <control type="button" format="action" />
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.dspaddonsenabled">audiooutput.dspresetdb</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+      </group>
+      <group id="3">
         <setting id="audiooutput.guisoundmode" type="integer" label="34120" help="36373">
           <level>0</level>
           <default>1</default> <!-- AE_SOUND_IDLE -->
@@ -2925,8 +2934,32 @@
         </setting>
       </group>
     </category>
-    <category id="debug" label="14092" help="36391">
+    <category id="logging" label="14092" help="36391">
       <group id="1">
+        <setting id="eventlog.enabled" type="boolean" label="14112" help="36460">
+          <level>1</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="eventlog.enablednotifications" type="boolean" parent="eventlog.enabled" label="14113" help="36461">
+          <level>1</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="enable" setting="eventlog.enabled" operator="is">true</dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
+        <setting id="eventlog.show" type="action" label="14114" help="36431">
+          <level>1</level>
+          <dependencies>
+            <dependency type="enable" setting="eventlog.enabled" operator="is">true</dependency>
+          </dependencies>
+          <control type="button" format="action">
+            <hidevalue>true</hidevalue>
+          </control>
+        </setting>
+      </group>
+      <group id="2">
         <setting id="debug.showloginfo" type="boolean" label="20191" help="36392">
           <level>1</level>
           <default>false</default>

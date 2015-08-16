@@ -45,10 +45,7 @@
 #include "video/windows/GUIWindowVideoBase.h"
 #include "URL.h"
 #include "utils/StringUtils.h"
-
-#ifdef TARGET_WINDOWS
-#include "WIN32Util.h"
-#endif
+#include "utils/Variant.h"
 
 using namespace std;
 
@@ -291,8 +288,8 @@ void CGUIDialogContextMenu::GetContextButtons(const std::string &type, const CFi
       buttons.Add(CONTEXT_BUTTON_REMOVE_LOCK, 12335);
 
       bool maxRetryExceeded = false;
-      if (CSettings::Get().GetInt("masterlock.maxretries") != 0)
-        maxRetryExceeded = (share->m_iBadPwdCount >= CSettings::Get().GetInt("masterlock.maxretries"));
+      if (CSettings::Get().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
+        maxRetryExceeded = (share->m_iBadPwdCount >= CSettings::Get().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
 
       if (maxRetryExceeded)
         buttons.Add(CONTEXT_BUTTON_RESET_LOCK, 12334);
@@ -374,7 +371,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
         return false;
     }
     // prompt user if they want to really delete the source
-    if (!CGUIDialogYesNo::ShowAndGetInput(751, 0, 750, 0))
+    if (!CGUIDialogYesNo::ShowAndGetInput(CVariant{751}, CVariant{750}))
       return false;
 
     // check default before we delete, as deletion will kill the share object
@@ -516,7 +513,7 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
       if (!g_passwordManager.IsMasterLockUnlocked(true))
         return false;
 
-      if (!CGUIDialogYesNo::ShowAndGetInput(12335, 0, 750, 0))
+      if (!CGUIDialogYesNo::ShowAndGetInput(CVariant{12335}, CVariant{750}))
         return false;
 
       share->m_iHasLock = 0;
@@ -531,8 +528,8 @@ bool CGUIDialogContextMenu::OnContextButton(const std::string &type, const CFile
   case CONTEXT_BUTTON_REACTIVATE_LOCK:
     {
       bool maxRetryExceeded = false;
-      if (CSettings::Get().GetInt("masterlock.maxretries") != 0)
-        maxRetryExceeded = (share->m_iBadPwdCount >= CSettings::Get().GetInt("masterlock.maxretries"));
+      if (CSettings::Get().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) != 0)
+        maxRetryExceeded = (share->m_iBadPwdCount >= CSettings::Get().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES));
       if (!maxRetryExceeded)
       {
         // don't prompt user for mastercode when reactivating a lock
@@ -687,7 +684,7 @@ int CGUIDialogContextMenu::ShowAndGetChoice(const CContextButtons &choices)
     pMenu->SetInitialVisibility();
     pMenu->SetupButtons();
     pMenu->PositionAtCurrentFocus();
-    pMenu->DoModal();
+    pMenu->Open();
     return pMenu->m_clickedButton;
   }
   return -1;

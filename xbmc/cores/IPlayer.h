@@ -22,7 +22,6 @@
 
 #include "system.h" // until we get sane int types used here
 #include <memory>
-#include "IAudioCallback.h"
 #include "IPlayerCallback.h"
 #include "guilib/Geometry.h"
 #include <string>
@@ -195,14 +194,38 @@ public:
 
   virtual float GetActualFPS() { return 0.0f; };
   virtual void SeekTime(int64_t iTime = 0){};
+  /*
+   \brief seek relative to current time, returns false if not implemented by player
+   \param iTime The time in milliseconds to seek. A positive value will seek forward, a negative backward.
+   \return True if the player supports relative seeking, otherwise false
+   */
+  virtual bool SeekTimeRelative(int64_t iTime) { return false; }
   /*!
    \brief current time in milliseconds
    */
   virtual int64_t GetTime() { return 0; }
   /*!
+   \brief Sets the current time. This 
+   can be used for injecting the current time. 
+   This is not to be confused with a seek. It just
+   can be used if endless streams contain multiple
+   tracks in reality (like with airtunes)
+   */
+  virtual void SetTime(int64_t time) { }
+  /*!
+   \brief time of frame on screen in milliseconds
+   */
+  virtual int64_t GetDisplayTime() { return GetTime(); }
+  /*!
    \brief total time in milliseconds
    */
   virtual int64_t GetTotalTime() { return 0; }
+  /*!
+   \brief Set the total time  in milliseconds
+   this can be used for injecting the duration in case
+   its not available in the underlaying decoder (airtunes for example)
+   */
+  virtual void SetTotalTime(int64_t time) { }
   virtual void GetVideoStreamInfo(SPlayerVideoStreamInfo &info){};
   virtual int GetSourceBitrate(){ return 0;}
   virtual bool GetStreamDetails(CStreamDetails &details){ return false;}

@@ -277,7 +277,7 @@ int MysqlDatabase::copy(const char *backup_name) {
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't copy schema for table '%s'\nError: %s", db.c_str(), ret);
+        throw DbErrors("Can't copy schema for table '%s'\nError: %d", db.c_str(), ret);
       }
 
       // copy the table data
@@ -380,7 +380,7 @@ int MysqlDatabase::drop_analytics(void) {
       if ( (ret=query_with_reconnect(sql)) != MYSQL_OK )
       {
         mysql_free_result(res);
-        throw DbErrors("Can't create trigger '%s'\nError: %s", row[0], ret);
+        throw DbErrors("Can't create trigger '%s'\nError: %d", row[0], ret);
       }
     }
     mysql_free_result(res);
@@ -420,26 +420,29 @@ long MysqlDatabase::nextid(const char* sname) {
     return DB_UNEXPECTED_RESULT;
   }
   res = mysql_store_result(conn);
-  if (mysql_num_rows(res) == 0)
+  if (res)
   {
-    id = 1;
-    sprintf(sqlcmd,"insert into %s (nextid,seq_name) values (%d,'%s')",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
-  }
-  else
-  {
-    MYSQL_ROW row = mysql_fetch_row(res);
-    //id = (int)row[0];
-    id = -1;
-    unsigned long *lengths;
-    lengths = mysql_fetch_lengths(res);
-    CLog::Log(LOGINFO,"Next id is [%.*s] ", (int) lengths[0], row[0]);
-    sprintf(sqlcmd,"update %s set nextid=%d where seq_name = '%s'",seq_table,id,sname);
-    mysql_free_result(res);
-    if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
-    return id;
+    if (mysql_num_rows(res) == 0)
+    {
+      id = 1;
+      sprintf(sqlcmd, "insert into %s (nextid,seq_name) values (%d,'%s')", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
+    else
+    {
+      MYSQL_ROW row = mysql_fetch_row(res);
+      //id = (int)row[0];
+      id = -1;
+      unsigned long *lengths;
+      lengths = mysql_fetch_lengths(res);
+      CLog::Log(LOGINFO, "Next id is [%.*s] ", (int)lengths[0], row[0]);
+      sprintf(sqlcmd, "update %s set nextid=%d where seq_name = '%s'", seq_table, id, sname);
+      mysql_free_result(res);
+      if ((last_err = query_with_reconnect(sqlcmd)) != 0) return DB_UNEXPECTED_RESULT;
+      return id;
+    }
   }
   return DB_UNEXPECTED_RESULT;
 }
@@ -915,8 +918,8 @@ void MysqlDatabase::mysqlVXPrintf(
         }
         bufpt = &buf[etBUFSIZE-1];
         {
-          register const char *cset;      /* Use registers for speed */
-          register int base;
+          const char *cset;
+          int base;
           cset = &aDigits[infop->charset];
           base = infop->base;
           do{                                           /* Convert to ascii */
@@ -1164,7 +1167,7 @@ void MysqlDatabase::mysqlVXPrintf(
     ** the output.
     */
     if( !flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1174,7 +1177,7 @@ void MysqlDatabase::mysqlVXPrintf(
       mysqlStrAccumAppend(pAccum, bufpt, length);
     }
     if( flag_leftjustify ){
-      register int nspace;
+      int nspace;
       nspace = width-length;
       if( nspace>0 ){
         appendSpace(pAccum, nspace);
@@ -1456,7 +1459,15 @@ int MysqlDataset::exec(const string &sql) {
   if ( ci_find(qry, "CREATE TABLE") != string::npos 
     || ci_find(qry, "CREATE TEMPORARY TABLE") != string::npos )
   {
-    qry += " CHARACTER SET utf8 COLLATE utf8_general_ci";
+    // If CREATE TABLE ... SELECT Syntax is used we need to add the encoding after the table before the select
+    // e.g. CREATE TABLE x CHARACTER SET utf8 COLLATE utf8_general_ci [AS] SELECT * FROM y
+    if ((loc = qry.find(" AS SELECT ")) != string::npos ||
+        (loc = qry.find(" SELECT ")) != string::npos)
+    {
+      qry = qry.insert(loc, " CHARACTER SET utf8 COLLATE utf8_general_ci");
+    }
+    else
+      qry += " CHARACTER SET utf8 COLLATE utf8_general_ci";
   }
 
   CLog::Log(LOGDEBUG,"Mysql execute: %s", qry.c_str());
@@ -1504,6 +1515,8 @@ bool MysqlDataset::query(const std::string &query) {
 
   MYSQL* conn = handle();
   stmt = mysql_store_result(conn);
+  if (stmt == NULL)
+    throw DbErrors("Missing result set!");
 
   // column headers
   const unsigned int numColumns = mysql_num_fields(stmt);

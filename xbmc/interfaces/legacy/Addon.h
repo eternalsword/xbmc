@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include "swighelper.h"
 #include "addons/IAddon.h"
 
 #include "AddonString.h"
@@ -105,7 +104,7 @@ namespace XBMCAddon
        * *Note, You can use the above as keywords for arguments.
        * 
        * example:
-       *   - self.Settings.setSetting(id='username', value='teamxbmc')\n
+       *   - self.Addon.setSetting(id='username', value='teamxbmc')\n
        */
       void setSetting(const char* id, const String& value);
 
@@ -113,7 +112,7 @@ namespace XBMCAddon
        * openSettings() -- Opens this scripts settings dialog.
        * 
        * example:
-       *   - self.Settings.openSettings()
+       *   - self.Addon.openSettings()
        */
       void openSettings();
 

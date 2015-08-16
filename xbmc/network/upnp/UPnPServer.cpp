@@ -37,8 +37,10 @@
 #include "settings/Settings.h"
 #include "utils/log.h"
 #include "utils/md5.h"
+#include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "Util.h"
 #include "music/MusicDatabase.h"
 #include "video/VideoDatabase.h"
@@ -163,7 +165,7 @@ CUPnPServer::PropagateUpdates()
     string buffer;
     map<string,pair<bool, unsigned long> >::iterator itr;
 
-    if (m_scanning || !CSettings::Get().GetBool("services.upnpannounce"))
+    if (m_scanning || !CSettings::Get().GetBool(CSettings::SETTING_SERVICES_UPNPANNOUNCE))
         return;
 
     NPT_CHECK_LABEL(FindServiceById("urn:upnp-org:serviceId:ContentDirectory", service), failed);
@@ -379,7 +381,7 @@ CUPnPServer::Build(CFileItemPtr                  item,
         }
 
         // not a virtual path directory, new system
-        object = BuildObject(*item.get(), file_path, with_count, thumb_loader, &context, this);
+        object = BuildObject(*item.get(), file_path, with_count, thumb_loader, &context, this, UPnPContentDirectory);
 
         // set parent id if passed, otherwise it should have been determined
         if (object && parent_id) {
@@ -993,7 +995,7 @@ CUPnPServer::OnSearchContainer(PLT_ActionReference&          action,
       return BuildResponse(action, itemsall, filter, starting_index, requested_count, sort_criteria, context, NULL);
   } else if (NPT_String(search_criteria).Find("object.item.imageItem") >= 0) {
       CFileItemList items;
-      return BuildResponse(action, items, filter, starting_index, requested_count, sort_criteria, context, NULL);;
+      return BuildResponse(action, items, filter, starting_index, requested_count, sort_criteria, context, NULL);
   }
 
   return NPT_FAILURE;

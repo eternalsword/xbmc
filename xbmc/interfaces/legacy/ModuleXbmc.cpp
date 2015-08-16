@@ -28,7 +28,7 @@
 #include "ModuleXbmc.h"
 
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "utils/URIUtils.h"
 #include "aojsonrpc.h"
 #ifndef TARGET_WINDOWS
@@ -47,13 +47,10 @@
 #include "settings/Settings.h"
 #include "guilib/TextureManager.h"
 #include "Util.h"
-#include "URL.h"
 #include "cores/AudioEngine/AEFactory.h"
 #include "storage/MediaManager.h"
-#include "utils/FileUtils.h"
 #include "utils/LangCodeExpander.h"
 #include "utils/StringUtils.h"
-#include "CallbackHandler.h"
 #include "AddonUtils.h"
 
 #include "LanguageHook.h"
@@ -61,8 +58,10 @@
 #include "cores/VideoRenderers/RenderCapture.h"
 
 #include "threads/SystemClock.h"
-#include "Exception.h"
 #include <vector>
+#include "utils/log.h"
+
+using namespace KODI::MESSAGING;
 
 namespace XBMCAddon
 {
@@ -83,15 +82,13 @@ namespace XBMCAddon
     void shutdown()
     {
       XBMC_TRACE;
-      ThreadMessage tMsg = {TMSG_SHUTDOWN};
-      CApplicationMessenger::Get().SendMessage(tMsg);
+      CApplicationMessenger::Get().PostMsg(TMSG_SHUTDOWN);
     }
 
     void restart()
     {
       XBMC_TRACE;
-      ThreadMessage tMsg = {TMSG_RESTART};
-      CApplicationMessenger::Get().SendMessage(tMsg);
+      CApplicationMessenger::Get().PostMsg(TMSG_RESTART);
     }
 
     void executescript(const char* script)
@@ -100,9 +97,7 @@ namespace XBMCAddon
       if (! script)
         return;
 
-      ThreadMessage tMsg = {TMSG_EXECUTE_SCRIPT};
-      tMsg.strParam = script;
-      CApplicationMessenger::Get().SendMessage(tMsg);
+      CApplicationMessenger::Get().PostMsg(TMSG_EXECUTE_SCRIPT, -1, -1, nullptr, script);
     }
 
     void executebuiltin(const char* function, bool wait /* = false*/)
@@ -110,7 +105,10 @@ namespace XBMCAddon
       XBMC_TRACE;
       if (! function)
         return;
-      CApplicationMessenger::Get().ExecBuiltIn(function,wait);
+      if (wait)
+        CApplicationMessenger::Get().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, function);
+      else
+        CApplicationMessenger::Get().PostMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, function);
     }
 
     String executeJSONRPC(const char* jsonrpccommand)
@@ -172,7 +170,7 @@ namespace XBMCAddon
     String getSkinDir()
     {
       XBMC_TRACE;
-      return CSettings::Get().GetString("lookandfeel.skin");
+      return CSettings::Get().GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
     }
 
     String getLanguage(int format /* = CLangCodeExpander::ENGLISH_NAME */, bool region /*= false*/)
@@ -370,7 +368,7 @@ namespace XBMCAddon
       XBMC_TRACE;
       Crc32 crc;
       crc.ComputeFromLowerCase(path);
-      return StringUtils::Format("%08x.tbn", (unsigned __int32)crc);;
+      return StringUtils::Format("%08x.tbn", (unsigned __int32)crc);
     }
 
     String makeLegalFilename(const String& filename, bool fatX)

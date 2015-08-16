@@ -19,9 +19,7 @@
  */
 
 #include "GUIRSSControl.h"
-#include "GUIWindowManager.h"
 #include "settings/Settings.h"
-#include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
 #include "utils/RssManager.h"
 #include "utils/RssReader.h"
@@ -99,7 +97,7 @@ bool CGUIRSSControl::UpdateColors()
 void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
   bool dirty = false;
-  if (CSettings::Get().GetBool("lookandfeel.enablerssfeeds") && CRssManager::Get().IsActive())
+  if (CSettings::Get().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::Get().IsActive())
   {
     CSingleLock lock(m_criticalSection);
     // Create RSS background/worker thread if needed
@@ -160,7 +158,7 @@ void CGUIRSSControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyre
 void CGUIRSSControl::Render()
 {
   // only render the control if they are enabled
-  if (CSettings::Get().GetBool("lookandfeel.enablerssfeeds") && CRssManager::Get().IsActive())
+  if (CSettings::Get().GetBool(CSettings::SETTING_LOOKANDFEEL_ENABLERSSFEEDS) && CRssManager::Get().IsActive())
   {
 
     if (m_label.font)

@@ -18,13 +18,8 @@
  *
  */
 
+#include "addons/include/xbmc_pvr_types.h"
 #include "guilib/LocalizeStrings.h"
-#include "Epg.h"
-#include "EpgInfoTag.h"
-#include "EpgContainer.h"
-#include "EpgDatabase.h"
-#include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "pvr/timers/PVRTimers.h"
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
 #include "settings/AdvancedSettings.h"
@@ -32,9 +27,12 @@
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
-#include "addons/include/xbmc_pvr_types.h"
 
-using namespace std;
+#include "Epg.h"
+#include "EpgInfoTag.h"
+#include "EpgContainer.h"
+#include "EpgDatabase.h"
+
 using namespace EPG;
 using namespace PVR;
 
@@ -54,6 +52,7 @@ CEpgInfoTag::CEpgInfoTag(void) :
     m_iEpisodeNumber(0),
     m_iEpisodePart(0),
     m_iUniqueBroadcastID(-1),
+    m_iYear(0),
     m_epg(NULL)
 {
 }
@@ -69,6 +68,7 @@ CEpgInfoTag::CEpgInfoTag(CEpg *epg, PVR::CPVRChannelPtr pvrChannel, const std::s
     m_iEpisodeNumber(0),
     m_iEpisodePart(0),
     m_iUniqueBroadcastID(-1),
+    m_iYear(0),
     m_strIconPath(strIconPath),
     m_epg(epg),
     m_pvrChannel(pvrChannel)
@@ -206,6 +206,7 @@ void CEpgInfoTag::Serialize(CVariant &value) const
   value["episodenum"] = m_iEpisodeNumber;
   value["episodepart"] = m_iEpisodePart;
   value["hastimer"] = HasTimer();
+  value["hastimerschedule"] = HasTimerSchedule();
   value["hasrecording"] = HasRecording();
   value["recording"] = recording ? recording->m_strFileNameAndPath : "";
   value["isactive"] = IsActive();
@@ -353,7 +354,7 @@ std::string CEpgInfoTag::Title(bool bOverrideParental /* = false */) const
 
   if (!bOverrideParental && bParentalLocked)
     strTitle = g_localizeStrings.Get(19266); // parental locked
-  else if (m_strTitle.empty() && !CSettings::Get().GetBool("epg.hidenoinfoavailable"))
+  else if (m_strTitle.empty() && !CSettings::Get().GetBool(CSettings::SETTING_EPG_HIDENOINFOAVAILABLE))
     strTitle = g_localizeStrings.Get(19055); // no information available
   else
     strTitle = m_strTitle;
@@ -455,7 +456,7 @@ int CEpgInfoTag::GenreSubType(void) const
   return m_iGenreSubType;
 }
 
-const vector<string> CEpgInfoTag::Genre(void) const
+const std::vector<std::string> CEpgInfoTag::Genre(void) const
 {
   return m_genre;
 }
@@ -520,6 +521,12 @@ std::string CEpgInfoTag::Path(void) const
 bool CEpgInfoTag::HasTimer(void) const
 {
   return m_timer != NULL;
+}
+
+bool CEpgInfoTag::HasTimerSchedule(void) const
+{
+  CSingleLock lock(m_critSection);
+  return m_timer && (m_timer->GetTimerScheduleId() != PVR_TIMER_NO_PARENT);
 }
 
 CPVRTimerInfoTagPtr CEpgInfoTag::Timer(void) const

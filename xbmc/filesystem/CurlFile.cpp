@@ -195,12 +195,20 @@ size_t CCurlFile::CReadState::WriteCallback(char *buffer, size_t size, size_t ni
     if (maxWriteable)
     {
       if (!m_buffer.WriteData(m_overflowBuffer, maxWriteable))
+      {
         CLog::Log(LOGERROR, "CCurlFile::WriteCallback - Unable to write to buffer - what's up?");
-      if (m_overflowSize > maxWriteable)
-      { // still have some more - copy it down
+        return 0;
+      }
+
+      if (maxWriteable < m_overflowSize)
+      {
+        // still have some more - copy it down
         memmove(m_overflowBuffer, m_overflowBuffer + maxWriteable, m_overflowSize - maxWriteable);
       }
       m_overflowSize -= maxWriteable;
+
+      // Shrink memory:
+      m_overflowBuffer = (char*)realloc_simple(m_overflowBuffer, m_overflowSize);
     }
   }
   // ok, now copy the data into our ring buffer
@@ -210,6 +218,7 @@ size_t CCurlFile::CReadState::WriteCallback(char *buffer, size_t size, size_t ni
     if (!m_buffer.WriteData(buffer, maxWriteable))
     {
       CLog::Log(LOGERROR, "CCurlFile::WriteCallback - Unable to write to buffer with %i bytes - what's up?", maxWriteable);
+      return 0;
     }
     else
     {
@@ -221,6 +230,7 @@ size_t CCurlFile::CReadState::WriteCallback(char *buffer, size_t size, size_t ni
   {
 //    CLog::Log(LOGDEBUG, "CCurlFile::WriteCallback(%p) not enough free space for %i bytes", (void*)this,  amount);
 
+    // TODO: Limit max. amount of the overflowbuffer
     m_overflowBuffer = (char*)realloc_simple(m_overflowBuffer, amount + m_overflowSize);
     if(m_overflowBuffer == NULL)
     {
@@ -334,10 +344,16 @@ long CCurlFile::CReadState::Connect(unsigned int size)
   // read some data in to try and obtain the length
   // maybe there's a better way to get this info??
   m_stillRunning = 1;
+
+  // (Try to) fill buffer
   if (!FillBuffer(1))
   {
-    CLog::Log(LOGERROR, "CCurlFile::CReadState::Connect, didn't get any data from stream.");
-    return -1;
+    // Check response code
+    long response;
+    if (CURLE_OK == g_curlInterface.easy_getinfo(m_easyHandle, CURLINFO_RESPONSE_CODE, &response))
+      return response;
+    else 
+      return -1;
   }
 
   double length;
@@ -738,19 +754,19 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
   else if( url2.IsProtocol("http")
        ||  url2.IsProtocol("https"))
   {
-    if (CSettings::Get().GetBool("network.usehttpproxy")
-        && !CSettings::Get().GetString("network.httpproxyserver").empty()
-        && CSettings::Get().GetInt("network.httpproxyport") > 0
+    if (CSettings::Get().GetBool(CSettings::SETTING_NETWORK_USEHTTPPROXY)
+        && !CSettings::Get().GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER).empty()
+        && CSettings::Get().GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT) > 0
         && m_proxy.empty())
     {
-      m_proxy = CSettings::Get().GetString("network.httpproxyserver");
-      m_proxy += StringUtils::Format(":%d", CSettings::Get().GetInt("network.httpproxyport"));
-      if (CSettings::Get().GetString("network.httpproxyusername").length() > 0 && m_proxyuserpass.empty())
+      m_proxy = CSettings::Get().GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER);
+      m_proxy += StringUtils::Format(":%d", CSettings::Get().GetInt(CSettings::SETTING_NETWORK_HTTPPROXYPORT));
+      if (CSettings::Get().GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME).length() > 0 && m_proxyuserpass.empty())
       {
-        m_proxyuserpass = CSettings::Get().GetString("network.httpproxyusername");
-        m_proxyuserpass += ":" + CSettings::Get().GetString("network.httpproxypassword");
+        m_proxyuserpass = CSettings::Get().GetString(CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME);
+        m_proxyuserpass += ":" + CSettings::Get().GetString(CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD);
       }
-      m_proxytype = (ProxyType)CSettings::Get().GetInt("network.httpproxytype");
+      m_proxytype = (ProxyType)CSettings::Get().GetInt(CSettings::SETTING_NETWORK_HTTPPROXYTYPE);
       CLog::Log(LOGDEBUG, "Using proxy %s, type %d", m_proxy.c_str(), proxyType2CUrlProxyType[m_proxytype]);
     }
 
@@ -794,6 +810,8 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
           SetStreamProxy(value, PROXY_HTTP);
         else if (name == "sslcipherlist")
           m_cipherlist = value;
+        else if (name == "connection-timeout")
+          m_connecttimeout = strtol(value.c_str(), NULL, 10);
         else
           SetRequestHeader(it->first, value);
       }
@@ -894,8 +912,15 @@ bool CCurlFile::Download(const std::string& strURL, const std::string& strFileNa
 // Detect whether we are "online" or not! Very simple and dirty!
 bool CCurlFile::IsInternet()
 {
-  CURL url("http://www.google.com");
+  CURL url("http://www.msftncsi.com/ncsi.txt");
   bool found = Exists(url);
+  if (!found)
+  {
+    // fallback
+    Close();
+    url.Parse("http://www.w3.org/");
+    found = Exists(url);
+  }
   Close();
 
   return found;
@@ -937,8 +962,11 @@ bool CCurlFile::Open(const CURL& url)
   m_state->m_sendRange = m_seekable;
 
   m_httpresponse = m_state->Connect(m_bufferSize);
-  if( m_httpresponse < 0 || m_httpresponse >= 400)
+  if (m_httpresponse <= 0 || m_httpresponse >= 400)
+  {
+    CLog::Log(LOGERROR, "CCurlFile::Open failed with code %li for %s", m_httpresponse, url.GetRedacted().c_str());
     return false;
+  }
 
   SetCorrectHeaders(m_state);
 
@@ -1451,9 +1479,10 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
       m_buffer.WriteData(m_overflowBuffer, amount);
 
       if (amount < m_overflowSize)
-        memcpy(m_overflowBuffer, m_overflowBuffer+amount,m_overflowSize-amount);
+        memmove(m_overflowBuffer, m_overflowBuffer + amount, m_overflowSize - amount);
 
       m_overflowSize -= amount;
+      // Shrink memory:
       m_overflowBuffer = (char*)realloc_simple(m_overflowBuffer, m_overflowSize);
       continue;
     }
@@ -1478,11 +1507,14 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
             if (msg->data.result == CURLE_OK)
               return true;
 
+            long httpCode = 0;
             if (msg->data.result == CURLE_HTTP_RETURNED_ERROR)
             {
-              long httpCode;
               g_curlInterface.easy_getinfo(msg->easy_handle, CURLINFO_RESPONSE_CODE, &httpCode);
-              CLog::Log(LOGERROR, "CCurlFile::FillBuffer - Failed: HTTP returned error %ld", httpCode);
+
+              // Don't log 404 not-found errors to prevent log-spam
+              if (httpCode != 404)
+                CLog::Log(LOGERROR, "CCurlFile::FillBuffer - Failed: HTTP returned error %ld", httpCode);
             }
             else
             {
@@ -1497,7 +1529,7 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
                   !m_bFirstLoop)
               CURLresult = msg->data.result;
             else if ( (msg->data.result == CURLE_HTTP_RANGE_ERROR     ||
-                       msg->data.result == CURLE_HTTP_RETURNED_ERROR) &&
+                       httpCode == 416 /* = Requested Range Not Satisfiable */) &&
                        m_bFirstLoop                                   &&
                        m_filePos == 0                                 &&
                        m_sendRange)
@@ -1539,6 +1571,9 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
 
         CLog::Log(LOGNOTICE, "CCurlFile::FillBuffer - Reconnect, (re)try %i", retry);
 
+        // Progressive sleep. TODO: Find a better optimum for this?
+        Sleep( (retry - 1) * 1000);
+
         // Connect + seek to current position (again)
         SetResume();
         g_curlInterface.multi_add_handle(m_multiHandle, m_easyHandle);
@@ -1574,11 +1609,33 @@ bool CCurlFile::CReadState::FillBuffer(unsigned int want)
 
         do
         {
-          unsigned int time_left = endTime.MillisLeft();
-          struct timeval t = { (int)time_left / 1000, ((int)time_left % 1000) * 1000 };
-
-          // Wait until data is available or a timeout occurs.
-          rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &t);
+          /* On success the value of maxfd is guaranteed to be >= -1. We call
+           * select(maxfd + 1, ...); specially in case of (maxfd == -1) there are
+           * no fds ready yet so we call select(0, ...) --or Sleep() on Windows--
+           * to sleep 100ms, which is the minimum suggested value in the
+           * curl_multi_fdset() doc.
+           */
+          if (maxfd == -1)
+          {
+#ifdef TARGET_WINDOWS
+            /* Windows does not support using select() for sleeping without a dummy
+             * socket. Instead use Windows' Sleep() and sleep for 100ms which is the
+             * minimum suggested value in the curl_multi_fdset() doc.
+             */
+            Sleep(100);
+            rc = 0;
+#else
+            /* Portable sleep for platforms other than Windows. */
+            struct timeval wait = { 0, 100 * 1000 }; /* 100ms */
+            rc = select(0, NULL, NULL, NULL, &wait);
+#endif
+          }
+          else
+          {
+            unsigned int time_left = endTime.MillisLeft();
+            struct timeval wait = { (int)time_left / 1000, ((int)time_left % 1000) * 1000 };
+            rc = select(maxfd + 1, &fdread, &fdwrite, &fdexcep, &wait);
+          }
 #ifdef TARGET_WINDOWS
         } while(rc == SOCKET_ERROR && WSAGetLastError() == WSAEINTR);
 #else

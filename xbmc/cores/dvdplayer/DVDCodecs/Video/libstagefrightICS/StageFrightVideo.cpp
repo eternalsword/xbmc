@@ -30,11 +30,10 @@
 #include "guilib/GraphicContext.h"
 #include "DVDClock.h"
 #include "utils/log.h"
-#include "utils/fastmemcpy.h"
 #include "threads/Thread.h"
 #include "threads/Event.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
 #include "android/jni/Build.h"
 
@@ -56,6 +55,7 @@
 #define EGL_IMAGE_PRESERVED_KHR   0x30D2
 
 using namespace android;
+using namespace KODI::MESSAGING;
 
 static int64_t pts_dtoi(double pts)
 {
@@ -620,7 +620,7 @@ int  CStageFrightVideo::Decode(uint8_t *pData, int iSize, double dts, double pts
       return VC_ERROR;
     }
 
-    fast_memcpy(frame->medbuf->data(), demuxer_content, demuxer_bytes);
+    memcpy(frame->medbuf->data(), demuxer_content, demuxer_bytes);
     frame->medbuf->set_range(0, demuxer_bytes);
     frame->medbuf->meta_data()->clear();
     frame->medbuf->meta_data()->setInt64(kKeyTime, frame->pts);

@@ -18,13 +18,16 @@
  *
  */
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "system.h"
 #include "ProfilesManager.h"
 #include "Application.h"
 #include "DatabaseManager.h"
 #include "FileItem.h"
 #include "GUIInfoManager.h"
-#include "LangInfo.h"
 #include "PasswordManager.h"
 #include "Util.h"
 #include "dialogs/GUIDialogOK.h"
@@ -42,11 +45,11 @@
 #include "storage/DetectDVDType.h"
 #endif
 #include "threads/SingleLock.h"
-#include "utils/CharsetConverter.h"
 #include "utils/FileUtils.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "utils/XMLUtils.h"
 
 // TODO
@@ -62,7 +65,6 @@
 #define XML_NEXTID        "nextIdProfile"
 #define XML_PROFILE       "profile"
 
-using namespace std;
 using namespace XFILE;
 
 static CProfile EmptyProfile;
@@ -84,11 +86,11 @@ CProfilesManager& CProfilesManager::Get()
 void CProfilesManager::OnSettingsLoaded()
 {
   // check them all
-  string strDir = CSettings::Get().GetString("system.playlistspath");
+  std::string strDir = CSettings::Get().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
   if (strDir == "set default" || strDir.empty())
   {
     strDir = "special://profile/playlists/";
-    CSettings::Get().SetString("system.playlistspath", strDir.c_str());
+    CSettings::Get().SetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH, strDir.c_str());
   }
 
   CDirectory::Create(strDir);
@@ -207,7 +209,7 @@ bool CProfilesManager::Save(const std::string &file) const
   XMLUtils::SetInt(pRoot, XML_AUTO_LOGIN, m_autoLoginProfile);
   XMLUtils::SetInt(pRoot, XML_NEXTID, m_nextProfileId);      
 
-  for (vector<CProfile>::const_iterator profile = m_profiles.begin(); profile != m_profiles.end(); ++profile)
+  for (std::vector<CProfile>::const_iterator profile = m_profiles.begin(); profile != m_profiles.end(); ++profile)
     profile->Save(pRoot);
 
   // save the file
@@ -253,7 +255,7 @@ bool CProfilesManager::LoadProfile(size_t index)
   CDatabaseManager::Get().Initialize();
   CButtonTranslator::GetInstance().Load(true);
 
-  CInputManager::Get().SetMouseEnabled(CSettings::Get().GetBool("input.enablemouse"));
+  CInputManager::Get().SetMouseEnabled(CSettings::Get().GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
 
   g_infoManager.ResetCache();
   g_infoManager.ResetLibraryBools();
@@ -263,8 +265,8 @@ bool CProfilesManager::LoadProfile(size_t index)
     CXBMCTinyXML doc;
     if (doc.LoadFile(URIUtils::AddFileToFolder(GetUserDataFolder(), "guisettings.xml")))
     {
-      CSettings::Get().LoadSetting(doc.RootElement(), "masterlock.maxretries");
-      CSettings::Get().LoadSetting(doc.RootElement(), "masterlock.startuplock");
+      CSettings::Get().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_MAXRETRIES);
+      CSettings::Get().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_STARTUPLOCK);
     }
   }
 
@@ -296,14 +298,12 @@ bool CProfilesManager::DeleteProfile(size_t index)
   if (dlgYesNo == NULL)
     return false;
 
-  string message;
-  string str = g_localizeStrings.Get(13201);
-  message = StringUtils::Format(str.c_str(), profile->getName().c_str());
-  dlgYesNo->SetHeading(13200);
-  dlgYesNo->SetLine(0, message);
-  dlgYesNo->SetLine(1, "");
-  dlgYesNo->SetLine(2, "");
-  dlgYesNo->DoModal();
+  std::string str = g_localizeStrings.Get(13201);
+  dlgYesNo->SetHeading(CVariant{13200});
+  dlgYesNo->SetLine(0, CVariant{StringUtils::Format(str.c_str(), profile->getName().c_str())});
+  dlgYesNo->SetLine(1, CVariant{""});
+  dlgYesNo->SetLine(2, CVariant{""});
+  dlgYesNo->Open();
 
   if (!dlgYesNo->IsConfirmed())
     return false;
@@ -313,7 +313,7 @@ bool CProfilesManager::DeleteProfile(size_t index)
     m_autoLoginProfile = 0;
 
   // delete profile
-  string strDirectory = profile->getDirectory();
+  std::string strDirectory = profile->getDirectory();
   m_profiles.erase(m_profiles.begin() + index);
 
   // fall back to master profile if necessary
@@ -404,7 +404,7 @@ void CProfilesManager::AddProfile(const CProfile &profile)
   CSingleLock lock(m_critical);
   // data integrity check - covers off migration from old profiles.xml,
   // incrementing of the m_nextIdProfile,and bad data coming in
-  m_nextProfileId = max(m_nextProfileId, profile.getId() + 1);
+  m_nextProfileId = std::max(m_nextProfileId, profile.getId() + 1);
 
   m_profiles.push_back(profile);
 }

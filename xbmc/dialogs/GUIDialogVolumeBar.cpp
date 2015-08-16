@@ -20,12 +20,11 @@
 
 #include "GUIDialogVolumeBar.h"
 #include "input/Key.h"
-#include "utils/TimeUtils.h"
 
 #define VOLUME_BAR_DISPLAY_TIME 1000L
 
 CGUIDialogVolumeBar::CGUIDialogVolumeBar(void)
-    : CGUIDialog(WINDOW_DIALOG_VOLUME_BAR, "DialogVolumeBar.xml")
+  : CGUIDialog(WINDOW_DIALOG_VOLUME_BAR, "DialogVolumeBar.xml", DialogModalityType::MODELESS)
 {
   m_loadType = LOAD_ON_GUI_INIT;
   SetAutoClose(VOLUME_BAR_DISPLAY_TIME);

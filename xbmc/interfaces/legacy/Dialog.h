@@ -22,10 +22,8 @@
 
 #include <vector>
 
-#include "WindowException.h"
 #include "AddonClass.h"
 #include "AddonString.h"
-#include "ApplicationMessenger.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "Alternative.h"
@@ -58,7 +56,7 @@ namespace XBMCAddon
        * yesno(heading, line1[, line2, line3]) -- Show a dialog 'YES/NO'.\n
        * \n
        * heading        : string or unicode - dialog heading.\n
-       * line1          : string or unicode - line #1 text.\n
+       * line1          : string or unicode - line #1 multi-line text.\n
        * line2          : [opt] string or unicode - line #2 text.\n
        * line3          : [opt] string or unicode - line #3 text.\n
        * nolabel        : [opt] label to put on the no button.\n
@@ -66,11 +64,11 @@ namespace XBMCAddon
        * autoclose      : [opt] integer - milliseconds to autoclose dialog. (default=do not autoclose)\n
        * \n
        * *Note, Returns True if 'Yes' was pressed, else False.\n
-       * *Note, Optionally line1 can be sent as multi-line text. In this case line2 and line3 must be omitted.\n
+       * *Note, it is preferred to only use line1 as it is actually a multi-line text. In this case line2 and line3 must be omitted.\n
        * \n
        * example:\n
        *   - dialog = xbmcgui.Dialog()\n
-       *   - ret = dialog.yesno('XBMC', 'Do you want to exit this script?')n\n
+       *   - ret = dialog.yesno('Kodi', 'Do you want to exit this script?')n\n
        */
       bool yesno(const String& heading, const String& line1, 
                  const String& line2 = emptyString,
@@ -98,12 +96,12 @@ namespace XBMCAddon
        * ok(heading, line1[, line2, line3]) -- Show a dialog 'OK'.\n
        * \n
        * heading        : string or unicode - dialog heading.\n
-       * line1          : string or unicode - line #1 text.\n
+       * line1          : string or unicode - line #1 multi-line text.\n
        * line2          : [opt] string or unicode - line #2 text.\n
        * line3          : [opt] string or unicode - line #3 text.\n
        * \n
        * *Note, Returns True if 'Ok' was pressed, else False.\n
-       * *Note: Optionally line1 can be sent as multi-line text. In this case line2 and line3 must be omitted.\n
+       * *Note, it is preferred to only use line1 as it is actually a multi-line text. In this case line2 and line3 must be omitted.\n
        * \n
        * example:\n
        *   - dialog = xbmcgui.Dialog()\n
@@ -112,6 +110,19 @@ namespace XBMCAddon
       bool ok(const String& heading, const String& line1, 
               const String& line2 = emptyString,
               const String& line3 = emptyString);
+
+      /**
+      * textviewer(heading, text) -- Show a dialog 'TextViewer'.\n
+      * \n
+      * heading        : string or unicode - dialog heading.\n
+      * text          : string or unicode - text.\n
+      * \n
+      * example:\n
+      *   - dialog = xbmcgui.Dialog()\n
+      *   - dialog.textviewer('Plot', 'Some movie plot.')n\n
+      */
+      void textviewer(const String& heading, const String& text);
+
 
       /**
        * browse(type, heading, shares[, mask, useThumbs, treatAsFolder, default, enableMultiple]) -- Show a 'Browse' dialog.\n
@@ -308,11 +319,11 @@ namespace XBMCAddon
        * create(heading[, line1, line2, line3]) -- Create and show a progress dialog.\n
        * \n
        * heading        : string or unicode - dialog heading.\n
-       * line1          : [opt] string or unicode - line #1 text.\n
+       * line1          : [opt] string or unicode - line #1 multi-line text.\n
        * line2          : [opt] string or unicode - line #2 text.\n
        * line3          : [opt] string or unicode - line #3 text.\n
        * \n
-       * *Note, Optionally line1 can be sent as multi-line text. In this case line2 and line3 must be omitted.\n
+       * *Note, it is preferred to only use line1 as it is actually a multi-line text. In this case line2 and line3 must be omitted.\n
        * *Note, Use update() to update lines and progressbar.\n
        * \n
        * example:
@@ -327,11 +338,11 @@ namespace XBMCAddon
        * update(percent[, line1, line2, line3]) -- Updates the progress dialog.\n
        * \n
        * percent        : integer - percent complete. (0:100)\n
-       * line1          : [opt] string or unicode - line #1 text.\n
+       * line1          : [opt] string or unicode - line #1 multi-line text.\n
        * line2          : [opt] string or unicode - line #2 text.\n
        * line3          : [opt] string or unicode - line #3 text.\n
        * \n
-       * *Note, Optionally line1 can be sent as multi-line text. In this case line2 and line3 must be omitted.\n
+       * *Note, it is preferred to only use line1 as it is actually a multi-line text. In this case line2 and line3 must be omitted.\n
        * *Note, If percent == 0, the progressbar will be hidden.\n
        * \n
        * example:

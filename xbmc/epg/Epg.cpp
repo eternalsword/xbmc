@@ -18,21 +18,17 @@
  *
  */
 
+#include "addons/include/xbmc_epg_types.h"
 #include "guilib/LocalizeStrings.h"
+#include "pvr/PVRManager.h"
+#include "pvr/addons/PVRClients.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "utils/TimeUtils.h"
 
 #include "EpgDatabase.h"
 #include "EpgContainer.h"
-#include "pvr/PVRManager.h"
-#include "pvr/addons/PVRClients.h"
-#include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "utils/StringUtils.h"
-
-#include "../addons/include/xbmc_epg_types.h"
 
 using namespace PVR;
 using namespace EPG;
@@ -385,19 +381,19 @@ bool CEpg::UpdateEntries(const CEpg &epg, bool bStoreInDb /* = true */)
 {
   CSingleLock lock(m_critSection);
 #if EPG_DEBUGGING
-  CLog::Log(LOGDEBUG, "EPG - %s - %zu entries in memory before merging", __FUNCTION__, m_tags.size());
+  CLog::Log(LOGDEBUG, "EPG - %s - %" PRIuS" entries in memory before merging", __FUNCTION__, m_tags.size());
 #endif
   /* copy over tags */
   for (map<CDateTime, CEpgInfoTagPtr>::const_iterator it = epg.m_tags.begin(); it != epg.m_tags.end(); ++it)
     UpdateEntry(*it->second, bStoreInDb, false);
 
 #if EPG_DEBUGGING
-  CLog::Log(LOGDEBUG, "EPG - %s - %zu entries in memory after merging and before fixing", __FUNCTION__, m_tags.size());
+  CLog::Log(LOGDEBUG, "EPG - %s - %" PRIuS" entries in memory after merging and before fixing", __FUNCTION__, m_tags.size());
 #endif
   FixOverlappingEvents(bStoreInDb);
 
 #if EPG_DEBUGGING
-  CLog::Log(LOGDEBUG, "EPG - %s - %zu entries in memory after fixing", __FUNCTION__, m_tags.size());
+  CLog::Log(LOGDEBUG, "EPG - %s - %" PRIuS" entries in memory after fixing", __FUNCTION__, m_tags.size());
 #endif
   /* update the last scan time of this table */
   m_lastScanTime = CDateTime::GetCurrentDateTime().GetAsUTCDateTime();
@@ -416,7 +412,7 @@ CDateTime CEpg::GetLastScanTime(void)
 
     if (!m_lastScanTime.IsValid())
     {
-      if (!CSettings::Get().GetBool("epg.ignoredbforclient"))
+      if (!CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT))
       {
         CEpgDatabase *database = g_EpgContainer.GetDatabase();
         CDateTime dtReturn; dtReturn.SetValid(false);
@@ -521,7 +517,7 @@ int CEpg::Get(CFileItemList &results, const EpgSearchFilter &filter) const
 
 bool CEpg::Persist(void)
 {
-  if (CSettings::Get().GetBool("epg.ignoredbforclient") || !NeedsSave())
+  if (CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT) || !NeedsSave())
     return true;
 
 #if EPG_DEBUGGING
@@ -740,8 +736,8 @@ bool CEpg::UpdateEntry(const EPG_TAG *data, bool bUpdateDatabase /* = false */)
 
 bool CEpg::IsRadio(void) const
 {
-  CPVRChannelPtr channel = Channel();
-  return channel ? channel->IsRadio() : false;
+  CSingleLock lock(m_critSection);
+  return m_pvrChannel ? m_pvrChannel->IsRadio() : false;
 }
 
 bool CEpg::IsRemovableTag(const CEpgInfoTag &tag) const
@@ -757,13 +753,13 @@ bool CEpg::LoadFromClients(time_t start, time_t end)
   {
     CEpg tmpEpg(channel);
     if (tmpEpg.UpdateFromScraper(start, end))
-      bReturn = UpdateEntries(tmpEpg, !CSettings::Get().GetBool("epg.ignoredbforclient"));
+      bReturn = UpdateEntries(tmpEpg, !CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT));
   }
   else
   {
     CEpg tmpEpg(m_iEpgID, m_strName, m_strScraperName);
     if (tmpEpg.UpdateFromScraper(start, end))
-      bReturn = UpdateEntries(tmpEpg, !CSettings::Get().GetBool("epg.ignoredbforclient"));
+      bReturn = UpdateEntries(tmpEpg, !CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT));
   }
 
   return bReturn;
@@ -862,6 +858,6 @@ bool CEpg::IsValid(void) const
 {
   CSingleLock lock(m_critSection);
   if (ScraperName() == "client")
-    return Channel().get() != NULL;
+    return m_pvrChannel != NULL;
   return true;
 }

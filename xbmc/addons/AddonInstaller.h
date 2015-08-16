@@ -21,6 +21,7 @@
 
 #include "utils/FileOperationJob.h"
 #include "addons/Addon.h"
+#include "addons/Repository.h"
 #include "utils/Stopwatch.h"
 #include "threads/Event.h"
 
@@ -70,19 +71,24 @@ public:
    */
   bool InstallFromZip(const std::string &path);
 
-  /*! \brief Install a set of addons from the official repository (if needed)
-   \param addonIDs a set of addon IDs to install
-   */
-  void InstallFromXBMCRepo(const std::set<std::string> &addonIDs);
+  /*! \brief Check whether dependencies of an addon exist or are installable.
+  Iterates through the addon's dependencies, checking they're installed or installable.
+  Each dependency must also satisfies CheckDependencies in turn.
+  \param addon the addon to check
+  \param database the database instance to update. Defaults to NULL.
+  \return true if dependencies are available, false otherwise.
+  */
+  bool CheckDependencies(const ADDON::AddonPtr &addon, CAddonDatabase *database = NULL);
 
   /*! \brief Check whether dependencies of an addon exist or are installable.
    Iterates through the addon's dependencies, checking they're installed or installable.
    Each dependency must also satisfies CheckDependencies in turn.
    \param addon the addon to check
+   \param failedDep Dependency addon that isn't available
    \param database the database instance to update. Defaults to NULL.
    \return true if dependencies are available, false otherwise.
    */
-  bool CheckDependencies(const ADDON::AddonPtr &addon, CAddonDatabase *database = NULL);
+  bool CheckDependencies(const ADDON::AddonPtr &addon, std::pair<std::string, std::string> &failedDep, CAddonDatabase *database = NULL);
 
   /*! \brief Update all repositories (if needed)
    Runs through all available repositories and queues an update of them if they
@@ -102,7 +108,7 @@ public:
    \return the last time a repository was updated.
    */
   CDateTime LastRepoUpdate() const;
-  void UpdateRepos(bool force = false, bool wait = false);
+  void UpdateRepos(bool force = false, bool wait = false, bool showProgress = false);
 
   void OnJobComplete(unsigned int jobID, bool success, CJob* job);
   void OnJobProgress(unsigned int jobID, unsigned int progress, unsigned int total, const CJob *job);
@@ -144,9 +150,10 @@ private:
    \param addon the addon to check
    \param preDeps previous dependencies encountered during recursion. aids in avoiding infinite recursion
    \param database database instance to update
+   \param failedDep Dependency addon that isn't available
    \return true if dependencies are available, false otherwise.
    */
-  bool CheckDependencies(const ADDON::AddonPtr &addon, std::vector<std::string>& preDeps, CAddonDatabase &database);
+  bool CheckDependencies(const ADDON::AddonPtr &addon, std::vector<std::string>& preDeps, CAddonDatabase &database, std::pair<std::string, std::string> &failedDep);
 
   void PrunePackageCache();
   int64_t EnumeratePackageFolder(std::map<std::string,CFileItemList*>& result);
@@ -154,7 +161,7 @@ private:
   CCriticalSection m_critSection;
   JobMap m_downloadJobs;
   CStopWatch m_repoUpdateWatch;   ///< repository updates are done based on this counter
-  unsigned int m_repoUpdateJob;   ///< the job ID of the repository updates
+  ADDON::CRepositoryUpdateJob* m_repoUpdateJob;
   CEvent m_repoUpdateDone;        ///< event set when the repository updates are complete
 };
 
@@ -185,8 +192,8 @@ public:
   static bool GetAddonWithHash(const std::string& addonID, ADDON::AddonPtr& addon, std::string& hash);
 
 private:
-  bool OnPreInstall();
-  void OnPostInstall(bool reloadAddon);
+  void OnPreInstall();
+  void OnPostInstall();
   bool Install(const std::string &installFrom, const ADDON::AddonPtr& repo = ADDON::AddonPtr());
   bool DownloadPackage(const std::string &path, const std::string &dest);
 
@@ -223,7 +230,7 @@ private:
    */
   bool DeleteAddon(const std::string &addonFolder);
 
-  void OnPostUnInstall();
+  void ClearFavourites();
 
   ADDON::AddonPtr m_addon;
 };

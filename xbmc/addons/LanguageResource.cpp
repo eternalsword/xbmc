@@ -25,8 +25,8 @@
 #include "guilib/GUIWindowManager.h"
 #include "settings/Settings.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 
-#define LANGUAGE_SETTING        "locale.language"
 #define LANGUAGE_ADDON_PREFIX   "resource.language."
 
 using namespace std;
@@ -105,18 +105,13 @@ AddonPtr CLanguageResource::Clone() const
 
 bool CLanguageResource::IsInUse() const
 {
-  return StringUtils::EqualsNoCase(CSettings::Get().GetString(LANGUAGE_SETTING), ID());
+  return StringUtils::EqualsNoCase(CSettings::Get().GetString(CSettings::SETTING_LOCALE_LANGUAGE), ID());
 }
 
-bool CLanguageResource::OnPreInstall()
+void CLanguageResource::OnPostInstall(bool update, bool modal)
 {
-  return IsInUse();
-}
-
-void CLanguageResource::OnPostInstall(bool restart, bool update, bool modal)
-{
-  if (restart ||
-     (!update && !modal && CGUIDialogYesNo::ShowAndGetInput(Name(), g_localizeStrings.Get(24132), "", "")))
+  if (IsInUse() ||
+     (!update && !modal && CGUIDialogYesNo::ShowAndGetInput(CVariant{Name()}, CVariant{24132})))
   {
     CGUIDialogKaiToast *toast = (CGUIDialogKaiToast *)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
     if (toast)
@@ -128,7 +123,7 @@ void CLanguageResource::OnPostInstall(bool restart, bool update, bool modal)
     if (IsInUse())
       g_langInfo.SetLanguage(ID());
     else
-      CSettings::Get().SetString(LANGUAGE_SETTING, ID());
+      CSettings::Get().SetString(CSettings::SETTING_LOCALE_LANGUAGE, ID());
   }
 }
 

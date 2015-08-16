@@ -29,11 +29,13 @@
 #include "utils/Observer.h"
 #include "interfaces/IAnnouncer.h"
 #include "pvr/recordings/PVRRecording.h"
+#include "FileItem.h"
 
 class CGUIDialogProgressBarHandle;
 class CStopWatch;
 class CAction;
 class CFileItemList;
+class CVariant;
 
 namespace EPG
 {
@@ -147,9 +149,8 @@ namespace PVR
     /*!
      * @brief Start the PVRManager, which loads all PVR data and starts some threads to update the PVR data.
      * @param bAsync True to (re)start the manager from another thread
-     * @param openWindowId Window id to open after starting
      */
-    void Start(bool bAsync = false, int openWindowId = 0);
+    void Start(bool bAsync = false);
 
     /*!
      * @brief Stop the PVRManager and destroy all objects it created.
@@ -237,13 +238,19 @@ namespace PVR
     bool IsPlaying(void) const;
 
     /*!
+     * @brief Check if the given channel is playing.
+     * @return True if it's playing, false otherwise.
+     */
+    bool IsPlayingChannel(const CPVRChannelPtr &channel) const;
+
+    /*!
      * @return True while the PVRManager is initialising.
      */
     inline bool IsInitialising(void) const
     {
       return GetState() == ManagerStateStarting;
     }
-    
+
     /*!
      * @brief Check whether the PVRManager has fully started.
      * @return True if started, false otherwise.
@@ -258,7 +265,7 @@ namespace PVR
      * @return True if it should be restarted, false otherwise
      */
     bool RestartManagerOnAddonDisabled(void) const;
-    
+
     /*!
      * @brief Check whether the PVRManager is stopping
      * @return True while the PVRManager is stopping.
@@ -267,7 +274,7 @@ namespace PVR
     {
       return GetState() == ManagerStateStopping;
     }
-    
+
     /*!
      * @brief Check whether the PVRManager has been stopped.
      * @return True if stopped, false otherwise.
@@ -282,6 +289,11 @@ namespace PVR
      * @return The channel or NULL if none is playing.
      */
     CPVRChannelPtr GetCurrentChannel(void) const;
+
+    /*!
+     * @brief Update the channel displayed in guiinfomanager and application to match the currently playing channel.
+     */
+    void UpdateCurrentChannel(void);
 
     /*!
      * @brief Return the EPG for the channel that is currently playing.
@@ -581,7 +593,7 @@ namespace PVR
      * @return If at least one client and all pvr data was loaded, false otherwise.
      */
     bool Load(void);
-    
+
     /*!
      * @brief Reset all properties.
      */
@@ -629,7 +641,7 @@ namespace PVR
     bool IsJobPending(const char *strJobName) const;
 
     /*!
-     * @brief Adds the job to the list of pending jobs unless an identical 
+     * @brief Adds the job to the list of pending jobs unless an identical
      * job is already queued
      * @param job the job
      */
@@ -667,7 +679,6 @@ namespace PVR
     CCriticalSection                m_managerStateMutex;
     ManagerState                    m_managerState;
     CStopWatch                     *m_parentalTimer;
-    int                             m_openWindowId;
     std::map<std::string, std::string> m_outdatedAddons;
     static int                      m_pvrWindowIds[10];
   };

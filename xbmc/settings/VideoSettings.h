@@ -104,12 +104,6 @@ enum ESCALINGMETHOD
   VS_SCALINGMETHOD_MAX // do not use and keep as last enum value.
 };
 
-enum EDECODEMETHOD
-{
-  VS_DECODEMETHOD_SOFTWARE=0,
-  VS_DECODEMETHOD_HARDWARE=1
-};
-
 typedef enum {
   ViewModeNormal      = 0,
   ViewModeZoom,
@@ -117,7 +111,8 @@ typedef enum {
   ViewModeWideZoom,
   ViewModeStretch16x9,
   ViewModeOriginal,
-  ViewModeCustom
+  ViewModeCustom,
+  ViewModeStretch16x9Nonlin
 } ViewMode;
 
 class CVideoSettings

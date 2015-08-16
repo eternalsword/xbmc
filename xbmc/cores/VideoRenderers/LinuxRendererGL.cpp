@@ -925,7 +925,7 @@ void CLinuxRendererGL::LoadShaders(int field)
   }
   else
   {
-    int requestedMethod = CSettings::Get().GetInt("videoplayer.rendermethod");
+    int requestedMethod = CSettings::Get().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
     CLog::Log(LOGDEBUG, "GL: Requested render method: %d", requestedMethod);
 
     if (m_pYUVShader)
@@ -3152,7 +3152,7 @@ bool CLinuxRendererGL::UploadRGBTexture(int source)
       ((CMediaSettings::Get().GetCurrentVideoSettings().m_Brightness!=50) ||
        (CMediaSettings::Get().GetCurrentVideoSettings().m_Contrast!=50)))
   {
-    GLfloat brightness = ((GLfloat)CMediaSettings::Get().GetCurrentVideoSettings().m_Brightness - 50.0f)/100.0f;;
+    GLfloat brightness = ((GLfloat)CMediaSettings::Get().GetCurrentVideoSettings().m_Brightness - 50.0f)/100.0f;
     GLfloat contrast   = ((GLfloat)CMediaSettings::Get().GetCurrentVideoSettings().m_Contrast)/50.0f;
 
     glPixelTransferf(GL_RED_SCALE  , contrast);
@@ -3240,7 +3240,7 @@ bool CLinuxRendererGL::Supports(ERENDERFEATURE feature)
 {
   if(feature == RENDERFEATURE_BRIGHTNESS)
   {
-    if ((m_renderMethod & RENDER_VDPAU) && !CSettings::Get().GetBool("videoscreen.limitedrange"))
+    if ((m_renderMethod & RENDER_VDPAU) && !CSettings::Get().GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE))
       return true;
 
     if (m_renderMethod & RENDER_VAAPI)
@@ -3253,7 +3253,7 @@ bool CLinuxRendererGL::Supports(ERENDERFEATURE feature)
   
   if(feature == RENDERFEATURE_CONTRAST)
   {
-    if ((m_renderMethod & RENDER_VDPAU) && !CSettings::Get().GetBool("videoscreen.limitedrange"))
+    if ((m_renderMethod & RENDER_VDPAU) && !CSettings::Get().GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE))
       return true;
 
     if (m_renderMethod & RENDER_VAAPI)
@@ -3389,7 +3389,7 @@ bool CLinuxRendererGL::Supports(ESCALINGMETHOD method)
     // if scaling is below level, avoid hq scaling
     float scaleX = fabs(((float)m_sourceWidth - m_destRect.Width())/m_sourceWidth)*100;
     float scaleY = fabs(((float)m_sourceHeight - m_destRect.Height())/m_sourceHeight)*100;
-    int minScale = CSettings::Get().GetInt("videoplayer.hqscalers");
+    int minScale = CSettings::Get().GetInt(CSettings::SETTING_VIDEOPLAYER_HQSCALERS);
     if (scaleX < minScale && scaleY < minScale)
       return false;
 
@@ -3456,17 +3456,21 @@ void CLinuxRendererGL::UnBindPbo(YUVBUFFER& buff)
     glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 }
 
-unsigned int CLinuxRendererGL::GetOptimalBufferSize()
+CRenderInfo CLinuxRendererGL::GetRenderInfo()
 {
+  CRenderInfo info;
+  info.formats = m_formats;
+  info.max_buffer_size = NUM_BUFFERS;
   if(m_format == RENDER_FMT_CVBREF)
-    return 2;
+    info.optimal_buffer_size = 2;
   else if (m_format == RENDER_FMT_VAAPI ||
            m_format == RENDER_FMT_VAAPINV12 ||
            m_format == RENDER_FMT_VDPAU ||
            m_format == RENDER_FMT_VDPAU_420)
-    return 5;
+    info.optimal_buffer_size = 5;
   else
-    return 3;
+    info.optimal_buffer_size = 3;
+  return info;
 }
 
 #ifdef HAVE_LIBVDPAU

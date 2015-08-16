@@ -23,10 +23,7 @@
 #include "Util.h"
 #include "addons/AddonManager.h"
 #include "addons/Resource.h"
-#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-
-#include <sys/stat.h>
 
 using namespace ADDON;
 using namespace XFILE;
@@ -68,7 +65,7 @@ bool CResourceFile::TranslatePath(const CURL &url, std::string &translatedPath)
   if (!resource->IsAllowed(filePath))
     return false;
 
-  translatedPath = CUtil::ValidatePath(URIUtils::AddFileToFolder(addon->Path(), "resources/" + filePath));
+  translatedPath = CUtil::ValidatePath(resource->GetFullPath(filePath));
   return true;
 }
 

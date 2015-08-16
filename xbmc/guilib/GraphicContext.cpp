@@ -20,9 +20,8 @@
 
 #include "system.h"
 #include "GraphicContext.h"
-#include "threads/SingleLock.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/lib/Setting.h"
@@ -32,11 +31,10 @@
 #include "TextureManager.h"
 #include "input/InputManager.h"
 #include "GUIWindowManager.h"
-#include "utils/JobManager.h"
 #include "video/VideoReferenceClock.h"
-#include "cores/IPlayer.h"
 
 using namespace std;
+using namespace KODI::MESSAGING;
 
 extern bool g_fullScreen;
 
@@ -52,6 +50,7 @@ CGraphicContext::CGraphicContext(void) :
   m_bFullScreenVideo(false),
   m_bCalibrating(false),
   m_Resolution(RES_INVALID),
+  m_fFPSOverride(0.0),
   /*m_windowResolution,*/
   /*,m_cameras, */
   /*m_origins, */
@@ -75,7 +74,7 @@ void CGraphicContext::OnSettingChanged(const CSetting *setting)
     return;
 
   const std::string &settingId = setting->GetId();
-  if (settingId == "videoscreen.fakefullscreen")
+  if (settingId == CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN)
   {
     if (IsFullScreenRoot())
       SetVideoResolution(GetVideoResolution(), true);
@@ -333,7 +332,7 @@ void CGraphicContext::SetFullScreenVideo(bool bOnOff)
 #if defined(HAS_VIDEO_PLAYBACK)
   if(m_bFullScreenRoot)
   {
-    bool allowDesktopRes = CSettings::Get().GetInt("videoplayer.adjustrefreshrate") == ADJUST_REFRESHRATE_ALWAYS;
+    bool allowDesktopRes = CSettings::Get().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) == ADJUST_REFRESHRATE_ALWAYS;
     if(m_bFullScreenVideo || (!allowDesktopRes && g_application.m_pPlayer->IsPlayingVideo()))
       SetVideoResolution(g_renderManager.GetResolution());
     else if(CDisplaySettings::Get().GetCurrentResolution() > RES_DESKTOP)
@@ -382,10 +381,7 @@ void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate)
   }
   else
   {
-    ThreadMessage msg = {TMSG_SETVIDEORESOLUTION};
-    msg.param1 = res;
-    msg.param2 = forceUpdate ? 1 : 0;
-    CApplicationMessenger::Get().SendMessage(msg, true);
+    CApplicationMessenger::Get().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate ? 1 : 0);
   }
 }
 
@@ -410,11 +406,11 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   if ((res != RES_DESKTOP && res != RES_WINDOW) || (lastRes != RES_DESKTOP && lastRes != RES_WINDOW))
   {
     //pause the player during the refreshrate change
-    int delay = CSettings::Get().GetInt("videoplayer.pauseafterrefreshchange");
-    if (delay > 0 && CSettings::Get().GetInt("videoplayer.adjustrefreshrate") != ADJUST_REFRESHRATE_OFF && g_application.m_pPlayer->IsPlayingVideo() && !g_application.m_pPlayer->IsPausedPlayback())
+    int delay = CSettings::Get().GetInt(CSettings::SETTING_VIDEOPLAYER_PAUSEAFTERREFRESHCHANGE);
+    if (delay > 0 && CSettings::Get().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) != ADJUST_REFRESHRATE_OFF && g_application.m_pPlayer->IsPlayingVideo() && !g_application.m_pPlayer->IsPausedPlayback())
     {
       g_application.m_pPlayer->Pause();
-      ThreadMessage msg = {TMSG_MEDIA_UNPAUSE};
+      KODI::MESSAGING::ThreadMessage msg{TMSG_MEDIA_UNPAUSE};
       CDelayedMessage* pauseMessage = new CDelayedMessage(msg, delay * 100);
       pauseMessage->Create(true);
     }
@@ -456,7 +452,7 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
     m_stereoView     = RENDER_STEREO_VIEW_OFF;
     m_stereoMode     = stereo_mode;
     m_nextStereoMode = stereo_mode;
-    CSettings::Get().SetInt("videoscreen.stereoscopicmode", (int)m_stereoMode);
+    CSettings::Get().SetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE, (int)m_stereoMode);
   }
 
   RESOLUTION_INFO info_mod = GetResInfo(res);
@@ -466,11 +462,12 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   m_iScreenId     = info_mod.iScreen;
   m_scissors.SetRect(0, 0, (float)m_iScreenWidth, (float)m_iScreenHeight);
   m_Resolution    = res;
+  m_fFPSOverride = 0 ;
 
   if (g_advancedSettings.m_fullScreen)
   {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)
-    bool blankOtherDisplays = CSettings::Get().GetBool("videoscreen.blankdisplays");
+    bool blankOtherDisplays = CSettings::Get().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
     g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
     g_Windowing.SetFullScreen(true,  info_org, false);
@@ -739,6 +736,12 @@ const RESOLUTION_INFO CGraphicContext::GetResInfo(RESOLUTION res) const
     info.Overscan.left   /= 2;
     info.Overscan.right   = (info.Overscan.right - info.iBlanking) / 2;
   }
+
+  if (res == m_Resolution && m_fFPSOverride != 0)
+  {
+    info.fRefreshRate = m_fFPSOverride;
+  }
+
   return info;
 }
 
@@ -779,7 +782,7 @@ void CGraphicContext::GetGUIScaling(const RESOLUTION_INFO &res, float &scaleX, f
     float fToHeight   = (float)info.Overscan.bottom - fToPosY;
 
     if(!g_guiSkinzoom) // lookup gui setting if we didn't have it already
-      g_guiSkinzoom = (CSettingInt*)CSettings::Get().GetSetting("lookandfeel.skinzoom");
+      g_guiSkinzoom = (CSettingInt*)CSettings::Get().GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINZOOM);
 
     float fZoom = 1.0f;
     if(g_guiSkinzoom)
@@ -1064,3 +1067,7 @@ void CGraphicContext::GetAllowedResolutions(vector<RESOLUTION> &res)
   }
 }
 
+void CGraphicContext::SetFPS(float fps)
+{
+  m_fFPSOverride = fps;
+}

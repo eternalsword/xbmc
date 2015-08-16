@@ -28,7 +28,6 @@
 #include "guilib/WindowIDs.h"
 #include "music/MusicDatabase.h"
 #include "music/tags/MusicInfoTag.h"
-#include "utils/Variant.h"
 #include "utils/StringUtils.h"
 #include "settings/AdvancedSettings.h"
 #include "music/MusicThumbLoader.h"
@@ -64,7 +63,7 @@ bool CRecentlyAddedJob::UpdateVideo()
     {
       CFileItemPtr item = items.Get(i);
       std::string   value = StringUtils::Format("%i", i + 1);
-      std::string   strRating = StringUtils::Format("%.1f", item->GetVideoInfoTag()->m_fRating);;
+      std::string   strRating = StringUtils::Format("%.1f", item->GetVideoInfoTag()->m_fRating);
       
       home->SetProperty("LatestMovie." + value + ".Title"       , item->GetLabel());
       home->SetProperty("LatestMovie." + value + ".Rating"      , strRating);
@@ -270,12 +269,10 @@ bool CRecentlyAddedJob::UpdateMusic()
       std::string strThumb = musicdatabase.GetArtForItem(album.idAlbum, MediaTypeAlbum, "thumb");
       std::string strFanart = musicdatabase.GetArtistArtForItem(album.idAlbum, MediaTypeAlbum, "fanart");
       std::string strDBpath = StringUtils::Format("musicdb://albums/%li/", album.idAlbum);
-      std::string strSQLAlbum = StringUtils::Format("idAlbum=%li", album.idAlbum);
-      std::string strArtist = musicdatabase.GetSingleValue("albumview", "strArtists", strSQLAlbum);
       
       home->SetProperty("LatestAlbum." + value + ".Title"   , album.strAlbum);
       home->SetProperty("LatestAlbum." + value + ".Year"    , album.iYear);
-      home->SetProperty("LatestAlbum." + value + ".Artist"  , strArtist);      
+      home->SetProperty("LatestAlbum." + value + ".Artist"  , album.artist);
       home->SetProperty("LatestAlbum." + value + ".Rating"  , album.iRating);
       home->SetProperty("LatestAlbum." + value + ".Path"    , strDBpath);
       home->SetProperty("LatestAlbum." + value + ".Thumb"   , strThumb);

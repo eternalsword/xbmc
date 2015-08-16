@@ -32,8 +32,6 @@
 #include "utils/TimeUtils.h"
 #include <string>
 
-using namespace std;
-
 Display* CVideoSyncGLX::m_Dpy = NULL;
 
 void CVideoSyncGLX::OnLostDevice()
@@ -102,8 +100,8 @@ bool CVideoSyncGLX::Setup(PUPDATECLOCK func)
   }
 
   bool          ExtensionFound = false;
-  istringstream Extensions(glXQueryExtensionsString(m_Dpy, g_Windowing.GetCurrentScreen()));
-  string        ExtensionStr;
+  std::istringstream Extensions(glXQueryExtensionsString(m_Dpy, g_Windowing.GetCurrentScreen()));
+  std::string        ExtensionStr;
 
   while (!ExtensionFound)
   {
@@ -255,23 +253,26 @@ void CVideoSyncGLX::Run(volatile bool& stop)
 void CVideoSyncGLX::Cleanup()
 {
   CLog::Log(LOGDEBUG, "CVideoReferenceClock: Cleaning up GLX");
-  CSingleLock lock(g_graphicsContext);
 
-  if (m_vInfo)
   {
-    XFree(m_vInfo);
-    m_vInfo = NULL;
-  }
-  if (m_Context)
-  {
-    glXMakeCurrent(m_Dpy, None, NULL);
-    glXDestroyContext(m_Dpy, m_Context);
-    m_Context = NULL;
-  }
-  if (m_Window)
-  {
-    XDestroyWindow(m_Dpy, m_Window);
-    m_Window = 0;
+    CSingleLock lock(g_graphicsContext);
+
+    if (m_vInfo)
+    {
+      XFree(m_vInfo);
+      m_vInfo = NULL;
+    }
+    if (m_Context)
+    {
+      glXMakeCurrent(m_Dpy, None, NULL);
+      glXDestroyContext(m_Dpy, m_Context);
+      m_Context = NULL;
+    }
+    if (m_Window)
+    {
+      XDestroyWindow(m_Dpy, m_Window);
+      m_Window = 0;
+    }
   }
 
   m_lostEvent.Set();

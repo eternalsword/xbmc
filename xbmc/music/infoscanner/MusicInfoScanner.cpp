@@ -23,12 +23,13 @@
 #include "music/tags/MusicInfoTagLoaderFactory.h"
 #include "MusicAlbumInfo.h"
 #include "MusicInfoScraper.h"
+#include "events/EventLog.h"
+#include "events/MediaLibraryEvent.h"
 #include "filesystem/MusicDatabaseDirectory.h"
 #include "filesystem/MusicDatabaseDirectory/DirectoryNode.h"
 #include "Util.h"
 #include "utils/md5.h"
 #include "GUIInfoManager.h"
-#include "utils/Variant.h"
 #include "NfoFile.h"
 #include "music/tags/MusicInfoTag.h"
 #include "guilib/GUIWindowManager.h"
@@ -43,16 +44,15 @@
 #include "FileItem.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/StringUtils.h"
-#include "utils/TimeUtils.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/Variant.h"
 #include "TextureCache.h"
 #include "music/MusicThumbLoader.h"
 #include "interfaces/AnnouncementManager.h"
 #include "GUIUserMessages.h"
 #include "addons/AddonManager.h"
 #include "addons/Scraper.h"
-#include "CueDocument.h"
 
 #include <algorithm>
 
@@ -95,7 +95,7 @@ void CMusicInfoScanner::Process()
 
     m_musicDatabase.Open();
 
-    if (m_showDialog && !CSettings::Get().GetBool("musiclibrary.backgroundupdate"))
+    if (m_showDialog && !CSettings::Get().GetBool(CSettings::SETTING_MUSICLIBRARY_BACKGROUNDUPDATE))
     {
       CGUIDialogExtendedProgressBar* dialog =
         (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
@@ -966,20 +966,27 @@ loop:
   {
     if (pDialog && bAllowSelection)
     {
-      if (!CGUIKeyboardFactory::ShowAndGetInput(album.strAlbum, g_localizeStrings.Get(16011), false))
+      if (!CGUIKeyboardFactory::ShowAndGetInput(album.strAlbum, CVariant{g_localizeStrings.Get(16011)}, false))
         return INFO_CANCELLED;
 
       std::string strTempArtist(StringUtils::Join(album.artist, g_advancedSettings.m_musicItemSeparator));
-      if (!CGUIKeyboardFactory::ShowAndGetInput(strTempArtist, g_localizeStrings.Get(16025), false))
+      if (!CGUIKeyboardFactory::ShowAndGetInput(strTempArtist, CVariant{g_localizeStrings.Get(16025)}, false))
         return INFO_CANCELLED;
 
       album.artist = StringUtils::Split(strTempArtist, g_advancedSettings.m_musicItemSeparator);
       goto loop;
     }
+    else
+    {
+      CEventLog::GetInstance().Add(EventPtr(new CMediaLibraryEvent(
+        MediaTypeAlbum, album.strPath, 24146,
+        StringUtils::Format(g_localizeStrings.Get(24147).c_str(), MediaTypeAlbum, album.strAlbum.c_str()),
+        CScraperUrl::GetThumbURL(album.thumbURL.GetFirstThumb()), CURL::GetRedacted(album.strPath), EventLevelWarning)));
+    }
   }
   else if (albumDownloadStatus == INFO_ADDED)
   {
-    album.MergeScrapedAlbum(albumInfo.GetAlbum(), CSettings::Get().GetBool("musiclibrary.overridetags"));
+    album.MergeScrapedAlbum(albumInfo.GetAlbum(), CSettings::Get().GetBool(CSettings::SETTING_MUSICLIBRARY_OVERRIDETAGS));
     m_musicDatabase.Open();
     m_musicDatabase.UpdateAlbum(album);
     GetAlbumArtwork(album.idAlbum, album);
@@ -1003,14 +1010,21 @@ loop:
   {
     if (pDialog && bAllowSelection)
     {
-      if (!CGUIKeyboardFactory::ShowAndGetInput(artist.strArtist, g_localizeStrings.Get(16025), false))
+      if (!CGUIKeyboardFactory::ShowAndGetInput(artist.strArtist, CVariant{g_localizeStrings.Get(16025)}, false))
         return INFO_CANCELLED;
       goto loop;
+    }
+    else
+    {
+      CEventLog::GetInstance().Add(EventPtr(new CMediaLibraryEvent(
+        MediaTypeArtist, artist.strPath, 24146,
+        StringUtils::Format(g_localizeStrings.Get(24147).c_str(), MediaTypeArtist, artist.strArtist.c_str()),
+        CScraperUrl::GetThumbURL(artist.thumbURL.GetFirstThumb()), CURL::GetRedacted(artist.strPath), EventLevelWarning)));
     }
   }
   else if (artistDownloadStatus == INFO_ADDED)
   {
-    artist.MergeScrapedArtist(artistInfo.GetArtist(), CSettings::Get().GetBool("musiclibrary.overridetags"));
+    artist.MergeScrapedArtist(artistInfo.GetArtist(), CSettings::Get().GetBool(CSettings::SETTING_MUSICLIBRARY_OVERRIDETAGS));
     m_musicDatabase.Open();
     m_musicDatabase.UpdateArtist(artist);
     m_musicDatabase.GetArtistPath(artist.idArtist, artist.strPath);
@@ -1081,7 +1095,7 @@ INFO_RET CMusicInfoScanner::DownloadAlbumInfo(const CAlbum& album, const ADDON::
       CLog::Log(LOGERROR,"Unable to find an url in nfo file: %s", strNfo.c_str());
   }
 
-  if (!scraper.CheckValidOrFallback(CSettings::Get().GetString("musiclibrary.albumsscraper")))
+  if (!scraper.CheckValidOrFallback(CSettings::Get().GetString(CSettings::SETTING_MUSICLIBRARY_ALBUMSSCRAPER)))
   { // the current scraper is invalid, as is the default - bail
     CLog::Log(LOGERROR, "%s - current and default scrapers are invalid.  Pick another one", __FUNCTION__);
     return INFO_ERROR;
@@ -1117,7 +1131,7 @@ INFO_RET CMusicInfoScanner::DownloadAlbumInfo(const CAlbum& album, const ADDON::
         if (pDialog)
         {
           pDlg = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
-          pDlg->SetHeading(g_localizeStrings.Get(181).c_str());
+          pDlg->SetHeading(CVariant{g_localizeStrings.Get(181)});
           pDlg->Reset();
           pDlg->EnableButton(true, 413); // manual
         }
@@ -1151,7 +1165,7 @@ INFO_RET CMusicInfoScanner::DownloadAlbumInfo(const CAlbum& album, const ADDON::
         if (pDialog && bestRelevance < THRESHOLD)
         {
           pDlg->Sort(false);
-          pDlg->DoModal();
+          pDlg->Open();
 
           // and wait till user selects one
           if (pDlg->GetSelectedLabel() < 0)
@@ -1161,14 +1175,17 @@ INFO_RET CMusicInfoScanner::DownloadAlbumInfo(const CAlbum& album, const ADDON::
 
             // manual button pressed
             std::string strNewAlbum = album.strAlbum;
-            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewAlbum, g_localizeStrings.Get(16011), false)) return INFO_CANCELLED;
-            if (strNewAlbum == "") return INFO_CANCELLED;
+            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewAlbum, CVariant{g_localizeStrings.Get(16011)}, false))
+              return INFO_CANCELLED;
+            if (strNewAlbum == "")
+              return INFO_CANCELLED;
 
             std::string strNewArtist = StringUtils::Join(album.artist, g_advancedSettings.m_musicItemSeparator);
-            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return INFO_CANCELLED;
+            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, CVariant{g_localizeStrings.Get(16025)}, false))
+              return INFO_CANCELLED;
 
-            pDialog->SetLine(0, strNewAlbum);
-            pDialog->SetLine(1, strNewArtist);
+            pDialog->SetLine(0, CVariant{strNewAlbum});
+            pDialog->SetLine(1, CVariant{strNewArtist});
             pDialog->Progress();
 
             CAlbum newAlbum = album;
@@ -1323,7 +1340,7 @@ INFO_RET CMusicInfoScanner::DownloadArtistInfo(const CArtist& artist, const ADDO
         CGUIDialogSelect *pDlg = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
         if (pDlg)
         {
-          pDlg->SetHeading(g_localizeStrings.Get(21890));
+          pDlg->SetHeading(CVariant{g_localizeStrings.Get(21890)});
           pDlg->Reset();
           pDlg->EnableButton(true, 413); // manual
 
@@ -1344,7 +1361,7 @@ INFO_RET CMusicInfoScanner::DownloadArtistInfo(const CArtist& artist, const ADDO
             item.m_idepth = i; // use this to hold the index of the album in the scraper
             pDlg->Add(&item);
           }
-          pDlg->DoModal();
+          pDlg->Open();
 
           // and wait till user selects one
           if (pDlg->GetSelectedLabel() < 0)
@@ -1354,11 +1371,12 @@ INFO_RET CMusicInfoScanner::DownloadArtistInfo(const CArtist& artist, const ADDO
 
             // manual button pressed
             std::string strNewArtist = artist.strArtist;
-            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, g_localizeStrings.Get(16025), false)) return INFO_CANCELLED;
+            if (!CGUIKeyboardFactory::ShowAndGetInput(strNewArtist, CVariant{g_localizeStrings.Get(16025)}, false))
+              return INFO_CANCELLED;
 
             if (pDialog)
             {
-              pDialog->SetLine(0, strNewArtist);
+              pDialog->SetLine(0, CVariant{strNewArtist});
               pDialog->Progress();
             }
 

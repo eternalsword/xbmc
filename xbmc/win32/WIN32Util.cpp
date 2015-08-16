@@ -34,13 +34,9 @@
 #include "guilib/LocalizeStrings.h"
 #include "utils/CharsetConverter.h"
 #include "utils/log.h"
-#include "DllPaths_win32.h"
-#include "FileSystem/File.h"
-#include "utils/URIUtils.h"
 #include "powermanagement\PowerManager.h"
 #include "utils/SystemInfo.h"
 #include "utils/Environment.h"
-#include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
 #include "win32/crts_caller.h"
 
@@ -58,7 +54,6 @@
 
 extern HWND g_hWnd;
 
-using namespace std;
 using namespace MEDIA_DETECT;
 
 CWIN32Util::CWIN32Util(void)
@@ -221,18 +216,15 @@ bool CWIN32Util::PowerManagement(PowerState State)
       return false;
   }
 
-  // process OnSleep() events. This is called in main thread.
-  g_powerManager.ProcessEvents();
-
   switch (State)
   {
   case POWERSTATE_HIBERNATE:
     CLog::Log(LOGINFO, "Asking Windows to hibernate...");
-    return SetSuspendState(true,true,false) == TRUE;
+    return SetSuspendState(true, true, false) == TRUE;
     break;
   case POWERSTATE_SUSPEND:
     CLog::Log(LOGINFO, "Asking Windows to suspend...");
-    return SetSuspendState(false,true,false) == TRUE;
+    return SetSuspendState(false, true, false) == TRUE;
     break;
   case POWERSTATE_SHUTDOWN:
     CLog::Log(LOGINFO, "Shutdown Windows...");
@@ -342,7 +334,7 @@ bool CWIN32Util::XBMCShellExecute(const std::string &strPath, bool bWaitForScrip
 
 std::vector<std::string> CWIN32Util::GetDiskUsage()
 {
-  vector<std::string> result;
+  std::vector<std::string> result;
   ULARGE_INTEGER ULTotal= { { 0 } };
   ULARGE_INTEGER ULTotalFree= { { 0 } };
 
@@ -1520,7 +1512,8 @@ void CWIN32Util::CropSource(CRect& src, CRect& dst, CRect target)
 
 void CWinIdleTimer::StartZero()
 {
-  SetThreadExecutionState(ES_SYSTEM_REQUIRED|ES_DISPLAY_REQUIRED);
+  if (!g_application.IsDPMSActive())
+    SetThreadExecutionState(ES_SYSTEM_REQUIRED|ES_DISPLAY_REQUIRED);
   CStopWatch::StartZero();
 }
 

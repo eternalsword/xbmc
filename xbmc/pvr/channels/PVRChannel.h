@@ -20,7 +20,6 @@
  *
  */
 
-#include "XBDateTime.h"
 #include "FileItem.h"
 #include "addons/include/xbmc_pvr_types.h"
 #include "utils/Observer.h"
@@ -30,6 +29,8 @@
 #include <memory>
 
 #define PVR_INVALID_CHANNEL_UID -1
+
+class CVariant;
 
 namespace EPG
 {

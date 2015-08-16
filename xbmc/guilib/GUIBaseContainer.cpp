@@ -19,8 +19,6 @@
  */
 
 #include "GUIBaseContainer.h"
-#include "GUIControlFactory.h"
-#include "GUIWindowManager.h"
 #include "utils/CharsetConverter.h"
 #include "GUIInfoManager.h"
 #include "utils/TimeUtils.h"
@@ -33,6 +31,7 @@
 #include "utils/XBMCTinyXML.h"
 #include "listproviders/IListProvider.h"
 #include "settings/Settings.h"
+#include "guiinfo/GUIInfoLabels.h"
 
 using namespace std;
 
@@ -426,6 +425,14 @@ bool CGUIBaseContainer::OnMessage(CGUIMessage& message)
       SelectItem(message.GetParam1());
       return true;
     }
+    else if (message.GetMessage() == GUI_MSG_SETFOCUS)
+    {
+      if (message.GetParam1()) // subfocus item is specified, so set the offset appropriately
+      {
+        int item = std::min(GetOffset() + (int)message.GetParam1() - 1, (int)m_items.size() - 1);
+        SelectItem(item);
+      }
+    }
     else if (message.GetMessage() == GUI_MSG_ITEM_SELECTED)
     {
       message.SetParam1(GetSelectedItem());
@@ -563,7 +570,7 @@ void CGUIBaseContainer::OnJumpLetter(char letter, bool skip /*=false*/)
   {
     CGUIListItemPtr item = m_items[i];
     std::string label = item->GetLabel();
-    if (CSettings::Get().GetBool("filelists.ignorethewhensorting"))
+    if (CSettings::Get().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
       label = SortUtils::RemoveArticles(label);
     if (0 == strnicmp(label.c_str(), m_match.c_str(), m_match.size()))
     {
@@ -641,7 +648,7 @@ int CGUIBaseContainer::GetSelectedItem() const
 
 CGUIListItemPtr CGUIBaseContainer::GetListItem(int offset, unsigned int flag) const
 {
-  if (!m_items.size())
+  if (!m_items.size() || !m_layout)
     return CGUIListItemPtr();
   int item = GetSelectedItem() + offset;
   if (flag & INFOFLAG_LISTITEM_POSITION) // use offset from the first item displayed, taking into account scrolling
@@ -1160,6 +1167,8 @@ bool CGUIBaseContainer::GetCondition(int condition, int data) const
     return (HasNextPage());
   case CONTAINER_HAS_PREVIOUS:
     return (HasPreviousPage());
+  case CONTAINER_HAS_PARENT_ITEM:
+    return (m_items.size() && m_items[0]->IsFileItem() && (std::static_pointer_cast<CFileItem>(m_items[0]))->IsParentFolder());
   case CONTAINER_SUBITEM:
     {
       CGUIListItemLayout *layout = GetFocusedLayout();

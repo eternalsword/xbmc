@@ -22,7 +22,6 @@
 #include "FileItem.h"
 #include "CurlFile.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/MediaSettings.h"
 #include "settings/Settings.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
@@ -30,7 +29,6 @@
 #include "utils/HTMLUtil.h"
 #include "utils/StringUtils.h"
 #include "video/VideoInfoTag.h"
-#include "music/tags/MusicInfoTag.h"
 #include "utils/log.h"
 #include "URL.h"
 #include "climits"
@@ -468,7 +466,7 @@ static void ParseItem(CFileItem* item, TiXmlElement* root, const std::string& pa
   else if(FindMime(resources, "image/"))
     mime = "image/";
 
-  int maxrate = CSettings::Get().GetInt("network.bandwidth");
+  int maxrate = CSettings::Get().GetInt(CSettings::SETTING_NETWORK_BANDWIDTH);
   if(maxrate == 0)
     maxrate = INT_MAX;
 

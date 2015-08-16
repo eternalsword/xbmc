@@ -23,11 +23,9 @@
 #include "Util.h"
 #include "GUIInfoManager.h"
 #include "Application.h"
-#include "CueDocument.h"
 #include "GUIPassword.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "GUIUserMessages.h"
-#include "guilib/GUIWindowManager.h"
 #include "FileItem.h"
 #include "profiles/ProfilesManager.h"
 #include "storage/MediaManager.h"
@@ -35,13 +33,11 @@
 #include "settings/Settings.h"
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
-#include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "Autorun.h"
 #include "cdrip/CDDARipper.h"
-#include "cores/IPlayer.h"
-#include "utils/StringUtils.h"
 #include "ContextMenuManager.h"
 
 #define CONTROL_BTNVIEWASICONS     2
@@ -359,7 +355,7 @@ void CGUIWindowMusicSongs::GetContextButtons(int itemNumber, CContextButtons &bu
       if (!item->IsParentFolder() && !item->IsReadOnly())
       {
         // either we're at the playlist location or its been explicitly allowed
-        if (inPlaylists || CSettings::Get().GetBool("filelists.allowfiledeletion"))
+        if (inPlaylists || CSettings::Get().GetBool(CSettings::SETTING_FILELISTS_ALLOWFILEDELETION))
         {
           buttons.Add(CONTEXT_BUTTON_DELETE, 117);
           buttons.Add(CONTEXT_BUTTON_RENAME, 118);
@@ -485,7 +481,7 @@ bool CGUIWindowMusicSongs::Update(const std::string &strDirectory, bool updateFi
 void CGUIWindowMusicSongs::OnRemoveSource(int iItem)
 {
   bool bCanceled;
-  if (CGUIDialogYesNo::ShowAndGetInput(522,20340,20341,20022,bCanceled))
+  if (CGUIDialogYesNo::ShowAndGetInput(CVariant{522}, CVariant{20340}, bCanceled, CVariant{ "" }, CVariant{ "" }, CGUIDialogYesNo::NO_TIMEOUT))
   {
     MAPSONGS songs;
     CMusicDatabase database;

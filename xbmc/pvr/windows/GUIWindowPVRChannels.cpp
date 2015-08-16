@@ -21,8 +21,6 @@
 #include "GUIWindowPVRChannels.h"
 
 #include "ContextMenuManager.h"
-#include "dialogs/GUIDialogFileBrowser.h"
-#include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
@@ -38,10 +36,10 @@
 #include "pvr/addons/PVRClients.h"
 #include "pvr/timers/PVRTimers.h"
 #include "epg/EpgContainer.h"
-#include "settings/Settings.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "threads/SingleLock.h"
+#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
 
 using namespace PVR;
 using namespace EPG;
@@ -77,6 +75,9 @@ void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &b
   CFileItemPtr pItem = m_vecItems->Get(itemNumber);
   CPVRChannelPtr channel(pItem->GetPVRChannelInfoTag());
 
+  if (ActiveAE::CActiveAEDSP::Get().IsProcessing())
+    buttons.Add(CONTEXT_BUTTON_ACTIVE_ADSP_SETTINGS, 15047);                        /* if something is played and dsp is active, allow settings selection */
+
   buttons.Add(CONTEXT_BUTTON_INFO, 19047);                                          /* channel info */
   buttons.Add(CONTEXT_BUTTON_FIND, 19003);                                          /* find similar program */
   buttons.Add(CONTEXT_BUTTON_RECORD_ITEM, channel->IsRecording() ? 19256 : 19255);  /* start/stop recording on channel */
@@ -86,7 +87,7 @@ void CGUIWindowPVRChannels::GetContextButtons(int itemNumber, CContextButtons &b
 
   // Add parent buttons before the Manage button
   CGUIWindowPVRBase::GetContextButtons(itemNumber, buttons);
-    
+
   buttons.Add(CONTEXT_BUTTON_EDIT, 16106);                                          /* "Manage" submenu */
 
   CContextMenuManager::Get().AddVisibleItems(pItem, buttons);
@@ -111,6 +112,7 @@ bool CGUIWindowPVRChannels::OnContextButton(int itemNumber, CONTEXT_BUTTON butto
       OnContextButtonUpdateEpg(pItem.get(), button) ||
       OnContextButtonRecord(pItem.get(), button) ||
       OnContextButtonManage(pItem.get(), button) ||
+      OnContextButtonActiveAEDSPSettings(pItem.get(), button) ||
       CGUIWindowPVRBase::OnContextButton(itemNumber, button);
 }
 
@@ -166,6 +168,9 @@ bool CGUIWindowPVRChannels::OnAction(const CAction &action)
 
 bool CGUIWindowPVRChannels::OnMessage(CGUIMessage& message)
 {
+  if (!IsValidMessage(message))
+    return false;
+
   bool bReturn = false;
   switch (message.GetMessage())
   {
@@ -224,6 +229,8 @@ bool CGUIWindowPVRChannels::OnMessage(CGUIMessage& message)
       {
         case ObservableMessageChannelGroup:
         case ObservableMessageTimers:
+        case ObservableMessageEpg:
+        case ObservableMessageEpgContainer:
         case ObservableMessageEpgActiveItem:
         case ObservableMessageCurrentItem:
         {
@@ -252,7 +259,7 @@ bool CGUIWindowPVRChannels::OnContextButtonAdd(CFileItem *item, CONTEXT_BUTTON b
 
   if (button == CONTEXT_BUTTON_ADD)
   {
-    CGUIDialogOK::ShowAndGetInput(19033,0,19038,0);
+    CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19038});
     bReturn = true;
   }
 
@@ -329,7 +336,7 @@ bool CGUIWindowPVRChannels::OnContextButtonManage(CFileItem *item, CONTEXT_BUTTO
 bool CGUIWindowPVRChannels::OnContextButtonRecord(CFileItem *item, CONTEXT_BUTTON button)
 {
   bool bReturn(false);
-  
+
   if (button == CONTEXT_BUTTON_RECORD_ITEM)
   {
     CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
@@ -353,11 +360,11 @@ bool CGUIWindowPVRChannels::OnContextButtonUpdateEpg(CFileItem *item, CONTEXT_BU
 
     CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
 
-    pDialog->SetHeading(19251);
-    pDialog->SetLine(0, g_localizeStrings.Get(19252));
-    pDialog->SetLine(1, channel->ChannelName());
-    pDialog->SetLine(2, "");
-    pDialog->DoModal();
+    pDialog->SetHeading(CVariant{19251});
+    pDialog->SetLine(0, CVariant{g_localizeStrings.Get(19252)});
+    pDialog->SetLine(1, CVariant{channel->ChannelName()});
+    pDialog->SetLine(2, CVariant{""});
+    pDialog->Open();
 
     if (!pDialog->IsConfirmed())
       return bReturn;
@@ -377,7 +384,7 @@ void CGUIWindowPVRChannels::ShowChannelManager()
 {
   CGUIDialogPVRChannelManager *dialog = (CGUIDialogPVRChannelManager *)g_windowManager.GetWindow(WINDOW_DIALOG_PVR_CHANNEL_MANAGER);
   if (dialog)
-    dialog->DoModal();
+    dialog->Open();
 }
 
 void CGUIWindowPVRChannels::ShowGroupManager(void)
@@ -388,7 +395,7 @@ void CGUIWindowPVRChannels::ShowGroupManager(void)
     return;
 
   pDlgInfo->SetRadio(m_bRadio);
-  pDlgInfo->DoModal();
+  pDlgInfo->Open();
 
   return;
 }

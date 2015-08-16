@@ -37,20 +37,15 @@
 #include "storage/MediaManager.h"
 #include "windowing/WindowingFactory.h"
 #include <dbt.h>
-#include "guilib/LocalizeStrings.h"
-#include "input/KeyboardStat.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIControl.h"       // for EVENT_RESULT
 #include "powermanagement/windows/Win32PowerSyscall.h"
 #include "Shlobj.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/Settings.h"
 #include "peripherals/Peripherals.h"
 #include "utils/JobManager.h"
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
-#include "GUIUserMessages.h"
-#include "utils/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "Util.h"
 
@@ -500,7 +495,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
         case SC_MONITORPOWER:
           if (g_application.m_pPlayer->IsPlaying() || g_application.m_pPlayer->IsPausedPlayback())
             return 0;
-          else if(CSettings::Get().GetInt("powermanagement.displaysoff") == 0)
+          else if(CSettings::Get().GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) == 0)
             return 0;
           break;
         case SC_SCREENSAVE:
@@ -680,7 +675,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
       CLog::Log(LOGDEBUG, __FUNCTION__": window resize event");
 
-      if (!g_Windowing.IsAlteringWindow() && newEvent.resize.w > 0 && newEvent.resize.h > 0)
+      if (g_application.GetRenderGUI() && !g_Windowing.IsAlteringWindow() && newEvent.resize.w > 0 && newEvent.resize.h > 0)
         m_pEventFunc(newEvent);
 
       return(0);
@@ -691,7 +686,7 @@ LRESULT CALLBACK CWinEventsWin32::WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 
       CLog::Log(LOGDEBUG, __FUNCTION__": window move event");
 
-      if (!g_Windowing.IsAlteringWindow())
+      if (g_application.GetRenderGUI() && !g_Windowing.IsAlteringWindow())
         m_pEventFunc(newEvent);
 
       return(0);

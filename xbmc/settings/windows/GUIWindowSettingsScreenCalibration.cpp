@@ -34,9 +34,11 @@
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
 #include "windowing/WindowingFactory.h"
 
-using namespace std;
+#include <string>
+#include <utility>
 
 #define CONTROL_LABEL_ROW1  2
 #define CONTROL_LABEL_ROW2  3
@@ -74,13 +76,13 @@ bool CGUIWindowSettingsScreenCalibration::OnAction(const CAction &action)
   case ACTION_CALIBRATE_RESET:
     {
       CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
-      pDialog->SetHeading(20325);
+      pDialog->SetHeading(CVariant{20325});
       std::string strText = StringUtils::Format(g_localizeStrings.Get(20326).c_str(), g_graphicsContext.GetResInfo(m_Res[m_iCurRes]).strMode.c_str());
-      pDialog->SetLine(0, strText);
-      pDialog->SetLine(1, 20327);
-      pDialog->SetChoice(0, 222);
-      pDialog->SetChoice(1, 186);
-      pDialog->DoModal();
+      pDialog->SetLine(0, CVariant{std::move(strText)});
+      pDialog->SetLine(1, CVariant{20327});
+      pDialog->SetChoice(0, CVariant{222});
+      pDialog->SetChoice(1, CVariant{186});
+      pDialog->Open();
       if (pDialog->IsConfirmed())
       {
         g_graphicsContext.ResetScreenParameters(m_Res[m_iCurRes]);
@@ -99,7 +101,24 @@ bool CGUIWindowSettingsScreenCalibration::OnAction(const CAction &action)
       return true;
     }
     break;
+  // ignore all gesture meta actions
+  case ACTION_GESTURE_BEGIN:
+  case ACTION_GESTURE_END:
+  case ACTION_GESTURE_NOTIFY:
+  case ACTION_GESTURE_PAN:
+  case ACTION_GESTURE_ROTATE:
+  case ACTION_GESTURE_ZOOM:
+    return true;
   }
+
+  // if we see a mouse move event without dx and dy (amount2 and amount3) these
+  // are the focus actions which are generated on touch events and those should
+  // be eaten/ignored here. Else we will switch to the screencalibration controls
+  // which are at that x/y value on each touch/tap/swipe which makes the whole window
+  // unusable for touch screens
+  if (action.GetID() == ACTION_MOUSE_MOVE && action.GetAmount(2) == 0 && action.GetAmount(3) == 0)
+    return true;
+
   return CGUIWindow::OnAction(action); // base class to handle basic movement etc.
 }
 
@@ -190,6 +209,13 @@ bool CGUIWindowSettingsScreenCalibration::OnMessage(CGUIMessage& message)
         m_iCurRes = FindCurrentResolution();
       }
     }
+    break;
+  // send before touch for requesting gesture features - we don't want this
+  // it would result in unfocus in the onmessage below ...
+  case GUI_MSG_GESTURE_NOTIFY:
+  // send after touch for unfocussing - we don't want this in this window!
+  case GUI_MSG_UNFOCUS_ALL:
+    return true;
     break;
   }
   return CGUIWindow::OnMessage(message);

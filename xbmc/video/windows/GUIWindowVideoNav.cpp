@@ -20,28 +20,21 @@
 
 #include "GUIUserMessages.h"
 #include "GUIWindowVideoNav.h"
-#include "music/windows/GUIWindowMusicNav.h"
 #include "utils/FileUtils.h"
 #include "Util.h"
-#include "utils/RegExp.h"
 #include "PlayListPlayer.h"
 #include "GUIPassword.h"
-#include "dialogs/GUIDialogFileBrowser.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
-#include "playlists/PlayListFactory.h"
 #include "dialogs/GUIDialogOK.h"
-#include "addons/AddonManager.h"
 #include "PartyModeManager.h"
 #include "music/MusicDatabase.h"
 #include "guilib/GUIWindowManager.h"
 #include "dialogs/GUIDialogYesNo.h"
-#include "dialogs/GUIDialogSelect.h"
 #include "filesystem/Directory.h"
-#include "filesystem/File.h"
 #include "FileItem.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "profiles/ProfilesManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/MediaSettings.h"
@@ -49,21 +42,21 @@
 #include "settings/Settings.h"
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
-#include "storage/MediaManager.h"
-#include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
-#include "TextureCache.h"
+#include "utils/Variant.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "video/VideoInfoScanner.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
 #include "pvr/recordings/PVRRecording.h"
 #include "ContextMenuManager.h"
 
+#include <utility>
+
 using namespace XFILE;
 using namespace VIDEODATABASEDIRECTORY;
-using namespace std;
+using namespace KODI::MESSAGING;
 
 #define CONTROL_BTNVIEWASICONS     2
 #define CONTROL_BTNSORTBY          3
@@ -123,7 +116,7 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
       /* We don't want to show Autosourced items (ie removable pendrives, memorycards) in Library mode */
       m_rootDir.AllowNonLocalSources(false);
 
-      SetProperty("flattened", CSettings::Get().GetBool("myvideos.flatten"));
+      SetProperty("flattened", CSettings::Get().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN));
       if (message.GetNumStringParams() && StringUtils::EqualsNoCase(message.GetStringParam(0), "Files") &&
           CMediaSourceSettings::Get().GetSources("video")->empty())
       {
@@ -207,7 +200,7 @@ SelectFirstUnwatchedItem CGUIWindowVideoNav::GetSettingSelectFirstUnwatchedItem(
 
     if (nodeType == NODE_TYPE_SEASONS || nodeType == NODE_TYPE_EPISODES)
     {
-      int iValue = CSettings::Get().GetInt("videolibrary.tvshowsselectfirstunwatcheditem");
+      int iValue = CSettings::Get().GetInt(CSettings::SETTING_VIDEOLIBRARY_TVSHOWSSELECTFIRSTUNWATCHEDITEM);
       if (iValue >= SelectFirstUnwatchedItem::NEVER && iValue <= SelectFirstUnwatchedItem::ALWAYS)
         return (SelectFirstUnwatchedItem)iValue;
     }
@@ -218,7 +211,7 @@ SelectFirstUnwatchedItem CGUIWindowVideoNav::GetSettingSelectFirstUnwatchedItem(
 
 IncludeAllSeasonsAndSpecials CGUIWindowVideoNav::GetSettingIncludeAllSeasonsAndSpecials()
 {
-  int iValue = CSettings::Get().GetInt("videolibrary.tvshowsincludeallseasonsandspecials");
+  int iValue = CSettings::Get().GetInt(CSettings::SETTING_VIDEOLIBRARY_TVSHOWSINCLUDEALLSEASONSANDSPECIALS);
   if (iValue >= IncludeAllSeasonsAndSpecials::NEITHER && iValue <= IncludeAllSeasonsAndSpecials::SPECIALS)
     return (IncludeAllSeasonsAndSpecials)iValue;
 
@@ -325,7 +318,7 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
       dir.GetQueryParams(items.GetPath(),params);
       VIDEODATABASEDIRECTORY::NODE_TYPE node = dir.GetDirectoryChildType(items.GetPath());
 
-      int iFlatten = CSettings::Get().GetInt("videolibrary.flattentvshows");
+      int iFlatten = CSettings::Get().GetInt(CSettings::SETTING_VIDEOLIBRARY_FLATTENTVSHOWS);
       int itemsSize = items.GetObjectCount();
       int firstIndex = items.Size() - itemsSize;
 
@@ -373,7 +366,7 @@ bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItem
         // grab the show thumb
         CVideoInfoTag details;
         m_database.GetTvShowInfo("", details, params.GetTvShowId());
-        map<string, string> art;
+        std::map<std::string, std::string> art;
         if (m_database.GetArtForItem(details.m_iDbId, details.m_type, art))
         {
           items.AppendArt(art, details.m_type);
@@ -514,8 +507,8 @@ void CGUIWindowVideoNav::LoadVideoInfo(CFileItemList &items, CVideoDatabase &dat
     Similarly, we assign the "clean" library labels to the item only if the "Replace filenames with library titles"
     setting is enabled.
     */
-  const bool stackItems    = items.GetProperty("isstacked").asBoolean() || (StackingAvailable(items) && CSettings::Get().GetBool("myvideos.stackvideos"));
-  const bool replaceLabels = allowReplaceLabels && CSettings::Get().GetBool("myvideos.replacelabels");
+  const bool stackItems    = items.GetProperty("isstacked").asBoolean() || (StackingAvailable(items) && CSettings::Get().GetBool(CSettings::SETTING_MYVIDEOS_STACKVIDEOS));
+  const bool replaceLabels = allowReplaceLabels && CSettings::Get().GetBool(CSettings::SETTING_MYVIDEOS_REPLACELABELS);
 
   CFileItemList dbItems;
   /* NOTE: In the future when GetItemsForPath returns all items regardless of whether they're "in the library"
@@ -760,11 +753,11 @@ void CGUIWindowVideoNav::OnDeleteItem(CFileItemPtr pItem)
            pItem->GetPath().size() > 22 && pItem->m_bIsFolder)
   {
     CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
-    pDialog->SetHeading(432);
+    pDialog->SetHeading(CVariant{432});
     std::string strLabel = StringUtils::Format(g_localizeStrings.Get(433).c_str(),pItem->GetLabel().c_str());
-    pDialog->SetLine(1, strLabel);
-    pDialog->SetLine(2, "");;
-    pDialog->DoModal();
+    pDialog->SetLine(1, CVariant{std::move(strLabel)});
+    pDialog->SetLine(2, CVariant{""});
+    pDialog->Open();
     if (pDialog->IsConfirmed())
     {
       CFileItemList items;
@@ -781,11 +774,10 @@ void CGUIWindowVideoNav::OnDeleteItem(CFileItemPtr pItem)
   else if (m_vecItems->GetContent() == "tags" && pItem->m_bIsFolder)
   {
     CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
-    pDialog->SetHeading(432);
-    std::string strLabel = StringUtils::Format(g_localizeStrings.Get(433).c_str(), pItem->GetLabel().c_str());
-    pDialog->SetLine(1, strLabel);
-    pDialog->SetLine(2, "");
-    pDialog->DoModal();
+    pDialog->SetHeading(CVariant{432});
+    pDialog->SetLine(1, CVariant{ StringUtils::Format(g_localizeStrings.Get(433).c_str(), pItem->GetLabel().c_str()) });
+    pDialog->SetLine(2, CVariant{""});
+    pDialog->Open();
     if (pDialog->IsConfirmed())
     {
       CVideoDatabaseDirectory dir;
@@ -844,19 +836,16 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
       database.Open();
       ADDON::ScraperPtr info = database.GetScraperForPath(item->GetPath());
 
-      if (!g_application.IsVideoScanning())
+      if (!item->IsLiveTV() && !item->IsPlugin() && !item->IsAddonsPath() && !URIUtils::IsUPnP(item->GetPath()))
       {
-        if (!item->IsLiveTV() && !item->IsPlugin() && !item->IsAddonsPath() && !URIUtils::IsUPnP(item->GetPath()))
+        if (info && info->Content() != CONTENT_NONE)
         {
-          if (info && info->Content() != CONTENT_NONE)
-            buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
-          else
-            buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
+          buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
+          buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
         }
+        else
+          buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
       }
-
-      if (info)
-        buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
     }
   }
   else
@@ -961,7 +950,7 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
 
       if (!m_vecItems->IsVideoDb() && !m_vecItems->IsVirtualDirectoryRoot())
       { // non-video db items, file operations are allowed
-        if ((CSettings::Get().GetBool("filelists.allowfiledeletion") &&
+        if ((CSettings::Get().GetBool(CSettings::SETTING_FILELISTS_ALLOWFILEDELETION) &&
             CUtil::SupportsWriteFileOperations(item->GetPath())) ||
             (inPlaylists && URIUtils::GetFileName(item->GetPath()) != "PartyMode-Video.xsp"
                          && (item->IsPlayList() || item->IsSmartPlayList())))
@@ -972,13 +961,10 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
         // add "Set/Change content" to folders
         if (item->m_bIsFolder && !item->IsVideoDb() && !item->IsPlayList() && !item->IsSmartPlayList() && !item->IsLibraryFolder() && !item->IsLiveTV() && !item->IsPlugin() && !item->IsAddonsPath() && !URIUtils::IsUPnP(item->GetPath()))
         {
-          if (!g_application.IsVideoScanning())
-          {
-            if (info && info->Content() != CONTENT_NONE)
-              buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
-            else
-              buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
-          }
+          if (info && info->Content() != CONTENT_NONE)
+            buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
+          else
+            buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
 
           if (info && info->Content() != CONTENT_NONE)
             buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
@@ -1002,7 +988,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     if (button == CONTEXT_BUTTON_REMOVE_SOURCE && !item->IsPlugin()
         && !item->IsLiveTV() &&!item->IsRSS() && !URIUtils::IsUPnP(item->GetPath()))
     {
-      OnUnAssignContent(item->GetPath(),20375,20340,20341);
+      OnUnAssignContent(item->GetPath(), 20375, 20340);
     }
     Refresh();
     return true;
@@ -1071,7 +1057,7 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
                                                                         m_vecItems->Get(itemNumber)->GetVideoInfoTag()->m_strTitle),
                                                                         song))
       {
-        CApplicationMessenger::Get().PlayFile(song);
+        CApplicationMessenger::Get().PostMsg(TMSG_MEDIA_PLAY, 0, 0, static_cast<void*>(new CFileItem(song)));
       }
       return true;
     }
@@ -1101,7 +1087,7 @@ bool CGUIWindowVideoNav::OnClick(int iItem)
     }
     else
     {
-      CGUIDialogOK::ShowAndGetInput(257, 0, 662, 0);
+      CGUIDialogOK::ShowAndGetInput(CVariant{257}, CVariant{662});
       return true;
     }	  
   }
@@ -1110,13 +1096,13 @@ bool CGUIWindowVideoNav::OnClick(int iItem)
     // dont allow update while scanning
     if (g_application.IsVideoScanning())
     {
-      CGUIDialogOK::ShowAndGetInput(257, 0, 14057, 0);
+      CGUIDialogOK::ShowAndGetInput(CVariant{257}, CVariant{14057});
       return true;
     }
 
     //Get the new title
     std::string strTag;
-    if (!CGUIKeyboardFactory::ShowAndGetInput(strTag, g_localizeStrings.Get(20462), false))
+    if (!CGUIKeyboardFactory::ShowAndGetInput(strTag, CVariant{g_localizeStrings.Get(20462)}, false))
       return true;
 
     CVideoDatabase videodb;
@@ -1133,7 +1119,7 @@ bool CGUIWindowVideoNav::OnClick(int iItem)
     if (!videodb.GetSingleValue("tag", "tag.tag_id", videodb.PrepareSQL("tag.name = '%s' AND tag.tag_id IN (SELECT tag_link.tag_id FROM tag_link WHERE tag_link.media_type = '%s')", strTag.c_str(), mediaType.c_str())).empty())
     {
       std::string strError = StringUtils::Format(g_localizeStrings.Get(20463).c_str(), strTag.c_str());
-      CGUIDialogOK::ShowAndGetInput(20462, "", strError, "");
+      CGUIDialogOK::ShowAndGetInput(CVariant{20462}, CVariant{std::move(strError)});
       return true;
     }
 

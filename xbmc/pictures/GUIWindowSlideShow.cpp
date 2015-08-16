@@ -22,7 +22,7 @@
 #include "system.h"
 #include "GUIWindowSlideShow.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "utils/URIUtils.h"
 #include "URL.h"
 #include "guilib/TextureManager.h"
@@ -33,23 +33,21 @@
 #include "GUIDialogPictureInfo.h"
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
-#include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
 #include "guilib/Texture.h"
 #include "windowing/WindowingFactory.h"
-#include "guilib/Texture.h"
 #include "guilib/LocalizeStrings.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "utils/TimeUtils.h"
+#include "utils/Variant.h"
 #include "interfaces/AnnouncementManager.h"
 #include "pictures/GUIViewStatePictures.h"
-#include "pictures/PictureInfoTag.h"
 #include "pictures/PictureThumbLoader.h"
 
 using namespace XFILE;
+using namespace KODI::MESSAGING;
 
 #define MAX_ZOOM_FACTOR                     10
 #define MAX_PICTURE_SIZE             2048*2048
@@ -103,7 +101,7 @@ void CBackgroundPicLoader::Process()
       if (m_pCallback)
       {
         unsigned int start = XbmcThreads::SystemClockMillis();
-        CBaseTexture* texture = CTexture::LoadFromFile(m_strFileName, m_maxWidth, m_maxHeight, CSettings::Get().GetBool("pictures.useexifrotation"));
+        CBaseTexture* texture = CTexture::LoadFromFile(m_strFileName, m_maxWidth, m_maxHeight, CSettings::Get().GetBool(CSettings::SETTING_PICTURES_USEEXIFROTATION));
         totalTime += XbmcThreads::SystemClockMillis() - start;
         count++;
         // tell our parent
@@ -765,7 +763,7 @@ bool CGUIWindowSlideShow::OnAction(const CAction &action)
       if (pictureInfo)
       {
         // no need to set the picture here, it's done in Render()
-        pictureInfo->DoModal();
+        pictureInfo->Open();
       }
     }
     break;
@@ -856,7 +854,7 @@ bool CGUIWindowSlideShow::OnAction(const CAction &action)
   case ACTION_GESTURE_SWIPE_DOWN:
     if (m_iZoomFactor == 1 || !m_Image[m_iCurrentPic].m_bCanMoveVertically)
     {
-      bool swipeOnLeft = action.GetAmount() < g_graphicsContext.GetWidth() / 2;
+      bool swipeOnLeft = action.GetAmount() < g_graphicsContext.GetWidth() / 2.0f;
       bool swipeUp = action.GetID() == ACTION_GESTURE_SWIPE_UP;
       if (swipeUp == swipeOnLeft)
         Rotate(90.0f);
@@ -925,7 +923,7 @@ bool CGUIWindowSlideShow::OnMessage(CGUIMessage& message)
   {
   case GUI_MSG_WINDOW_INIT:
     {
-      m_Resolution = (RESOLUTION) CSettings::Get().GetInt("pictures.displayresolution");
+      m_Resolution = (RESOLUTION) CSettings::Get().GetInt(CSettings::SETTING_PICTURES_DISPLAYRESOLUTION);
 
       //FIXME: Use GUI resolution for now
       if (0 /*m_Resolution != CDisplaySettings::Get().GetCurrentResolution() && m_Resolution != INVALID && m_Resolution!=AUTORES*/)
@@ -1133,7 +1131,7 @@ bool CGUIWindowSlideShow::PlayVideo()
 CSlideShowPic::DISPLAY_EFFECT CGUIWindowSlideShow::GetDisplayEffect(int iSlideNumber) const
 {
   if (m_bSlideShow && !m_bPause && !m_slides->Get(iSlideNumber)->IsVideo())
-    return CSettings::Get().GetBool("slideshow.displayeffects") ? CSlideShowPic::EFFECT_RANDOM : CSlideShowPic::EFFECT_NONE;
+    return CSettings::Get().GetBool(CSettings::SETTING_SLIDESHOW_DISPLAYEFFECTS) ? CSlideShowPic::EFFECT_RANDOM : CSlideShowPic::EFFECT_NONE;
   else
     return CSlideShowPic::EFFECT_NO_TIMEOUT;
 }
@@ -1239,7 +1237,7 @@ void CGUIWindowSlideShow::RunSlideShow(const std::string &strPath,
     bRandom = bNotRandom = false;
 
   // NotRandom overrides the window setting
-  if ((!bNotRandom && CSettings::Get().GetBool("slideshow.shuffle")) || bRandom)
+  if ((!bNotRandom && CSettings::Get().GetBool(CSettings::SETTING_SLIDESHOW_SHUFFLE)) || bRandom)
     Shuffle();
 
   if (!beginSlidePath.empty())

@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "system.h"
-#include "threads/CriticalSection.h"
 
 #include "cores/AudioEngine/Utils/AEAudioFormat.h"
 
@@ -251,5 +250,10 @@ public:
    * Instruct AE to re-initialize, e.g. after ELD change event
    */
   virtual void DeviceChange() {return; }
+
+  /**
+   * Indicates if dsp addon system is active.
+   */
+  virtual bool HasDSP() { return false; };
 };
 

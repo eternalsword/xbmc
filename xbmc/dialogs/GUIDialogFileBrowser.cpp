@@ -40,14 +40,12 @@
 #include "FileItem.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "profiles/ProfilesManager.h"
-#include "settings/AdvancedSettings.h"
 #include "settings/MediaSourceSettings.h"
-#include "settings/Settings.h"
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "URL.h"
-#include "view/ViewState.h"
+#include "utils/Variant.h"
 
 using namespace XFILE;
 
@@ -225,7 +223,7 @@ bool CGUIDialogFileBrowser::OnMessage(CGUIMessage& message)
             Close();
           }
           else
-            CGUIDialogOK::ShowAndGetInput(257,20072,0,0);
+            CGUIDialogOK::ShowAndGetInput(CVariant{257}, CVariant{20072});
         }
         else
         {
@@ -251,13 +249,13 @@ bool CGUIDialogFileBrowser::OnMessage(CGUIMessage& message)
       else if (message.GetSenderId() == CONTROL_NEWFOLDER)
       {
         std::string strInput;
-        if (CGUIKeyboardFactory::ShowAndGetInput(strInput,g_localizeStrings.Get(119),false))
+        if (CGUIKeyboardFactory::ShowAndGetInput(strInput, CVariant{g_localizeStrings.Get(119)}, false))
         {
           std::string strPath = URIUtils::AddFileToFolder(m_vecItems->GetPath(), strInput);
           if (CDirectory::Create(strPath))
             Update(m_vecItems->GetPath());
           else
-            CGUIDialogOK::ShowAndGetInput(20069,20072,20073,0);
+            CGUIDialogOK::ShowAndGetInput(CVariant{20069}, CVariant{20072});
         }
       }
       else if (message.GetSenderId() == CONTROL_FLIP)
@@ -570,7 +568,7 @@ bool CGUIDialogFileBrowser::HaveDiscOrConnection( int iDriveType )
   {
     if ( !g_mediaManager.IsDiscInDrive() )
     {
-      CGUIDialogOK::ShowAndGetInput(218, 219, 0, 0);
+      CGUIDialogOK::ShowAndGetInput(CVariant{218}, CVariant{219});
       return false;
     }
   }
@@ -579,7 +577,7 @@ bool CGUIDialogFileBrowser::HaveDiscOrConnection( int iDriveType )
     // TODO: Handle not connected to a remote share
     if ( !g_application.getNetwork().IsConnected() )
     {
-      CGUIDialogOK::ShowAndGetInput(220, 221, 0, 0);
+      CGUIDialogOK::ShowAndGetInput(CVariant{220}, CVariant{221});
       return false;
     }
   }
@@ -631,7 +629,7 @@ bool CGUIDialogFileBrowser::ShowAndGetImage(const CFileItemList &items, const VE
   }
   browser->SetHeading(heading);
   browser->m_flipEnabled = flip?true:false;
-  browser->DoModal();
+  browser->Open();
   bool confirmed(browser->IsConfirmed());
   if (confirmed)
   {
@@ -708,7 +706,7 @@ bool CGUIDialogFileBrowser::ShowAndGetFile(const VECSOURCES &shares, const std::
   browser->m_rootDir.SetMask(strMask);
   browser->m_selectedPath = path;
   browser->m_addNetworkShareEnabled = false;
-  browser->DoModal();
+  browser->Open();
   bool confirmed(browser->IsConfirmed());
   if (confirmed)
     path = browser->m_selectedPath;
@@ -764,7 +762,7 @@ bool CGUIDialogFileBrowser::ShowAndGetFile(const std::string &directory, const s
   browser->m_rootDir.SetMask(strMask);
   browser->m_selectedPath = directory;
   browser->m_addNetworkShareEnabled = false;
-  browser->DoModal();
+  browser->Open();
   bool confirmed(browser->IsConfirmed());
   if (confirmed)
     path = browser->m_selectedPath;
@@ -797,7 +795,7 @@ bool CGUIDialogFileBrowser::ShowAndGetFileList(const VECSOURCES &shares, const s
   browser->m_browsingForFolders = 0;
   browser->m_rootDir.SetMask(mask);
   browser->m_addNetworkShareEnabled = false;
-  browser->DoModal();
+  browser->Open();
   bool confirmed(browser->IsConfirmed());
   if (confirmed)
   {
@@ -872,7 +870,7 @@ bool CGUIDialogFileBrowser::ShowAndGetSource(std::string &path, bool allowNetwor
   browser->m_browsingForFolders = 1;
   browser->m_addNetworkShareEnabled = allowNetworkShares;
   browser->m_selectedPath = "";
-  browser->DoModal();
+  browser->Open();
   bool confirmed = browser->IsConfirmed();
   if (confirmed)
     path = browser->m_selectedPath;
@@ -898,7 +896,7 @@ void CGUIDialogFileBrowser::OnAddNetworkLocation()
   {
     // verify the path by doing a GetDirectory.
     CFileItemList items;
-    if (CDirectory::GetDirectory(path, items, "", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_ALLOW_PROMPT) || CGUIDialogYesNo::ShowAndGetInput(1001,1002,1003,1004))
+    if (CDirectory::GetDirectory(path, items, "", DIR_FLAG_NO_FILE_DIRS | DIR_FLAG_ALLOW_PROMPT) || CGUIDialogYesNo::ShowAndGetInput(CVariant{1001}, CVariant{1002}))
     { // add the network location to the shares list
       CMediaSource share;
       share.strPath = path; //setPath(path);
@@ -964,7 +962,7 @@ bool CGUIDialogFileBrowser::OnPopupMenu(int iItem)
         m_browsingForFolders = 1;
         m_addNetworkShareEnabled = true;
         m_selectedPath = newPath;
-        DoModal();
+        Open();
       }
     }
     else

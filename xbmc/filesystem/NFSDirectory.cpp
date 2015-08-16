@@ -24,7 +24,6 @@
 #include "DllLibNfs.h"
 
 #ifdef TARGET_WINDOWS
-#include <fcntl.h>
 #include <sys\stat.h>
 #endif
 
@@ -37,7 +36,6 @@
 using namespace XFILE;
 using namespace std;
 #include <limits.h>
-#include <nfsc/libnfs-raw-mount.h>
 #include <nfsc/libnfs-raw-nfs.h>
 
 CNFSDirectory::CNFSDirectory(void)
@@ -153,7 +151,7 @@ bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent
     if (ret != 0) 
     {
       CLog::Log(LOGERROR, "NFS: Failed to stat(%s) on link resolve %s\n", fullpath.c_str(), gNfsConnection.GetImpl()->nfs_get_error(gNfsConnection.GetNfsContext()));
-      retVal = false;;
+      retVal = false;
     }
     else
     {  

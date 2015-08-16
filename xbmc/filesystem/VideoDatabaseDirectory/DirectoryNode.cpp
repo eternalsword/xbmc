@@ -39,7 +39,6 @@
 #include "URL.h"
 #include "settings/AdvancedSettings.h"
 #include "FileItem.h"
-#include "filesystem/File.h"
 #include "utils/StringUtils.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/Variant.h"
@@ -285,7 +284,7 @@ void CDirectoryNode::AddQueuingFolder(CFileItemList& items) const
   CFileItemPtr pItem;
 
   // always show "all" items by default
-  if (!CSettings::Get().GetBool("videolibrary.showallitems"))
+  if (!CSettings::Get().GetBool(CSettings::SETTING_VIDEOLIBRARY_SHOWALLITEMS))
     return;
 
   // no need for "all" item when only one item
@@ -336,6 +335,11 @@ void CDirectoryNode::AddQueuingFolder(CFileItemList& items) const
         }
         pItem->GetVideoInfoTag()->m_type = MediaTypeSeason;
       }
+      break;
+    case NODE_TYPE_MUSICVIDEOS_ALBUM:
+      pItem.reset(new CFileItem(g_localizeStrings.Get(15102)));  // "All Albums"
+      videoUrl.AppendPath("-1/");
+      pItem->SetPath(videoUrl.ToString());
       break;
     default:
       break;

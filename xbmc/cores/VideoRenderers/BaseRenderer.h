@@ -63,7 +63,6 @@ enum RenderMethods
   RENDER_METHOD_SOFTWARE,
   RENDER_METHOD_D3D_PS,
   RENDER_METHOD_DXVA,
-  RENDER_METHOD_DXVAHD,
   RENDER_OVERLAYS        = 99   // to retain compatibility
 };
 
@@ -95,8 +94,6 @@ public:
   /**
    * Returns number of references a single buffer can retain when rendering a single frame
    */
-  virtual unsigned int GetOptimalBufferSize() { return 0; }
-  virtual unsigned int GetMaxBufferSize() { return 0; }
   virtual void         SetBufferSize(int numBuffers) { }
   virtual void         ReleaseBuffer(int idx) { }
   virtual bool         NeedBufferForRef(int idx) { return false; }
@@ -104,8 +101,8 @@ public:
 
   virtual bool Supports(ERENDERFEATURE feature) { return false; }
 
-  // Supported pixel formats, can be called before configure
-  std::vector<ERenderFormat> SupportedFormats()  { return std::vector<ERenderFormat>(); }
+  // Render info, can be called before configure
+  virtual CRenderInfo GetRenderInfo() { return CRenderInfo(); }
 
   virtual void RegisterRenderUpdateCallBack(const void *ctx, RenderUpdateCallBackFn fn);
   virtual void RegisterRenderFeaturesCallBack(const void *ctx, RenderFeaturesCallBackFn fn);

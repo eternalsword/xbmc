@@ -42,17 +42,16 @@
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/GUIEditControl.h"
 #include "GUIUserMessages.h"
-#include "filesystem/File.h"
 #include "FileItem.h"
 #include "Application.h"
-#include "ApplicationMessenger.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/LegacyPathTranslation.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "TextureCache.h"
+#include "utils/Variant.h"
 #include "Util.h"
 #include "URL.h"
 #include "ContextMenuManager.h"
@@ -61,6 +60,7 @@ using namespace std;
 using namespace XFILE;
 using namespace PLAYLIST;
 using namespace MUSICDATABASEDIRECTORY;
+using namespace KODI::MESSAGING;
 
 #define CONTROL_BTNVIEWASICONS     2
 #define CONTROL_BTNSORTBY          3
@@ -108,7 +108,7 @@ bool CGUIWindowMusicNav::OnMessage(CGUIMessage& message)
 
       // is this the first time the window is opened?
       if (m_vecItems->GetPath() == "?" && message.GetStringParam().empty())
-        message.SetStringParam(CSettings::Get().GetString("mymusic.defaultlibview"));
+        message.SetStringParam(CSettings::Get().GetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW));
       
       DisplayEmptyDatabaseMessage(false); // reset message state
 
@@ -308,7 +308,7 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
   }
 
   // update our content in the info manager
-  if (StringUtils::StartsWithNoCase(strDirectory, "videodb://"))
+  if (StringUtils::StartsWithNoCase(strDirectory, "videodb://") || items.IsVideoDb())
   {
     CVideoDatabaseDirectory dir;
     VIDEODATABASEDIRECTORY::NODE_TYPE node = dir.GetDirectoryChildType(strDirectory);
@@ -332,7 +332,7 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
     else if (node == VIDEODATABASEDIRECTORY::NODE_TYPE_TAGS)
       items.SetContent("tags");
   }
-  else if (StringUtils::StartsWithNoCase(strDirectory, "musicdb://"))
+  else if (StringUtils::StartsWithNoCase(strDirectory, "musicdb://") || items.IsMusicDb())
   {
     CMusicDatabaseDirectory dir;
     NODE_TYPE node = dir.GetDirectoryChildType(strDirectory);
@@ -515,9 +515,9 @@ void CGUIWindowMusicNav::GetContextButtons(int itemNumber, CContextButtons &butt
          nodetype == NODE_TYPE_OVERVIEW ||
          nodetype == NODE_TYPE_TOP100))
     {
-      if (!item->IsPath(CSettings::Get().GetString("mymusic.defaultlibview")))
+      if (!item->IsPath(CSettings::Get().GetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW)))
         buttons.Add(CONTEXT_BUTTON_SET_DEFAULT, 13335); // set default
-      if (!CSettings::Get().GetString("mymusic.defaultlibview").empty())
+      if (!CSettings::Get().GetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW).empty())
         buttons.Add(CONTEXT_BUTTON_CLEAR_DEFAULT, 13403); // clear default
     }
     NODE_TYPE childtype = dir.GetDirectoryChildType(item->GetPath());
@@ -642,12 +642,12 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     return true;
 
   case CONTEXT_BUTTON_SET_DEFAULT:
-    CSettings::Get().SetString("mymusic.defaultlibview", GetQuickpathName(item->GetPath()));
+    CSettings::Get().SetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW, GetQuickpathName(item->GetPath()));
     CSettings::Get().Save();
     return true;
 
   case CONTEXT_BUTTON_CLEAR_DEFAULT:
-    CSettings::Get().SetString("mymusic.defaultlibview", "");
+    CSettings::Get().SetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW, "");
     CSettings::Get().Save();
     return true;
 
@@ -668,7 +668,7 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       database.Open();
       CVideoInfoTag details;
       database.GetMusicVideoInfo("",details,database.GetMatchingMusicVideo(StringUtils::Join(item->GetMusicInfoTag()->GetArtist(), g_advancedSettings.m_musicItemSeparator),item->GetMusicInfoTag()->GetAlbum(),item->GetMusicInfoTag()->GetTitle()));
-      CApplicationMessenger::Get().PlayFile(CFileItem(details));
+      CApplicationMessenger::Get().PostMsg(TMSG_MEDIA_PLAY, 0, 0, static_cast<void*>(new CFileItem(details)));
       return true;
     }
 
@@ -724,7 +724,7 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
       if (CGUIDialogContentSettings::Show(scraper, content))
       {
         m_musicdatabase.SetScraperForPath(path,scraper);
-        if (CGUIDialogYesNo::ShowAndGetInput(20442,20443,20444,20022))
+        if (CGUIDialogYesNo::ShowAndGetInput(CVariant{20442}, CVariant{20443}))
         {
           OnInfoAll(itemNumber,true,true);
         }
@@ -760,7 +760,7 @@ bool CGUIWindowMusicNav::GetSongsFromPlayList(const std::string& strPlayList, CF
     // load it
     if (!pPlayList->Load(strPlayList))
     {
-      CGUIDialogOK::ShowAndGetInput(6, 0, 477, 0);
+      CGUIDialogOK::ShowAndGetInput(CVariant{6}, CVariant{477});
       return false; //hmmm unable to load playlist?
     }
     CPlayList playlist = *pPlayList;
