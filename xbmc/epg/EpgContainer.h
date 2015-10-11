@@ -35,7 +35,7 @@ class CGUIDialogProgressBarHandle;
 
 namespace EPG
 {
-  #define g_EpgContainer CEpgContainer::Get()
+  #define g_EpgContainer CEpgContainer::GetInstance()
 
   struct SUpdateRequest
   {
@@ -64,7 +64,7 @@ namespace EPG
     /*!
      * @return An instance of this singleton.
      */
-    static CEpgContainer &Get(void);
+    static CEpgContainer &GetInstance();
 
     /*!
      * @brief Get a pointer to the database instance.
@@ -119,9 +119,9 @@ namespace EPG
      * @param obs The observable that sent the update.
      * @param msg The update message.
      */
-    virtual void Notify(const Observable &obs, const ObservableMessage msg);
+    virtual void Notify(const Observable &obs, const ObservableMessage msg) override;
 
-    virtual void OnSettingChanged(const CSetting *setting);
+    virtual void OnSettingChanged(const CSetting *setting) override;
 
     CEpg *CreateChannelEpg(PVR::CPVRChannelPtr channel);
 
@@ -164,7 +164,7 @@ namespace EPG
      * @param iBroadcastId The event id to get
      * @return The requested event, or an empty tag when not found
      */
-    virtual CEpgInfoTagPtr GetTagById(int iBroadcastId) const;
+    virtual CEpgInfoTagPtr GetTagById(unsigned int iBroadcastId) const;
 
     /*!
      * @brief Get an EPG table given a PVR channel.
@@ -283,7 +283,7 @@ namespace EPG
     /*!
      * @brief EPG update thread
      */
-    virtual void Process(void);
+    virtual void Process(void) override;
 
     /*!
      * @brief Load all tables from the database

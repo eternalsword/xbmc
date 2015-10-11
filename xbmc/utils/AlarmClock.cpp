@@ -19,17 +19,19 @@
  */
 
 #include "AlarmClock.h"
+
+#include <utility>
+
+#include "dialogs/GUIDialogKaiToast.h"
 #include "events/EventLog.h"
 #include "events/NotificationEvent.h"
-#include "messaging/ApplicationMessenger.h"
 #include "guilib/LocalizeStrings.h"
-#include "threads/SingleLock.h"
 #include "log.h"
-#include "dialogs/GUIDialogKaiToast.h"
+#include "messaging/ApplicationMessenger.h"
+#include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 
 using namespace KODI::MESSAGING;
-using namespace std;
 
 CAlarmClock::CAlarmClock() : CThread("AlarmClock"), m_bIsRunning(false)
 {
@@ -88,7 +90,7 @@ void CAlarmClock::Stop(const std::string& strName, bool bSilent /* false */)
 
   std::string lowerName(strName);
   StringUtils::ToLower(lowerName);          // lookup as lowercase only
-  map<std::string,SAlarmClockEvent>::iterator iter = m_event.find(lowerName);
+  std::map<std::string,SAlarmClockEvent>::iterator iter = m_event.find(lowerName);
 
   if (iter == m_event.end())
     return;
@@ -123,7 +125,7 @@ void CAlarmClock::Stop(const std::string& strName, bool bSilent /* false */)
   }
   else
   {
-    CApplicationMessenger::Get().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, iter->second.m_strCommand);
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_EXECUTE_BUILT_IN, -1, -1, nullptr, iter->second.m_strCommand);
     if (iter->second.m_loop)
     {
       iter->second.watch.Reset();
@@ -142,7 +144,7 @@ void CAlarmClock::Process()
     std::string strLast;
     {
       CSingleLock lock(m_events);
-      for (map<std::string,SAlarmClockEvent>::iterator iter=m_event.begin();iter != m_event.end(); ++iter)
+      for (std::map<std::string,SAlarmClockEvent>::iterator iter=m_event.begin();iter != m_event.end(); ++iter)
         if ( iter->second.watch.IsRunning()
           && iter->second.watch.GetElapsedSeconds() >= iter->second.m_fSecs)
         {

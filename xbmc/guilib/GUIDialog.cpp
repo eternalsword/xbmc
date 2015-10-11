@@ -91,10 +91,6 @@ bool CGUIDialog::OnMessage(CGUIMessage& message)
   {
   case GUI_MSG_WINDOW_DEINIT:
     {
-      CGUIWindow *pWindow = g_windowManager.GetWindow(g_windowManager.GetActiveWindow());
-      if (pWindow)
-        g_windowManager.ShowOverlay(pWindow->GetOverlayState());
-
       CGUIWindow::OnMessage(message);
       return true;
     }
@@ -208,7 +204,7 @@ void CGUIDialog::Open()
   {
     // make sure graphics lock is not held
     CSingleExit leaveIt(g_graphicsContext);
-    CApplicationMessenger::Get().SendMsg(TMSG_GUI_DIALOG_OPEN, -1, -1, static_cast<void*>(this));
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_GUI_DIALOG_OPEN, -1, -1, static_cast<void*>(this));
   }
   else
     Open_Internal();

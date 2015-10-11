@@ -19,9 +19,11 @@
  *
  */
 
+#include <utility>
 #include <vector>
-#include "ContextMenuItem.h"
+
 #include "addons/ContextMenuAddon.h"
+#include "ContextMenuItem.h"
 #include "dialogs/GUIDialogContextMenu.h"
 
 
@@ -31,7 +33,7 @@ public:
   static const CContextMenuItem MAIN;
   static const CContextMenuItem MANAGE;
 
-  static CContextMenuManager& Get();
+  static CContextMenuManager& GetInstance();
 
   /*!
    * \param id - id of the context button clicked on.

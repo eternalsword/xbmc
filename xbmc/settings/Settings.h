@@ -57,6 +57,7 @@ public:
   static const std::string SETTING_LOOKANDFEEL_SOUNDSKIN;
   static const std::string SETTING_LOOKANDFEEL_ENABLERSSFEEDS;
   static const std::string SETTING_LOOKANDFEEL_RSSEDIT;
+  static const std::string SETTING_LOOKANDFEEL_STEREOSTRENGTH;
   static const std::string SETTING_LOCALE_LANGUAGE;
   static const std::string SETTING_LOCALE_COUNTRY;
   static const std::string SETTING_LOCALE_CHARSET;
@@ -92,6 +93,7 @@ public:
   static const std::string SETTING_VIDEOLIBRARY_TVSHOWSINCLUDEALLSEASONSANDSPECIALS;
   static const std::string SETTING_VIDEOLIBRARY_SHOWALLITEMS;
   static const std::string SETTING_VIDEOLIBRARY_GROUPMOVIESETS;
+  static const std::string SETTING_VIDEOLIBRARY_GROUPSINGLEITEMSETS;
   static const std::string SETTING_VIDEOLIBRARY_UPDATEONSTARTUP;
   static const std::string SETTING_VIDEOLIBRARY_BACKGROUNDUPDATE;
   static const std::string SETTING_VIDEOLIBRARY_CLEANUP;
@@ -160,6 +162,7 @@ public:
   static const std::string SETTING_DVDS_PLAYERREGION;
   static const std::string SETTING_DVDS_AUTOMENU;
   static const std::string SETTING_DISC_PLAYBACK;
+  static const std::string SETTING_BLURAY_PLAYERREGION;
   static const std::string SETTING_ACCESSIBILITY_AUDIOVISUAL;
   static const std::string SETTING_ACCESSIBILITY_AUDIOHEARING;
   static const std::string SETTING_ACCESSIBILITY_SUBHEARING;
@@ -259,9 +262,7 @@ public:
   static const std::string SETTING_MYMUSIC_STARTWINDOW;
   static const std::string SETTING_MYMUSIC_SONGTHUMBINVIS;
   static const std::string SETTING_MYMUSIC_DEFAULTLIBVIEW;
-  static const std::string SETTING_PICTURES_USETAGS;
   static const std::string SETTING_PICTURES_GENERATETHUMBS;
-  static const std::string SETTING_PICTURES_USEEXIFROTATION;
   static const std::string SETTING_PICTURES_SHOWVIDEOS;
   static const std::string SETTING_PICTURES_DISPLAYRESOLUTION;
   static const std::string SETTING_SLIDESHOW_STAYTIME;
@@ -329,6 +330,7 @@ public:
   static const std::string SETTING_AUDIOOUTPUT_DTSPASSTHROUGH;
   static const std::string SETTING_AUDIOOUTPUT_TRUEHDPASSTHROUGH;
   static const std::string SETTING_AUDIOOUTPUT_DTSHDPASSTHROUGH;
+  static const std::string SETTING_AUDIOOUTPUT_SUPPORTSDTSHDCPUDECODING;
   static const std::string SETTING_INPUT_PERIPHERALS;
   static const std::string SETTING_INPUT_ENABLEMOUSE;
   static const std::string SETTING_INPUT_ENABLEJOYSTICK;
@@ -375,7 +377,7 @@ public:
   /*!
    \brief Creates a new settings wrapper around a new settings manager.
 
-   For access to the "global" settings wrapper the static Get() method should
+   For access to the "global" settings wrapper the static GetInstance() method should
    be used.
    */
   CSettings();
@@ -386,7 +388,7 @@ public:
 
    \return "global" settings wrapper
    */
-  static CSettings& Get();
+  static CSettings& GetInstance();
 
   CSettingsManager* GetSettingsManager() const { return m_settingsManager; }
 

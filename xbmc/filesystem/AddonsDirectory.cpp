@@ -28,6 +28,8 @@
 #include "FileItem.h"
 #include "addons/AddonInstaller.h"
 #include "addons/PluginSource.h"
+#include "addons/RepositoryUpdater.h"
+#include "dialogs/GUIDialogOK.h"
 #include "guilib/TextureManager.h"
 #include "File.h"
 #include "SpecialProtocol.h"
@@ -131,7 +133,7 @@ static void SetUpdateAvailProperties(CFileItemList &items)
   for (int i = 0; i < items.Size(); ++i)
   {
     const std::string addonId = items[i]->GetProperty("Addon.ID").asString();
-    if (!CAddonMgr::Get().IsAddonDisabled(addonId))
+    if (!CAddonMgr::GetInstance().IsAddonDisabled(addonId))
     {
       const AddonVersion installedVersion = AddonVersion(items[i]->GetProperty("Addon.Version").asString());
       AddonPtr repoAddon;
@@ -257,8 +259,8 @@ static void UserInstalledAddons(const CURL& path, CFileItemList &items)
   items.SetLabel(g_localizeStrings.Get(24998));
 
   VECADDONS addons;
-  CAddonMgr::Get().GetAllAddons(addons, true);
-  CAddonMgr::Get().GetAllAddons(addons, false);
+  CAddonMgr::GetInstance().GetAllAddons(addons, true);
+  CAddonMgr::GetInstance().GetAllAddons(addons, false);
   addons.erase(std::remove_if(addons.begin(), addons.end(),
                               std::not1(std::ptr_fun(IsUserInstalled))), addons.end());
   if (addons.empty())
@@ -294,8 +296,8 @@ static void UserInstalledAddons(const CURL& path, CFileItemList &items)
 static void DependencyAddons(const CURL& path, CFileItemList &items)
 {
   VECADDONS all;
-  CAddonMgr::Get().GetAllAddons(all, true);
-  CAddonMgr::Get().GetAllAddons(all, false);
+  CAddonMgr::GetInstance().GetAllAddons(all, true);
+  CAddonMgr::GetInstance().GetAllAddons(all, false);
 
   VECADDONS deps;
   std::copy_if(all.begin(), all.end(), std::back_inserter(deps),
@@ -308,8 +310,8 @@ static void DependencyAddons(const CURL& path, CFileItemList &items)
 static void OrphanedAddons(const CURL& path, CFileItemList &items)
 {
   VECADDONS all;
-  CAddonMgr::Get().GetAllAddons(all, true);
-  CAddonMgr::Get().GetAllAddons(all, false);
+  CAddonMgr::GetInstance().GetAllAddons(all, true);
+  CAddonMgr::GetInstance().GetAllAddons(all, false);
 
   VECADDONS orphaned;
   std::copy_if(all.begin(), all.end(), std::back_inserter(orphaned),
@@ -321,8 +323,8 @@ static void OrphanedAddons(const CURL& path, CFileItemList &items)
 static bool HaveOrphaned()
 {
   VECADDONS addons;
-  CAddonMgr::Get().GetAllAddons(addons, true);
-  CAddonMgr::Get().GetAllAddons(addons, false);
+  CAddonMgr::GetInstance().GetAllAddons(addons, true);
+  CAddonMgr::GetInstance().GetAllAddons(addons, false);
   return std::any_of(addons.begin(), addons.end(),
                      [&](const AddonPtr& _){ return IsOrphaned(_, addons); });
 }
@@ -330,9 +332,7 @@ static bool HaveOrphaned()
 static void OutdatedAddons(const CURL& path, CFileItemList &items)
 {
   VECADDONS addons;
-  // Wait for running update to complete
-  CAddonInstaller::Get().UpdateRepos(false, true);
-  CAddonMgr::Get().GetAllOutdatedAddons(addons);
+  CAddonMgr::GetInstance().GetAllOutdatedAddons(addons);
   CAddonsDirectory::GenerateAddonListing(path, addons, items, g_localizeStrings.Get(24043));
 
   if (items.Size() > 1)
@@ -347,10 +347,10 @@ static void OutdatedAddons(const CURL& path, CFileItemList &items)
 static void RunningAddons(const CURL& path, CFileItemList &items)
 {
   VECADDONS addons;
-  CAddonMgr::Get().GetAddons(ADDON_SERVICE, addons);
+  CAddonMgr::GetInstance().GetAddons(ADDON_SERVICE, addons);
 
   addons.erase(std::remove_if(addons.begin(), addons.end(),
-      [](const AddonPtr& addon){ return !CScriptInvocationManager::Get().IsRunning(addon->LibPath()); }), addons.end());
+      [](const AddonPtr& addon){ return !CScriptInvocationManager::GetInstance().IsRunning(addon->LibPath()); }), addons.end());
   CAddonsDirectory::GenerateAddonListing(path, addons, items, g_localizeStrings.Get(24994));
 }
 
@@ -370,14 +370,24 @@ static bool Browse(const CURL& path, CFileItemList &items)
   else
   {
     AddonPtr addon;
-    if (!CAddonMgr::Get().GetAddon(repo, addon, ADDON_REPOSITORY))
+    if (!CAddonMgr::GetInstance().GetAddon(repo, addon, ADDON_REPOSITORY))
       return false;
-    //Wait for runnig update to complete
-    CAddonInstaller::Get().UpdateRepos(false, true);
+
     CAddonDatabase database;
     database.Open();
-    if (!database.GetRepository(addon->ID(), addons))
-      return false;
+    if (!database.GetRepositoryContent(addon->ID(), addons))
+    {
+      //Repo content is invalid. Ask for update and wait.
+      CRepositoryUpdater::GetInstance().CheckForUpdates(std::static_pointer_cast<CRepository>(addon));
+      CRepositoryUpdater::GetInstance().Await();
+
+      if (!database.GetRepositoryContent(addon->ID(), addons))
+      {
+        CGUIDialogOK::ShowAndGetInput(CVariant{addon->Name()}, CVariant{24991});
+        return false;
+      }
+    }
+
     items.SetProperty("reponame", addon->Name());
     items.SetLabel(addon->Name());
   }
@@ -394,9 +404,10 @@ static bool Browse(const CURL& path, CFileItemList &items)
 static bool Repos(const CURL& path, CFileItemList &items)
 {
   items.SetLabel(g_localizeStrings.Get(24033));
+  items.SetContent("addons");
 
   VECADDONS addons;
-  CAddonMgr::Get().GetAddons(ADDON_REPOSITORY, addons, true);
+  CAddonMgr::GetInstance().GetAddons(ADDON_REPOSITORY, addons, true);
   if (addons.empty())
     return true;
   else if (addons.size() == 1)
@@ -450,7 +461,6 @@ bool CAddonsDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   CURL path(tmp);
   const std::string endpoint = path.GetHostName();
   items.ClearProperties();
-  items.SetContent("addons");
   items.SetPath(path.Get());
 
   if (endpoint == "user")
@@ -468,13 +478,22 @@ bool CAddonsDirectory::GetDirectory(const CURL& url, CFileItemList &items)
     OrphanedAddons(path, items);
     return true;
   }
-  //Pvr hardcodes this view so keep for compatibility
-  else if (endpoint == "disabled" && path.GetFileName() == "xbmc.pvrclient")
+  // PVR & adsp hardcodes this view so keep for compatibility
+  else if (endpoint == "disabled")
   {
     VECADDONS addons;
-    if (CAddonMgr::Get().GetAddons(ADDON_PVRDLL, addons, false))
+    ADDON::TYPE type;
+
+    if (path.GetFileName() == "xbmc.pvrclient")
+      type = ADDON_PVRDLL;
+    else if (path.GetFileName() == "kodi.adsp")
+      type = ADDON_ADSPDLL;
+    else
+      type = ADDON_UNKNOWN;
+
+    if (type != ADDON_UNKNOWN && CAddonMgr::GetInstance().GetAddons(type, addons, false))
     {
-      CAddonsDirectory::GenerateAddonListing(path, addons, items, TranslateType(ADDON_PVRDLL, true));
+      CAddonsDirectory::GenerateAddonListing(path, addons, items, TranslateType(type, true));
       return true;
     }
     return false;
@@ -521,13 +540,14 @@ bool CAddonsDirectory::IsRepoDirectory(const CURL& url)
   return url.GetHostName() == "repos"
       || url.GetHostName() == "all"
       || url.GetHostName() == "search"
-      || CAddonMgr::Get().GetAddon(url.GetHostName(), tmp, ADDON_REPOSITORY);
+      || CAddonMgr::GetInstance().GetAddon(url.GetHostName(), tmp, ADDON_REPOSITORY);
 }
 
 void CAddonsDirectory::GenerateAddonListing(const CURL &path,
     const VECADDONS& addons, CFileItemList &items, const std::string label)
 {
   items.ClearItems();
+  items.SetContent("addons");
   items.SetLabel(label);
   for (const auto& addon : addons)
   {
@@ -536,9 +556,9 @@ void CAddonsDirectory::GenerateAddonListing(const CURL &path,
     CFileItemPtr pItem = FileItemFromAddon(addon, itemPath.Get(), false);
 
     AddonPtr installedAddon;
-    if (CAddonMgr::Get().GetAddon(addon->ID(), installedAddon))
+    if (CAddonMgr::GetInstance().GetAddon(addon->ID(), installedAddon))
       pItem->SetProperty("Addon.Status",g_localizeStrings.Get(305));
-    else if (CAddonMgr::Get().IsAddonDisabled(addon->ID()))
+    else if (CAddonMgr::GetInstance().IsAddonDisabled(addon->ID()))
       pItem->SetProperty("Addon.Status",g_localizeStrings.Get(24023));
 
     if (addon->Props().broken == "DEPSNOTMET")
@@ -583,7 +603,7 @@ bool CAddonsDirectory::GetScriptsAndPlugins(const std::string &content, VECADDON
     return false;
 
   VECADDONS tempAddons;
-  CAddonMgr::Get().GetAddons(ADDON_PLUGIN, tempAddons);
+  CAddonMgr::GetInstance().GetAddons(ADDON_PLUGIN, tempAddons);
   for (unsigned i=0; i<tempAddons.size(); i++)
   {
     PluginPtr plugin = std::dynamic_pointer_cast<CPluginSource>(tempAddons[i]);
@@ -591,7 +611,7 @@ bool CAddonsDirectory::GetScriptsAndPlugins(const std::string &content, VECADDON
       addons.push_back(tempAddons[i]);
   }
   tempAddons.clear();
-  CAddonMgr::Get().GetAddons(ADDON_SCRIPT, tempAddons);
+  CAddonMgr::GetInstance().GetAddons(ADDON_SCRIPT, tempAddons);
   for (unsigned i=0; i<tempAddons.size(); i++)
   {
     PluginPtr plugin = std::dynamic_pointer_cast<CPluginSource>(tempAddons[i]);

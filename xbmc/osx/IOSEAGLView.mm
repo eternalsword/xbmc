@@ -44,9 +44,7 @@
 #import <OpenGLES/ES2/gl.h>
 #import <OpenGLES/ES2/glext.h>
 #import "IOSEAGLView.h"
-#if defined(TARGET_DARWIN_IOS_ATV2)
-#import "xbmc/osx/atv2/KodiController.h"
-#elif defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_IOS)
 #import "xbmc/osx/ios/XBMCController.h"
 #endif
 #import "IOSScreenManager.h"
@@ -113,7 +111,6 @@ using namespace KODI::MESSAGING;
   CGFloat ret = 1.0;
   if ([screen respondsToSelector:@selector(scale)])
   {    
-    // atv2 reports 0.0 for scale - thats why we check this here
     // normal other iDevices report 1.0 here
     // retina devices report 2.0 here
     // this info is true as of 19.3.2012.
@@ -361,7 +358,7 @@ using namespace KODI::MESSAGING;
     xbmcAlive = FALSE;
     if (!g_application.m_bStop)
     {
-      CApplicationMessenger::Get().PostMsg(TMSG_QUIT);
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
     }
     // wait for animation thread to die
     if ([animationThread isFinished] == NO)
@@ -372,6 +369,9 @@ using namespace KODI::MESSAGING;
 - (void) runAnimation:(id) arg
 {
   CCocoaAutoPool outerpool;
+  
+  [[NSThread currentThread] setName:@"XBMC_Run"]; 
+  
   // set up some xbmc specific relationships
   XBMC::Context context;
   readyToRun = true;

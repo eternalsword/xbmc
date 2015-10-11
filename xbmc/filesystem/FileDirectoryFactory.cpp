@@ -49,7 +49,6 @@
 using namespace ADDON;
 using namespace XFILE;
 using namespace PLAYLIST;
-using namespace std;
 
 CFileDirectoryFactory::CFileDirectoryFactory(void)
 {}
@@ -66,7 +65,7 @@ IFileDirectory* CFileDirectoryFactory::Create(const CURL& url, CFileItem* pItem,
   std::string strExtension=URIUtils::GetExtension(url);
   StringUtils::ToLower(strExtension);
   VECADDONS codecs;
-  CAddonMgr::Get().GetAddons(ADDON_AUDIODECODER, codecs);
+  CAddonMgr::GetInstance().GetAddons(ADDON_AUDIODECODER, codecs);
   for (size_t i=0;i<codecs.size();++i)
   {
     std::shared_ptr<CAudioDecoder> dec(std::static_pointer_cast<CAudioDecoder>(codecs[i]));
@@ -135,7 +134,7 @@ IFileDirectory* CFileDirectoryFactory::Create(const CURL& url, CFileItem* pItem,
   }
   if (url.IsFileType("rar") || url.IsFileType("001"))
   {
-    vector<std::string> tokens;
+    std::vector<std::string> tokens;
     const std::string strPath = url.Get();
     StringUtils::Tokenize(strPath,tokens,".");
     if (tokens.size() > 2)

@@ -43,7 +43,6 @@
 #include "utils/PerformanceSample.h"
 #endif
 
-using namespace std;
 using namespace KODI::MESSAGING;
 
 bool CGUIWindow::icompare::operator()(const std::string &s1, const std::string &s2) const
@@ -56,7 +55,6 @@ CGUIWindow::CGUIWindow(int id, const std::string &xmlFile)
   SetID(id);
   SetProperty("xmlfile", xmlFile);
   m_lastControlID = 0;
-  m_overlayState = OVERLAY_STATE_PARENT_WINDOW;   // Use parent or previous window's state
   m_isDialog = false;
   m_needsScaling = true;
   m_windowLoaded = false;
@@ -253,6 +251,11 @@ bool CGUIWindow::Load(TiXmlElement* pRootElement)
       pChild->QueryFloatAttribute("y", &m_camera.y);
       m_hasCamera = true;
     }
+    else if (strValue == "depth" && pChild->FirstChild())
+    { 
+      float stereo = (float)atof(pChild->FirstChild()->Value());;
+      m_stereo = std::max(-1.f, std::min(1.f, stereo));
+    }
     else if (strValue == "controls")
     {
       TiXmlElement *pControl = pChild->FirstChildElement();
@@ -264,12 +267,6 @@ bool CGUIWindow::Load(TiXmlElement* pRootElement)
         }
         pControl = pControl->NextSiblingElement();
       }
-    }
-    else if (strValue == "allowoverlay")
-    {
-      bool overlay = false;
-      if (XMLUtils::GetBoolean(pRootElement, "allowoverlay", overlay))
-        m_overlayState = overlay ? OVERLAY_STATE_SHOWN : OVERLAY_STATE_HIDDEN;
     }
 
     pChild = pChild->NextSiblingElement();
@@ -410,9 +407,9 @@ void CGUIWindow::Close(bool forceClose /*= false*/, int nextWindowID /*= 0*/, bo
     CSingleExit leaveIt(g_graphicsContext);
     int param2 = (forceClose ? 0x01 : 0) | (enableSound ? 0x02 : 0);
     if (bWait)
-      CApplicationMessenger::Get().SendMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
+      CApplicationMessenger::GetInstance().SendMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
     else
-      CApplicationMessenger::Get().PostMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_GUI_WINDOW_CLOSE, nextWindowID, param2, static_cast<void*>(this));
   }
   else
     Close_Internal(forceClose, nextWindowID, enableSound);
@@ -551,7 +548,6 @@ void CGUIWindow::OnInitWindow()
   RestoreControlStates();
   SetInitialVisibility();
   QueueAnimation(ANIM_TYPE_WINDOW_OPEN);
-  g_windowManager.ShowOverlay(m_overlayState);
 
   if (!m_manualRunActions)
   {
@@ -698,7 +694,8 @@ bool CGUIWindow::OnMessage(CGUIMessage& message)
     {
       CAction action(ACTION_GESTURE_NOTIFY, 0, (float)message.GetParam1(), (float)message.GetParam2(), 0, 0);
       EVENT_RESULT result = OnMouseAction(action);
-      message.SetParam1(result);
+      auto res = new int(result);
+      message.SetPointer(static_cast<void*>(res));
       return result != EVENT_RESULT_UNHANDLED;
     }
   case GUI_MSG_ADD_CONTROL:
@@ -841,7 +838,7 @@ bool CGUIWindow::Initialize()
     // if not app thread, send gui msg via app messenger
     // and wait for results, so windowLoaded flag would be updated
     CGUIMessage msg(GUI_MSG_WINDOW_LOAD, 0, 0);
-    CApplicationMessenger::Get().SendGUIMessage(msg, GetID(), true);
+    CApplicationMessenger::GetInstance().SendGUIMessage(msg, GetID(), true);
   }
   return m_windowLoaded;
 }
@@ -933,7 +930,7 @@ void CGUIWindow::SaveControlStates()
 
 void CGUIWindow::RestoreControlStates()
 {
-  for (vector<CControlState>::iterator it = m_controlStates.begin(); it != m_controlStates.end(); ++it)
+  for (std::vector<CControlState>::iterator it = m_controlStates.begin(); it != m_controlStates.end(); ++it)
   {
     CGUIMessage message(GUI_MSG_ITEM_SELECT, GetID(), (*it).m_id, (*it).m_data);
     OnMessage(message);
@@ -965,7 +962,7 @@ bool CGUIWindow::OnMove(int fromControl, int moveAction)
               fromControl, GetID());
     return false;
   }
-  vector<int> moveHistory;
+  std::vector<int> moveHistory;
   int nextControl = fromControl;
   while (control)
   { // grab the next control direction
@@ -999,11 +996,11 @@ void CGUIWindow::SetDefaults()
   m_defaultAlways = false;
   m_defaultControl = 0;
   m_posX = m_posY = m_width = m_height = 0;
-  m_overlayState = OVERLAY_STATE_PARENT_WINDOW;   // Use parent or previous window's state
   m_previousWindow = WINDOW_INVALID;
   m_animations.clear();
   m_origins.clear();
   m_hasCamera = false;
+  m_stereo = 0.f;
   m_animationsEnabled = true;
   m_clearBackground = 0xff000000; // opaque black -> clear
   m_hitRect.SetRect(0, 0, (float)m_coordsRes.iWidth, (float)m_coordsRes.iHeight);

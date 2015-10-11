@@ -44,6 +44,11 @@ namespace MUSIC_INFO
 {
   class CMusicInfoTag;
 }
+namespace PVR
+{
+  class CPVRRadioRDSInfoTag;
+  typedef std::shared_ptr<PVR::CPVRRadioRDSInfoTag> CPVRRadioRDSInfoTagPtr;
+}
 class CVideoInfoTag;
 class CFileItem;
 class CGUIListItem;
@@ -102,7 +107,7 @@ public:
   virtual ~CGUIInfoManager(void);
 
   void Clear();
-  virtual bool OnMessage(CGUIMessage &message);
+  virtual bool OnMessage(CGUIMessage &message) override;
 
   virtual int GetMessageMask() override;
   virtual void OnApplicationMessage(KODI::MESSAGING::ThreadMessage* pMsg) override;
@@ -160,8 +165,10 @@ public:
   void SetCurrentVideoTag(const CVideoInfoTag &tag);
 
   const MUSIC_INFO::CMusicInfoTag *GetCurrentSongTag() const;
+  const PVR::CPVRRadioRDSInfoTagPtr GetCurrentRadioRDSInfoTag() const;
   const CVideoInfoTag* GetCurrentMovieTag() const;
 
+  std::string GetRadioRDSLabel(int item);
   std::string GetMusicLabel(int item);
   std::string GetMusicTagLabel(int info, const CFileItem *item);
   std::string GetVideoLabel(int item);

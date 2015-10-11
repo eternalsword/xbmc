@@ -32,7 +32,7 @@ CImageResource::CImageResource(const cp_extension_t *ext)
   : CResource(ext)
 {
   if (ext != nullptr)
-    m_type = CAddonMgr::Get().GetExtValue(ext->configuration, "@type");
+    m_type = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@type");
 }
 
 CImageResource::CImageResource(const CImageResource &rhs)
@@ -56,6 +56,10 @@ void CImageResource::OnPreUnInstall()
 
 bool CImageResource::IsAllowed(const std::string &file) const
 {
+  // check if the file path points to a directory
+  if (URIUtils::HasSlashAtEnd(file, true))
+    return true;
+
   std::string ext = URIUtils::GetExtension(file);
   return file.empty() ||
          StringUtils::EqualsNoCase(ext, ".png") ||

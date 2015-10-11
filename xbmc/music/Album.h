@@ -28,6 +28,7 @@
 #include <vector>
 #include "Artist.h"
 #include "Song.h"
+#include "XBDateTime.h"
 #include "utils/ScraperUrl.h"
 
 class TiXmlNode;
@@ -36,7 +37,7 @@ class CAlbum
 {
 public:
   CAlbum(const CFileItem& item);
-  CAlbum() { idAlbum = 0; iRating = 0; iYear = 0; iTimesPlayed = 0; releaseType = Album; };
+  CAlbum() { idAlbum = 0; iRating = 0; iYear = 0; iTimesPlayed = 0; dateAdded.Reset(); releaseType = Album; };
   bool operator<(const CAlbum &a) const;
   void MergeScrapedAlbum(const CAlbum& album, bool override = true);
 
@@ -47,6 +48,7 @@ public:
     strMusicBrainzAlbumID.clear();
     artist.clear();
     artistCredits.clear();
+    strArtistDesc.clear();
     genre.clear();
     thumbURL.Clear();
     moods.clear();
@@ -62,12 +64,21 @@ public:
     iYear=-1;
     bCompilation = false;
     iTimesPlayed = 0;
+    dateAdded.Reset();
     songs.clear();
     infoSongs.clear();
     releaseType = Album;
   }
 
-  std::string GetArtistString() const;
+  /*! \brief Get album artist names from the vector of artistcredits objects
+  \return album artist names as a vector of strings
+  */
+  const std::vector<std::string> GetAlbumArtist() const;
+  
+  /*! \brief Get album artist MusicBrainz IDs from the vector of artistcredits objects
+  \return album artist MusicBrainz IDs as a vector of strings
+  */
+  const std::vector<std::string> GetMusicBrainzAlbumArtistID() const;
   std::string GetGenreString() const;
 
   typedef enum ReleaseType {
@@ -77,6 +88,7 @@ public:
 
   std::string GetReleaseType() const;
   void SetReleaseType(const std::string& strReleaseType);
+  void SetDateAdded(const std::string& strDateAdded);
 
   static std::string ReleaseTypeToString(ReleaseType releaseType);
   static ReleaseType ReleaseTypeFromString(const std::string& strReleaseType);
@@ -95,6 +107,7 @@ public:
   std::string strAlbum;
   std::string strMusicBrainzAlbumID;
   std::vector<std::string> artist;
+  std::string strArtistDesc;
   VECARTISTCREDITS artistCredits;
   std::vector<std::string> genre;
   CScraperUrl thumbURL;
@@ -111,6 +124,7 @@ public:
   int iYear;
   bool bCompilation;
   int iTimesPlayed;
+  CDateTime dateAdded;
   VECSONGS songs;     ///< Local songs
   VECSONGS infoSongs; ///< Scraped songs
   ReleaseType releaseType;

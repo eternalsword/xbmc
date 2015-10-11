@@ -18,12 +18,18 @@
  *
  */
 
+#include "EpgContainer.h"
+
+#include <utility>
+
 #include "Application.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
+#include "Epg.h"
+#include "EpgSearchFilter.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "pvr/PVRManager.h"
 #include "pvr/channels/PVRChannelGroupsContainer.h"
+#include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/lib/Setting.h"
@@ -31,9 +37,6 @@
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 
-#include "Epg.h"
-#include "EpgContainer.h"
-#include "EpgSearchFilter.h"
 
 using namespace EPG;
 using namespace PVR;
@@ -65,7 +68,7 @@ CEpgContainer::~CEpgContainer(void)
   Unload();
 }
 
-CEpgContainer &CEpgContainer::Get(void)
+CEpgContainer &CEpgContainer::GetInstance()
 {
   static CEpgContainer epgInstance;
   return epgInstance;
@@ -262,7 +265,7 @@ bool CEpgContainer::MarkTablesForPersist(void)
   /* Set m_bMarkForPersist to persist tables on the next Process() run but only
   if epg.ignoredbforclient is set, otherwise persistAll does already persisting. */
   CSingleLock lock(m_critSection);
-  return m_bMarkForPersist = CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT);
+  return m_bMarkForPersist = CSettings::GetInstance().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT);
 }
 
 bool CEpgContainer::PersistTables(void)
@@ -383,7 +386,7 @@ CEpg *CEpgContainer::GetById(int iEpgId) const
   return epgEntry != m_epgs.end() ? epgEntry->second : NULL;
 }
 
-CEpgInfoTagPtr CEpgContainer::GetTagById(int iBroadcastId) const
+CEpgInfoTagPtr CEpgContainer::GetTagById(unsigned int iBroadcastId) const
 {
   CEpgInfoTagPtr retval;
   CSingleLock lock(m_critSection);
@@ -468,9 +471,9 @@ CEpg *CEpgContainer::CreateChannelEpg(CPVRChannelPtr channel)
 
 bool CEpgContainer::LoadSettings(void)
 {
-  m_bIgnoreDbForClient = CSettings::Get().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT);
-  m_iUpdateTime        = CSettings::Get().GetInt (CSettings::SETTING_EPG_EPGUPDATE) * 60;
-  m_iDisplayTime       = CSettings::Get().GetInt (CSettings::SETTING_EPG_DAYSTODISPLAY) * 24 * 60 * 60;
+  m_bIgnoreDbForClient = CSettings::GetInstance().GetBool(CSettings::SETTING_EPG_IGNOREDBFORCLIENT);
+  m_iUpdateTime        = CSettings::GetInstance().GetInt (CSettings::SETTING_EPG_EPGUPDATE) * 60;
+  m_iDisplayTime       = CSettings::GetInstance().GetInt (CSettings::SETTING_EPG_DAYSTODISPLAY) * 24 * 60 * 60;
 
   return true;
 }
@@ -555,7 +558,7 @@ bool CEpgContainer::InterruptUpdate(void) const
   bReturn = g_application.m_bStop || m_bStop || m_bPreventUpdates;
 
   return bReturn ||
-    (CSettings::Get().GetBool(CSettings::SETTING_EPG_PREVENTUPDATESWHILEPLAYINGTV) &&
+    (CSettings::GetInstance().GetBool(CSettings::SETTING_EPG_PREVENTUPDATESWHILEPLAYINGTV) &&
      g_application.m_pPlayer && g_application.m_pPlayer->IsPlaying());
 }
 
