@@ -33,7 +33,7 @@
 #include "StringUtils.h"
 #include "CharsetConverter.h"
 #if defined(TARGET_ANDROID)
-#include "android/jni/JNIThreading.h"
+#include "platform/android/jni/JNIThreading.h"
 #endif
 #include "utils/fstrcmp.h"
 #include "Util.h"
@@ -512,6 +512,17 @@ std::string& StringUtils::TrimRight(std::string &str, const char* const chars)
   return str;
 }
 
+int StringUtils::ReturnDigits(const std::string& str)
+{
+  std::stringstream ss;
+  for (const auto& character : str)
+  {
+    if (isdigit(character))
+      ss << character;
+  }
+  return atoi(ss.str().c_str());
+}
+
 std::string& StringUtils::RemoveDuplicatedSpacesAndTabs(std::string& str)
 {
   std::string::iterator it = str.begin();
@@ -870,13 +881,13 @@ std::string StringUtils::SecondsToTimeString(long lSeconds, TIME_FORMAT format)
     format = (hh >= 1) ? TIME_FORMAT_HH_MM_SS : TIME_FORMAT_MM_SS;
   std::string strHMS;
   if (format & TIME_FORMAT_HH)
-    strHMS += StringUtils::Format("%02.2i", hh);
+    strHMS += StringUtils::Format("%2.2i", hh);
   else if (format & TIME_FORMAT_H)
     strHMS += StringUtils::Format("%i", hh);
   if (format & TIME_FORMAT_MM)
-    strHMS += StringUtils::Format(strHMS.empty() ? "%02.2i" : ":%02.2i", mm);
+    strHMS += StringUtils::Format(strHMS.empty() ? "%2.2i" : ":%2.2i", mm);
   if (format & TIME_FORMAT_SS)
-    strHMS += StringUtils::Format(strHMS.empty() ? "%02.2i" : ":%02.2i", ss);
+    strHMS += StringUtils::Format(strHMS.empty() ? "%2.2i" : ":%2.2i", ss);
   return strHMS;
 }
 
@@ -1081,11 +1092,7 @@ void StringUtils::WordToDigits(std::string &word)
 
 std::string StringUtils::CreateUUID()
 {
-#if !defined(TARGET_ANDROID)
   static GuidGenerator guidGenerator;
-#else
-  static GuidGenerator guidGenerator(xbmc_jnienv());
-#endif
   auto guid = guidGenerator.newGuid();
 
   std::stringstream strGuid; strGuid << guid;

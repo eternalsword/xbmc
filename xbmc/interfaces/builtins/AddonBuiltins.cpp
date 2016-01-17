@@ -23,6 +23,7 @@
 #include <memory>
 
 #include "addons/AddonManager.h"
+#include "addons/AddonInstaller.h"
 #include "addons/GUIDialogAddonSettings.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "addons/PluginSource.h"
@@ -38,10 +39,24 @@
 
 #if defined(TARGET_DARWIN)
 #include "filesystem/SpecialProtocol.h"
-#include "osx/CocoaInterface.h"
+#include "platform/darwin/osx/CocoaInterface.h"
 #endif
 
 using namespace ADDON;
+
+/*! \brief Install an addon.
+ *  \param params The parameters.
+ *  \details params[0] = add-on id.
+ */
+static int InstallAddon(const std::vector<std::string>& params)
+{
+  const std::string& addonid = params[0];
+
+  AddonPtr addon;
+  CAddonInstaller::GetInstance().InstallModal(addonid, addon);
+
+  return 0;
+}
 
 /*! \brief Run a plugin.
  *  \param params The parameters.
@@ -77,11 +92,12 @@ static int RunAddon(const std::vector<std::string>& params)
 {
   if (params.size())
   {
+    const std::string& addonid = params[0];
+
     AddonPtr addon;
-    if (CAddonMgr::GetInstance().GetAddon(params[0], addon, ADDON_PLUGIN))
+    if (CAddonMgr::GetInstance().GetAddon(addonid, addon, ADDON_PLUGIN))
     {
       PluginPtr plugin = std::dynamic_pointer_cast<CPluginSource>(addon);
-      std::string addonid = params[0];
       std::string urlParameters;
       std::vector<std::string> parameters;
       if (params.size() == 2 &&
@@ -109,22 +125,22 @@ static int RunAddon(const std::vector<std::string>& params)
       else if (plugin->Provides(CPluginSource::IMAGE))
         cmd = StringUtils::Format("ActivateWindow(Pictures,plugin://%s%s,return)", addonid.c_str(), urlParameters.c_str());
       else
-        // Pass the script name (params[0]) and all the parameters
+        // Pass the script name (addonid) and all the parameters
         // (params[1] ... params[x]) separated by a comma to RunPlugin
         cmd = StringUtils::Format("RunPlugin(%s)", StringUtils::Join(params, ",").c_str());
       CBuiltins::GetInstance().Execute(cmd);
     }
-    else if (CAddonMgr::GetInstance().GetAddon(params[0], addon, ADDON_SCRIPT) ||
-        CAddonMgr::GetInstance().GetAddon(params[0], addon, ADDON_SCRIPT_WEATHER) ||
-        CAddonMgr::GetInstance().GetAddon(params[0], addon, ADDON_SCRIPT_LYRICS) ||
-        CAddonMgr::GetInstance().GetAddon(params[0], addon, ADDON_SCRIPT_LIBRARY))
+    else if (CAddonMgr::GetInstance().GetAddon(addonid, addon, ADDON_SCRIPT) ||
+        CAddonMgr::GetInstance().GetAddon(addonid, addon, ADDON_SCRIPT_WEATHER) ||
+        CAddonMgr::GetInstance().GetAddon(addonid, addon, ADDON_SCRIPT_LYRICS) ||
+        CAddonMgr::GetInstance().GetAddon(addonid, addon, ADDON_SCRIPT_LIBRARY))
     {
-      // Pass the script name (params[0]) and all the parameters
+      // Pass the script name (addonid) and all the parameters
       // (params[1] ... params[x]) separated by a comma to RunScript
       CBuiltins::GetInstance().Execute(StringUtils::Format("RunScript(%s)", StringUtils::Join(params, ",").c_str()));
     }
     else
-      CLog::Log(LOGERROR, "RunAddon: unknown add-on id '%s', or unexpected add-on type (not a script or plugin).", params[0].c_str());
+      CLog::Log(LOGERROR, "RunAddon: unknown add-on id '%s', or unexpected add-on type (not a script or plugin).", addonid.c_str());
   }
   else
   {
@@ -297,6 +313,7 @@ CBuiltins::CommandMap CAddonBuiltins::GetOperations() const
            {"addon.default.opensettings", {"Open a settings dialog for the default addon of the given type", 1, OpenDefaultSettings}},
            {"addon.default.set",          {"Open a select dialog to allow choosing the default addon of the given type", 1, SetDefaultAddon}},
            {"addon.opensettings",         {"Open a settings dialog for the addon of the given id", 1, AddonSettings}},
+           {"installaddon",               {"Install the specified plugin/script", 1, InstallAddon}},
            {"runaddon",                   {"Run the specified plugin/script", 1, RunAddon}},
 #ifdef TARGET_DARWIN
            {"runapplescript",             {"Run the specified AppleScript command", 1, RunScript<true>}},

@@ -594,6 +594,7 @@ void CGUIEPGGridContainer::RenderProgressIndicator()
 {
   if (g_graphicsContext.SetClipRegion(m_rulerPosX, m_rulerPosY, m_gridWidth, m_height))
   {
+    m_guiProgressIndicatorTexture.SetDiffuseColor(m_diffuseColor);
     m_guiProgressIndicatorTexture.Render();
     g_graphicsContext.RestoreClipRegion();
   }
@@ -680,6 +681,14 @@ void CGUIEPGGridContainer::RenderItem(float posX, float posY, CGUIListItem *item
       item->GetLayout()->Render(item, m_parentID);
   }
   g_graphicsContext.RestoreOrigin();
+}
+
+void CGUIEPGGridContainer::ResetCoordinates()
+{
+  m_channelCursor = 0;
+  m_channelOffset = 0;
+  m_blockCursor = 0;
+  m_blockOffset = 0;
 }
 
 bool CGUIEPGGridContainer::OnAction(const CAction &action)
@@ -1022,7 +1031,10 @@ void CGUIEPGGridContainer::UpdateItems(CFileItemList *items)
   {
     // Grid index got recreated. Do cursors and offsets still point to the same epg tag?
     if (prevSelectedEpgTag == GetSelectedEpgInfoTag())
+    {
+      m_item = GetItem(m_channelCursor);
       return;
+    }
 
     int newChannelCursor = GetChannel(prevSelectedEpgTag);
     if (newChannelCursor >= 0)
@@ -1031,7 +1043,10 @@ void CGUIEPGGridContainer::UpdateItems(CFileItemList *items)
       if (newBlockCursor >= 0)
       {
         if (newChannelCursor == m_channelCursor && newBlockCursor == m_blockCursor)
+        {
+          m_item = GetItem(m_channelCursor);
           return;
+        }
 
         if (newBlockCursor > 0 && newBlockCursor != m_blockCursor)
         {
@@ -1046,12 +1061,24 @@ void CGUIEPGGridContainer::UpdateItems(CFileItemList *items)
         }
 
         if (newBlockCursor > 0)
+        {
+          // Note: m_item guaranteed to be set here.
           return;
+        }
       }
     }
   }
 
   // Fallback. Goto now.
+
+  if (m_channelCursor + m_channelOffset < 0 ||
+      m_channelCursor + m_channelOffset >= m_channels)
+    m_channelCursor = m_channelOffset = 0;
+
+  if (m_blockCursor + m_blockOffset < 0 ||
+      m_blockCursor + m_blockOffset >= m_blocks)
+    m_blockCursor = m_blockOffset = 0;
+
   m_item = GetItem(m_channelCursor);
   if (m_item)
     SetBlock(GetBlock(m_item->item, m_channelCursor));
@@ -1083,7 +1110,7 @@ void CGUIEPGGridContainer::ProgrammesScroll(int amount)
 
 void CGUIEPGGridContainer::OnUp()
 {
-  CGUIAction action = GetNavigateAction(ACTION_MOVE_UP);
+  CGUIAction action = GetAction(ACTION_MOVE_UP);
   if (m_channelCursor > 0)
   {
     SetChannel(m_channelCursor - 1);
@@ -1109,7 +1136,7 @@ void CGUIEPGGridContainer::OnUp()
 
 void CGUIEPGGridContainer::OnDown()
 {
-  CGUIAction action = GetNavigateAction(ACTION_MOVE_DOWN);
+  CGUIAction action = GetAction(ACTION_MOVE_DOWN);
   if (m_channelOffset + m_channelCursor + 1 < m_channels)
   {
     if (m_channelCursor + 1 < m_channelsPerPage)
@@ -1895,6 +1922,8 @@ void CGUIEPGGridContainer::Reset()
 
   m_lastItem    = NULL;
   m_lastChannel = NULL;
+
+  m_channels = 0;
 }
 
 void CGUIEPGGridContainer::GoToBegin()
@@ -1927,9 +1956,36 @@ void CGUIEPGGridContainer::GoToEnd()
 
 void CGUIEPGGridContainer::GoToNow()
 {
+  if (!m_gridStart.IsValid())
+    return;
+
   CDateTime currentDate = CDateTime::GetCurrentDateTime().GetAsUTCDateTime();
   int offset = ((currentDate - m_gridStart).GetSecondsTotal() / 60 - 30) / MINSPERBLOCK;
   ScrollToBlockOffset(offset);
+
+  if (m_channelCursor + m_channelOffset >= 0 &&
+      m_channelCursor + m_channelOffset < m_channels)
+  {
+    // make sure offset is in valid range
+    offset = std::max(0, std::min(offset, m_blocks - m_blocksPerPage));
+
+    for (int blockIndex = 0; blockIndex < m_blocksPerPage; blockIndex++)
+    {
+      if (offset + blockIndex >= m_blocks)
+        break;
+
+      const CFileItemPtr item = m_gridIndex[m_channelCursor + m_channelOffset][offset + blockIndex].item;
+      if (item)
+      {
+        const CEpgInfoTagPtr tag = item->GetEPGInfoTag();
+        if (tag && tag->StartAsUTC() <= currentDate && tag->EndAsUTC() > currentDate)
+        {
+          SetBlock(blockIndex); // Select currently active epg element
+          break;
+        }
+      }
+    }
+  }
 }
 
 void CGUIEPGGridContainer::SetStartEnd(CDateTime start, CDateTime end)

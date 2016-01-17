@@ -98,11 +98,13 @@ void Gif::Close(GifFileType* gif)
 {
   int err = 0;
   int reason = 0;
-#if GIFLIB_MAJOR == 5
+#if GIFLIB_MAJOR == 5 && GIFLIB_MINOR >= 1
   err = m_dll.DGifCloseFile(gif, &reason);
 #else
   err = m_dll.DGifCloseFile(gif);
+#if GIFLIB_MAJOR < 5
   reason = m_dll.GifLastError();
+#endif
   if (err == GIF_ERROR)
     free(gif);
 #endif
@@ -154,7 +156,9 @@ bool Gif::LoadGifMetaData(GifFileType* gif)
       // Read number of loops
       if (++extb && extb->Function == CONTINUE_EXT_FUNC_CODE)
       {
-        m_loops = UNSIGNED_LITTLE_ENDIAN(extb->Bytes[1], extb->Bytes[2]);
+        uint8_t low = static_cast<uint8_t>(extb->Bytes[1]);
+        uint8_t high = static_cast<uint8_t>(extb->Bytes[2]);
+        m_loops = UNSIGNED_LITTLE_ENDIAN(low, high);
       }
     }
   }
@@ -216,7 +220,19 @@ bool Gif::LoadGif(const char* file)
   {
     InitTemplateAndColormap();
 
-    return ExtractFrames(m_numFrames);
+    int extractedFrames = ExtractFrames(m_numFrames);
+    if (extractedFrames < 0)
+    {
+      CLog::Log(LOGDEBUG, "Gif::LoadGif(): Could not extract any frame. File %s", memOrFile().c_str());
+      return false;
+    } 
+    else if (extractedFrames < (int)m_numFrames)
+    {
+      CLog::Log(LOGDEBUG, "Gif::LoadGif(): Could only extract %d/%d frames. File %s", extractedFrames, m_numFrames, memOrFile().c_str());
+      m_numFrames = extractedFrames;
+    }
+
+    return true;
   }
   catch (std::bad_alloc& ba)
   {
@@ -321,13 +337,13 @@ bool Gif::GcbToFrame(GifFrame &frame, unsigned int imgIdx)
     }
     else
     {
-      frame.m_delay = UNSIGNED_LITTLE_ENDIAN(extb->Bytes[1], extb->Bytes[2]) * 10;
+      uint8_t low = static_cast<uint8_t>(extb->Bytes[1]);
+      uint8_t high = static_cast<uint8_t>(extb->Bytes[2]);
+      frame.m_delay = UNSIGNED_LITTLE_ENDIAN(low, high) * 10;
       frame.m_disposal = (extb->Bytes[0] >> 2) & 0x07;
       if (extb->Bytes[0] & 0x01)
       {
-        transparent = static_cast<int>(extb->Bytes[3]);
-        if (transparent < 0)
-          transparent += 256;
+        transparent = static_cast<uint8_t>(extb->Bytes[3]);
       }
       else
         transparent = -1;
@@ -341,17 +357,18 @@ bool Gif::GcbToFrame(GifFrame &frame, unsigned int imgIdx)
   return true;
 }
 
-bool Gif::ExtractFrames(unsigned int count)
+int Gif::ExtractFrames(unsigned int count)
 {
   if (!m_gif)
-    return false;
+    return -1;
 
   if (!m_pTemplate)
   {
     CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): No frame template available");
-    return false;
+    return -1;
   }
 
+  int extracted = 0;
   for (unsigned int i = 0; i < count; i++)
   {
     FramePtr frame(new GifFrame);
@@ -363,11 +380,12 @@ bool Gif::ExtractFrames(unsigned int count)
     frame->m_left = imageDesc.Left;
 
     if (frame->m_top + frame->m_height > m_height || frame->m_left + frame->m_width > m_width
-      || !frame->m_width || !frame->m_height)
+      || !frame->m_width || !frame->m_height
+      || frame->m_width > m_width || frame->m_height > m_height)
     {
-      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): Illegal frame dimensions: width: %d, height: %d, left: %d, top: %d instead of (%d,%d)",
+      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): Illegal frame dimensions: width: %d, height: %d, left: %d, top: %d instead of (%d,%d), skip it",
         frame->m_width, frame->m_height, frame->m_left, frame->m_top, m_width, m_height);
-      return false;
+      continue;
     }
 
     if (imageDesc.ColorMap)
@@ -382,13 +400,16 @@ bool Gif::ExtractFrames(unsigned int count)
     }
     else
     {
-      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): No color map found for frame %d", i);
+      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): No color map found for frame %d, skip it", i);
       continue;
     }
 
     // fill delay, disposal and transparent color into frame
     if (!GcbToFrame(*frame, i))
-      return false;
+    {
+      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): Corrupted Graphics Control Block for frame %d, skip it", i);
+      continue;
+    }
 
     frame->m_pImage = new unsigned char[m_imageSize];
     frame->m_imageSize = m_imageSize;
@@ -397,11 +418,15 @@ bool Gif::ExtractFrames(unsigned int count)
     ConstructFrame(*frame, savedImage.RasterBits);
 
     if (!PrepareTemplate(*frame))
-      return false;
+    {
+      CLog::Log(LOGDEBUG, "Gif::ExtractFrames(): Could not prepare template after frame %d, skip it", i);
+      continue;
+    }
 
+    extracted++;
     m_frames.push_back(frame);
   }
-  return true;
+  return extracted;
 }
 
 void Gif::ConstructFrame(GifFrame &frame, const unsigned char* src) const
@@ -432,7 +457,7 @@ void Gif::ConstructFrame(GifFrame &frame, const unsigned char* src) const
   }
 }
 
-bool Gif::PrepareTemplate(const GifFrame &frame)
+bool Gif::PrepareTemplate(GifFrame &frame)
 {
   switch (frame.m_disposal)
   {
@@ -456,6 +481,17 @@ bool Gif::PrepareTemplate(const GifFrame &frame)
   /* Restore to previous content */
   case DISPOSE_PREVIOUS:
   {
+
+    /* 
+    * This disposal method makes no sense for the first frame
+    * Since browsers etc. handle that too, we'll fall back to DISPOSE_DO_NOT
+    */
+    if (m_frames.empty())
+    {
+      frame.m_disposal = DISPOSE_DO_NOT;
+      return PrepareTemplate(frame);
+    }
+
     bool valid = false;
 
     for (int i = m_frames.size() - 1; i >= 0; --i)
@@ -476,8 +512,9 @@ bool Gif::PrepareTemplate(const GifFrame &frame)
   }
   default:
   {
-    CLog::Log(LOGDEBUG, "Gif::PrepareTemplate(): Unknown disposal method: %d", frame.m_disposal);
-    return false;
+    CLog::Log(LOGDEBUG, "Gif::PrepareTemplate(): Unknown disposal method: %d. Using DISPOSAL_UNSPECIFIED, the animation might be wrong now.", frame.m_disposal);
+    frame.m_disposal = DISPOSAL_UNSPECIFIED;
+    return PrepareTemplate(frame);
   }
   }
   return true;
@@ -521,8 +558,19 @@ bool Gif::LoadImageFromMemory(unsigned char* buffer, unsigned int bufSize, unsig
   {
     InitTemplateAndColormap();
 
-    if (!ExtractFrames(m_numFrames))
+    int extractedFrames = ExtractFrames(m_numFrames);
+    if (extractedFrames < 0)
+    {
+      CLog::Log(LOGDEBUG, "Gif::LoadGif(): Could not extract any frame. File %s", memOrFile().c_str());
       return false;
+    }
+    else if (extractedFrames < (int)m_numFrames)
+    {
+      CLog::Log(LOGDEBUG, "Gif::LoadGif(): Could only extract %d/%d frames. File %s", extractedFrames, m_numFrames, memOrFile().c_str());
+      m_numFrames = extractedFrames;
+    }
+
+    return true;
   }
   catch (std::bad_alloc& ba)
   {
@@ -534,27 +582,36 @@ bool Gif::LoadImageFromMemory(unsigned char* buffer, unsigned int bufSize, unsig
   return true;
 }
 
-bool Gif::Decode(unsigned char* const pixels, unsigned int pitch, unsigned int format)
+bool Gif::Decode(unsigned char* const pixels, unsigned int width, unsigned int height, unsigned int pitch, unsigned int format)
 {
   if (m_width == 0 || m_height == 0
     || !m_dll.IsLoaded() || !m_gif
     || format != XB_FMT_A8R8G8B8 || !m_numFrames)
     return false;
 
+  if (m_frames.empty() || !m_frames[0]->m_pImage)
+    return false;
+
   const unsigned char *src = m_frames[0]->m_pImage;
   unsigned char* dst = pixels;
 
-  if (pitch == m_pitch)
+  unsigned int copyHeight = std::min(m_height, height);
+  unsigned int copyPitch = std::min(m_pitch, pitch);
+
+  if (pitch == m_pitch && copyHeight == m_height)
+  {
     memcpy(dst, src, m_imageSize);
+  }
   else
   {
-    for (unsigned int y = 0; y < m_height; y++)
+    for (unsigned int y = 0; y < copyHeight; y++)
     {
-      memcpy(dst, src, m_pitch);
+      memcpy(dst, src, copyPitch);
       src += m_pitch;
       dst += pitch;
     }
   }
+
   return true;
 }
 

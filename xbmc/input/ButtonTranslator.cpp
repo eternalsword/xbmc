@@ -364,8 +364,6 @@ static const ActionMapping windows[] =
     { "pictureinfo"              , WINDOW_DIALOG_PICTURE_INFO },
     { "accesspoints"             , WINDOW_DIALOG_ACCESS_POINTS },
     { "fullscreeninfo"           , WINDOW_DIALOG_FULLSCREEN_INFO },
-    { "karaokeselector"          , WINDOW_DIALOG_KARAOKE_SONGSELECT },
-    { "karaokelargeselector"     , WINDOW_DIALOG_KARAOKE_SELECTOR },
     { "sliderdialog"             , WINDOW_DIALOG_SLIDER },
     { "addoninformation"         , WINDOW_DIALOG_ADDON_INFO },
     { "subtitlesearch"           , WINDOW_DIALOG_SUBTITLES },
@@ -384,7 +382,6 @@ static const ActionMapping windows[] =
     { "fullscreenradio"          , WINDOW_FULLSCREEN_RADIO },          // virtual window for fullscreen radio, uses WINDOW_VISUALISATION as fallback
     { "visualisation"            , WINDOW_VISUALISATION },
     { "slideshow"                , WINDOW_SLIDESHOW },
-    { "karaoke"                  , WINDOW_KARAOKELYRICS },
     { "weather"                  , WINDOW_WEATHER },
     { "screensaver"              , WINDOW_SCREENSAVER },
     { "videoosd"                 , WINDOW_DIALOG_VIDEO_OSD },
@@ -396,7 +393,9 @@ static const ActionMapping windows[] =
     { "extendedprogressdialog"   , WINDOW_DIALOG_EXT_PROGRESS },
     { "mediafilter"              , WINDOW_DIALOG_MEDIA_FILTER },
     { "addon"                    , WINDOW_ADDON_START },
-    { "eventlog"                 , WINDOW_EVENT_LOG}
+    { "eventlog"                 , WINDOW_EVENT_LOG},
+    { "tvtimerrules"             , WINDOW_TV_TIMER_RULES},
+    { "radiotimerrules"          , WINDOW_RADIO_TIMER_RULES}
 };
 
 static const ActionMapping mousekeys[] =
@@ -1328,8 +1327,20 @@ void CButtonTranslator::MapWindowActions(TiXmlNode *pWindow, int windowID)
         else if (type == "appcommand")
             buttonCode = TranslateAppCommand(pButton->Value());
 
-        if (buttonCode && pButton->FirstChild())
-          MapAction(buttonCode, pButton->FirstChild()->Value(), map);
+        if (buttonCode)
+        {
+          if (pButton->FirstChild() && pButton->FirstChild()->Value()[0])
+            MapAction(buttonCode, pButton->FirstChild()->Value(), map);
+          else
+          {
+            buttonMap::iterator it = map.find(buttonCode);
+            while (it != map.end())
+            {
+              map.erase(it);
+              it = map.find(buttonCode);
+            }
+          }
+        }
         pButton = pButton->NextSiblingElement();
       }
 

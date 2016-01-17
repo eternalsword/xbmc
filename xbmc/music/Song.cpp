@@ -21,6 +21,7 @@
 #include "Song.h"
 #include "music/tags/MusicInfoTag.h"
 #include "utils/Variant.h"
+#include "utils/StringUtils.h"
 #include "FileItem.h"
 #include "settings/AdvancedSettings.h"
 
@@ -33,9 +34,9 @@ CSong::CSong(CFileItem& item)
   tag.GetReleaseDate(stTime);
   strTitle = tag.GetTitle();
   genre = tag.GetGenre();
-  artist = tag.GetArtist();
+  std::vector<std::string> artist = tag.GetArtist();
   std::vector<std::string> musicBrainArtistHints = tag.GetMusicBrainzArtistHints();
-  strArtistDesc = tag.GetArtistDesc();
+  strArtistDesc = tag.GetArtistString();
   if (!tag.GetMusicBrainzArtistID().empty())
   { // have musicbrainz artist info, so use it
     for (size_t i = 0; i < tag.GetMusicBrainzArtistID().size(); i++)
@@ -68,12 +69,14 @@ CSong::CSong(CFileItem& item)
     }
   }
   strAlbum = tag.GetAlbum();
-  albumArtist = tag.GetAlbumArtist();
+  m_albumArtist = tag.GetAlbumArtist();
   strMusicBrainzTrackID = tag.GetMusicBrainzTrackID();
   strComment = tag.GetComment();
   strCueSheet = tag.GetCueSheet();
   strMood = tag.GetMood();
   rating = tag.GetRating();
+  userrating = tag.GetUserrating();
+  votes = tag.GetVotes();
   iYear = stTime.wYear;
   iTrack = tag.GetTrackAndDiscNumber();
   iDuration = tag.GetDuration();
@@ -86,8 +89,6 @@ CSong::CSong(CFileItem& item)
   iEndOffset = item.m_lEndOffset;
   idSong = -1;
   iTimesPlayed = 0;
-  iKaraokeNumber = 0;
-  iKaraokeDelay = 0;         //! Karaoke song lyrics-music delay in 1/10 seconds.
   idAlbum = -1;
 }
 
@@ -113,9 +114,9 @@ void CSong::Serialize(CVariant& value) const
 {
   value["filename"] = strFileName;
   value["title"] = strTitle;
-  value["artist"] = artist;
+  value["artist"] = GetArtist();
   value["album"] = strAlbum;
-  value["albumartist"] = albumArtist;
+  value["albumartist"] = GetAlbumArtist();
   value["genre"] = genre;
   value["duration"] = iDuration;
   value["track"] = iTrack;
@@ -124,10 +125,11 @@ void CSong::Serialize(CVariant& value) const
   value["comment"] = strComment;
   value["mood"] = strMood;
   value["rating"] = rating;
+  value["userrating"] = userrating;
+  value["votes"] = votes;
   value["timesplayed"] = iTimesPlayed;
   value["lastplayed"] = lastPlayed.IsValid() ? lastPlayed.GetAsDBDateTime() : "";
   value["dateadded"] = dateAdded.IsValid() ? dateAdded.GetAsDBDateTime() : "";
-  value["karaokenumber"] = (int64_t) iKaraokeNumber;
   value["albumid"] = idAlbum;
 }
 
@@ -135,15 +137,16 @@ void CSong::Clear()
 {
   strFileName.clear();
   strTitle.clear();
-  artist.clear();
   strAlbum.clear();
-  albumArtist.clear();
+  m_albumArtist.clear();
   genre.clear();
   strThumb.clear();
   strMusicBrainzTrackID.clear();
   strComment.clear();
   strMood.clear();
-  rating = '0';
+  rating = 0;
+  userrating = 0;
+  votes = 0;
   iTrack = 0;
   iDuration = 0;
   iYear = 0;
@@ -153,9 +156,6 @@ void CSong::Clear()
   iTimesPlayed = 0;
   lastPlayed.Reset();
   dateAdded.Reset();
-  iKaraokeNumber = 0;
-  strKaraokeLyrEncoding.clear();
-  iKaraokeDelay = 0;
   idAlbum = -1;
   bCompilation = false;
   embeddedArt.clear();
@@ -180,6 +180,27 @@ const std::vector<std::string> CSong::GetMusicBrainzArtistID() const
     muisicBrainzID.push_back(artistCredit->GetMusicBrainzArtistID());
   }
   return muisicBrainzID;
+}
+
+const std::string CSong::GetArtistString() const
+{
+  //Artist description may be different from the artists in artistcredits (see ARTISTS tag processing)
+  //but is takes precidence as a string because artistcredits is not always filled during processing
+  if (!strArtistDesc.empty())
+    return strArtistDesc;
+  std::string artistString;
+  for (VECARTISTCREDITS::const_iterator artistCredit = artistCredits.begin(); artistCredit != artistCredits.end(); ++artistCredit)
+    artistString += artistCredit->GetArtist() + artistCredit->GetJoinPhrase();
+  return artistString;
+}
+
+const std::vector<int> CSong::GetArtistIDArray() const
+{
+  // Get song artist IDs for json rpc
+  std::vector<int> artistids;
+  for (VECARTISTCREDITS::const_iterator artistCredit = artistCredits.begin(); artistCredit != artistCredits.end(); ++artistCredit)
+    artistids.push_back(artistCredit->GetArtistId());
+  return artistids;
 }
 
 bool CSong::HasArt() const

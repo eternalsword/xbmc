@@ -531,6 +531,9 @@ char CURL::GetDirectorySeparator() const
 
 std::string CURL::Get() const
 {
+  if (m_strProtocol.empty())
+    return m_strFileName;
+
   unsigned int sizeneed = m_strProtocol.length()
                         + m_strDomain.length()
                         + m_strUserName.length()
@@ -541,21 +544,26 @@ std::string CURL::Get() const
                         + m_strProtocolOptions.length()
                         + 10;
 
-  if (m_strProtocol.empty())
-    return m_strFileName;
-
   std::string strURL;
   strURL.reserve(sizeneed);
 
-  strURL = GetWithoutFilename();
-  strURL += m_strFileName;
+  strURL = GetWithoutOptions();
 
   if( !m_strOptions.empty() )
     strURL += m_strOptions;
+
   if (!m_strProtocolOptions.empty())
     strURL += "|"+m_strProtocolOptions;
 
   return strURL;
+}
+
+std::string CURL::GetWithoutOptions() const
+{
+  if (m_strProtocol.empty())
+    return m_strFileName;
+
+  return GetWithoutFilename() + m_strFileName;
 }
 
 std::string CURL::GetWithoutUserDetails(bool redact) const
@@ -787,7 +795,7 @@ std::string CURL::Encode(const std::string& strURLData)
     if (StringUtils::isasciialphanum(kar) || kar == '-' || kar == '.' || kar == '_' || kar == '!' || kar == '(' || kar == ')')
       strResult.push_back(kar);
     else
-      strResult += StringUtils::Format("%%%02.2x", (unsigned int)((unsigned char)kar)); // TODO: Change to "%%%02.2X" after Gotham
+      strResult += StringUtils::Format("%%%2.2X", (unsigned int)((unsigned char)kar));
   }
 
   return strResult;

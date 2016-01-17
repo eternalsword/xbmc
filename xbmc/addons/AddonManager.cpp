@@ -268,6 +268,7 @@ void CAddonMgr::UnregisterAddonMgrCallback(TYPE type)
 
 bool CAddonMgr::Init()
 {
+  CSingleLock lock(m_critSection);
   m_cpluff = new DllLibCPluff;
   m_cpluff->Load();
 
@@ -344,6 +345,10 @@ bool CAddonMgr::Init()
   std::vector<std::string> disabled;
   m_database.GetDisabled(disabled);
   m_disabled.insert(disabled.begin(), disabled.end());
+
+  std::vector<std::string> blacklisted;
+  m_database.GetBlacklisted(blacklisted);
+  m_updateBlacklist.insert(blacklisted.begin(), blacklisted.end());
 
   VECADDONS repos;
   if (GetAddons(ADDON_REPOSITORY, repos))
@@ -449,48 +454,6 @@ bool CAddonMgr::ReloadSettings(const std::string &id)
     return (*it)->ReloadSettings();
   }
   return false;
-}
-
-bool CAddonMgr::GetAllOutdatedAddons(VECADDONS &addons, bool getLocalVersion /*= false*/)
-{
-  CSingleLock lock(m_critSection);
-  for (int i = ADDON_UNKNOWN+1; i < ADDON_MAX; ++i)
-  {
-    VECADDONS temp;
-    if (CAddonMgr::GetInstance().GetAddons((TYPE)i, temp, true))
-    {
-      AddonPtr repoAddon;
-      for (unsigned int j = 0; j < temp.size(); j++)
-      {
-        // Ignore duplicates due to add-ons with multiple extension points
-        bool found = false;
-        for (VECADDONS::const_iterator addonIt = addons.begin(); addonIt != addons.end(); ++addonIt)
-        {
-          if ((*addonIt)->ID() == temp[j]->ID())
-            found = true;
-        }
-
-        if (found || !m_database.GetAddon(temp[j]->ID(), repoAddon))
-          continue;
-
-        if (temp[j]->Version() < repoAddon->Version() &&
-            !m_database.IsAddonBlacklisted(temp[j]->ID(),
-                                           repoAddon->Version().asString().c_str()))
-        {
-          if (getLocalVersion)
-            repoAddon->Props().version = temp[j]->Version();
-          addons.push_back(repoAddon);
-        }
-      }
-    }
-  }
-  return !addons.empty();
-}
-
-bool CAddonMgr::HasOutdatedAddons()
-{
-  VECADDONS dummy;
-  return GetAllOutdatedAddons(dummy);
 }
 
 bool CAddonMgr::GetAddons(const TYPE &type, VECADDONS &addons, bool enabled /* = true */)
@@ -662,7 +625,6 @@ void CAddonMgr::FindAddons()
 void CAddonMgr::UnregisterAddon(const std::string& ID)
 {
   CSingleLock lock(m_critSection);
-  m_disabled.erase(ID);
   if (m_cpluff && m_cp_context)
   {
     m_cpluff->uninstall_plugin(m_cp_context, ID.c_str());
@@ -670,6 +632,35 @@ void CAddonMgr::UnregisterAddon(const std::string& ID)
     lock.Leave();
     NotifyObservers(ObservableMessageAddons);
   }
+}
+
+void CAddonMgr::OnPostUnInstall(const std::string& id)
+{
+  CSingleLock lock(m_critSection);
+  m_disabled.erase(id);
+  m_updateBlacklist.erase(id);
+}
+
+bool CAddonMgr::RemoveFromUpdateBlacklist(const std::string& id)
+{
+  CSingleLock lock(m_critSection);
+  if (!IsBlacklisted(id))
+    return true;
+  return m_database.RemoveAddonFromBlacklist(id) && m_updateBlacklist.erase(id) > 0;
+}
+
+bool CAddonMgr::AddToUpdateBlacklist(const std::string& id)
+{
+  CSingleLock lock(m_critSection);
+  if (IsBlacklisted(id))
+    return true;
+  return m_database.BlacklistAddon(id) && m_updateBlacklist.insert(id).second;
+}
+
+bool CAddonMgr::IsBlacklisted(const std::string& id) const
+{
+  CSingleLock lock(m_critSection);
+  return m_updateBlacklist.find(id) != m_updateBlacklist.end();
 }
 
 bool CAddonMgr::DisableAddon(const std::string& id)

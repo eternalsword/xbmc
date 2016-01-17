@@ -157,12 +157,13 @@
       },
       { "name": "options", "type": "object", "additionalProperties": false,
         "properties": {
-          "playercoreid": { "type": [
+          "playername": { "type": [
               "null",
-			  { "type": "string", "enum": [ "default" ], "required": true },
-              { "type": "integer", "minimum": 1, "required": true }
+              { "type": "string", "enum": [ "default" ], "required": true },
+              { "type": "string", "minLength": 1, "required": true, "description": "name of player" }
             ],
-            "default": null },
+            "default": null
+          },
           "shuffled": { "$ref": "Optional.Boolean" },
           "repeat": { "type": [ "null", { "$ref": "Player.Repeat", "required": true } ], "default": null },
           "resume": { "type": [
@@ -209,7 +210,6 @@
       "items": {
         "type": "object",
         "properties": {
-          "playercoreid": { "type": "integer", "minimum": 1, "required": true },
           "name": { "$ref": "Global.String.NotEmpty", "required": true },
           "type": { "type": "string", "enum": [ "internal", "external", "remote" ], "required": true },
           "playsvideo": { "type": "boolean", "required": true },
@@ -408,6 +408,21 @@
       { "name": "stream", "required": true, "type": [
           { "type": "string", "enum": [ "previous", "next" ] },
           { "type": "integer", "minimum": 0, "description": "Index of the audio stream to play" }
+        ]
+      }
+    ],
+    "returns": "string"
+  },
+  "Player.SetVideoStream": {
+    "type": "method",
+    "description": "Set the video stream played by the player",
+    "transport": "Response",
+    "permission": "ControlPlayback",
+    "params": [
+      { "name": "playerid", "$ref": "Player.Id", "required": true },
+      { "name": "stream", "required": true, "type": [
+          { "type": "string", "enum": [ "previous", "next" ] },
+          { "type": "integer", "minimum": 0, "description": "Index of the video stream to play" }
         ]
       }
     ],
@@ -900,8 +915,10 @@
       { "name": "style", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "type", "$ref": "Optional.String" },
       { "name": "albumlabel", "$ref": "Optional.String" },
-      { "name": "rating", "$ref": "Optional.Integer" },
-      { "name": "year", "$ref": "Optional.Integer" }
+      { "name": "rating", "$ref": "Optional.Number" },
+      { "name": "year", "$ref": "Optional.Integer" },
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "votes", "$ref": "Optional.Integer" }
     ],
     "returns": "string"
   },
@@ -917,7 +934,7 @@
       { "name": "albumartist", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "genre", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "year", "$ref": "Optional.Integer" },
-      { "name": "rating", "$ref": "Optional.Integer" },
+      { "name": "rating", "$ref": "Optional.Number" },
       { "name": "album", "$ref": "Optional.String" },
       { "name": "track", "$ref": "Optional.Integer" },
       { "name": "disc", "$ref": "Optional.Integer" },
@@ -928,7 +945,9 @@
       { "name": "musicbrainzalbumid", "$ref": "Optional.String" },
       { "name": "musicbrainzalbumartistid", "$ref": "Optional.String" },
       { "name": "playcount", "$ref": "Optional.Integer" },
-      { "name": "lastplayed", "$ref": "Optional.String" }
+      { "name": "lastplayed", "$ref": "Optional.String" },
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "votes", "$ref": "Optional.Integer" }
     ],
     "returns": "string"
   },
@@ -1118,7 +1137,7 @@
     "transport": "Response",
     "permission": "ReadData",
     "params": [
-      { "name": "tvshowid", "$ref": "Library.Id", "required": true },
+      { "name": "tvshowid", "$ref": "Library.Id" },
       { "name": "properties", "$ref": "Video.Fields.Season" },
       { "name": "limits", "$ref": "List.Limits" },
       { "name": "sort", "$ref": "List.Sort" }
@@ -1296,6 +1315,25 @@
       }
     }
   },
+  "VideoLibrary.GetInProgressTVShows": {
+    "type": "method",
+    "description": "Retrieve all in progress tvshows",
+    "transport": "Response",
+    "permission": "ReadData",
+    "params": [
+      { "name": "properties", "$ref": "Video.Fields.TVShow" },
+      { "name": "limits", "$ref": "List.Limits" },
+      { "name": "sort", "$ref": "List.Sort" }
+    ],
+    "returns": { "type": "object",
+      "properties": {
+        "limits": { "$ref": "List.LimitsReturned", "required": true },
+        "tvshows": { "type": "array",
+          "items": { "$ref": "Video.Details.TVShow" }
+        }
+      }
+    }
+  },
   "VideoLibrary.GetGenres": {
     "type": "method",
     "description": "Retrieve all genres",
@@ -1352,7 +1390,8 @@
       { "name": "tag", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
       { "name": "resume", "type": [ "null", { "$ref": "Video.Resume", "required": true } ], "default": null },
-      { "name": "userrating", "$ref": "Optional.Integer" }
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "ratings", "$ref": "Video.Ratings" }
     ],
     "returns": "string"
   },
@@ -1393,7 +1432,8 @@
       { "name": "fanart", "$ref": "Optional.String" },
       { "name": "tag", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
-      { "name": "userrating", "$ref": "Optional.Integer" }
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "ratings", "$ref": "Video.Ratings" }
     ],
     "returns": "string"
   },
@@ -1404,7 +1444,8 @@
     "permission": "UpdateData",
     "params": [
       { "name": "seasonid", "$ref": "Library.Id", "required": true },
-      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null }
+      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
+      { "name": "userrating", "$ref": "Optional.Integer" }
     ],
     "returns": "string"
   },
@@ -1433,7 +1474,8 @@
       { "name": "fanart", "$ref": "Optional.String" },
       { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
       { "name": "resume", "type": [ "null", { "$ref": "Video.Resume", "required": true } ], "default": null },
-      { "name": "userrating", "$ref": "Optional.Integer" }
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "ratings", "$ref": "Video.Ratings" }
     ],
     "returns": "string"
   },
@@ -1461,6 +1503,7 @@
       { "name": "tag", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
       { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
       { "name": "resume", "type": [ "null", { "$ref": "Video.Resume", "required": true } ], "default": null },
+      { "name": "rating", "$ref": "Optional.Number" },
       { "name": "userrating", "$ref": "Optional.Integer" }
     ],
     "returns": "string"
@@ -1473,7 +1516,7 @@
     "params": [
       { "name": "movieid", "$ref": "Library.Id", "required": true },
       { "name": "ignorenfo", "type": "boolean", "required": false, "default": false, "description": "Whether or not to ignore a local NFO if present." },
-	  { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
+      { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
     ],
     "returns": "string"
   },
@@ -1486,7 +1529,7 @@
       { "name": "tvshowid", "$ref": "Library.Id", "required": true },
       { "name": "ignorenfo", "type": "boolean", "required": false, "default": false, "description": "Whether or not to ignore a local NFO if present." },
       { "name": "refreshepisodes", "type": "boolean", "required": false, "default": false, "description": "Whether or not to refresh all episodes belonging to the TV show." },
-	  { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
+      { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
     ],
     "returns": "string"
   },
@@ -1498,7 +1541,7 @@
     "params": [
       { "name": "episodeid", "$ref": "Library.Id", "required": true },
       { "name": "ignorenfo", "type": "boolean", "required": false, "default": false, "description": "Whether or not to ignore a local NFO if present." },
-	  { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
+      { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
     ],
     "returns": "string"
   },
@@ -1510,7 +1553,7 @@
     "params": [
       { "name": "musicvideoid", "$ref": "Library.Id", "required": true },
       { "name": "ignorenfo", "type": "boolean", "required": false, "default": false, "description": "Whether or not to ignore a local NFO if present." },
-	  { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
+      { "name": "title", "type": "string", "required": "false", "default": "", "description": "Title to use for searching (instead of determining it from the item's filename/path)." }
     ],
     "returns": "string"
   },

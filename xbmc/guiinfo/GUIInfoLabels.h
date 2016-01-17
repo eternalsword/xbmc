@@ -62,7 +62,6 @@
 #define PLAYER_TIME_SPEED            37
 #define PLAYER_FINISH_TIME           38
 #define PLAYER_CACHELEVEL            39
-#define PLAYER_STAR_RATING           40
 #define PLAYER_CHAPTERNAME           41
 #define PLAYER_SUBTITLE_DELAY        42
 #define PLAYER_AUDIO_DELAY           43
@@ -189,6 +188,9 @@
 #define MUSICPLAYER_SUB_CHANNEL_NUMBER 232
 #define MUSICPLAYER_CHANNEL_NUMBER_LBL 233
 #define MUSICPLAYER_CONTENT         234
+#define MUSICPLAYER_USER_RATING     235
+#define MUSICPLAYER_RATING_AND_VOTES     236
+#define MUSICPLAYER_VOTES           237
 
 #define VIDEOPLAYER_TITLE             250
 #define VIDEOPLAYER_GENRE             251
@@ -653,7 +655,6 @@
 #define LISTITEM_TOP250             (LISTITEM_START + 89)
 #define LISTITEM_RATING_AND_VOTES   (LISTITEM_START + 90)
 #define LISTITEM_TRAILER            (LISTITEM_START + 91)
-#define LISTITEM_STAR_RATING        (LISTITEM_START + 92)
 #define LISTITEM_FILENAME_AND_PATH  (LISTITEM_START + 93)
 #define LISTITEM_SORT_LETTER        (LISTITEM_START + 94)
 #define LISTITEM_ALBUM_ARTIST       (LISTITEM_START + 95)
@@ -716,15 +717,22 @@
 #define LISTITEM_EPG_EVENT_TITLE    (LISTITEM_START + 151)
 #define LISTITEM_DATETIME           (LISTITEM_START + 152)
 #define LISTITEM_USER_RATING        (LISTITEM_START + 153)
+#define LISTITEM_TAG                (LISTITEM_START + 154)
+#define LISTITEM_SET                (LISTITEM_START + 155)
+#define LISTITEM_SETID              (LISTITEM_START + 156)
+#define LISTITEM_IS_PARENTFOLDER    (LISTITEM_START + 157)
 
 #define LISTITEM_PROPERTY_START     (LISTITEM_START + 200)
-#define LISTITEM_PROPERTY_END       (LISTITEM_PROPERTY_START + 1000)
+#define LISTITEM_PROPERTY_END       (LISTITEM_PROPERTY_START + 1300)
 #define LISTITEM_END                (LISTITEM_PROPERTY_END)
 
-#define MUSICPLAYER_PROPERTY_OFFSET 800 // 100 id's reserved for musicplayer props.
-#define LISTITEM_ART_OFFSET         900 // 100 id's reserved for listitem art.
+#define MUSICPLAYER_PROPERTY_OFFSET       800  // 100 id's reserved for musicplayer props.
+#define LISTITEM_ART_OFFSET               900  // 100 id's reserved for listitem art.
+#define LISTITEM_RATING_OFFSET            1000 // 100 id's reserved for listitem ratings.
+#define LISTITEM_VOTES_OFFSET             1100 // 100 id's reserved for listitem votes.
+#define LISTITEM_RATING_AND_VOTES_OFFSET  1200 // 100 id's reserved for listitem ratingandvotes.
 
-#define CONDITIONAL_LABEL_START       LISTITEM_END + 1 // 36201
+#define CONDITIONAL_LABEL_START       LISTITEM_END + 1 // 36501
 #define CONDITIONAL_LABEL_END         37000
 
 // the multiple information vector

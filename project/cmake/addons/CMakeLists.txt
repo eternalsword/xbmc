@@ -104,11 +104,11 @@ if(PACKAGE_ZIP)
   if(NOT PACKAGE_DIR)
     set(PACKAGE_DIR "${BUILD_DIR}/zips")
   else()
-    file(TO_CMAKE_PATH "${CMAKE_PREFIX_PATH}" CMAKE_PREFIX_PATH)
+    file(TO_CMAKE_PATH "${PACKAGE_DIR}" PACKAGE_DIR)
   endif()
   list(APPEND BUILD_ARGS -DPACKAGE_DIR=${PACKAGE_DIR})
 
-  MESSAGE(STATUS "ZIP packaging enabled (destination: ${PACKAGE_DIR}})")
+  MESSAGE(STATUS "ZIP packaging enabled (destination: ${PACKAGE_DIR})")
 endif()
 
 if(CMAKE_TOOLCHAIN_FILE)
@@ -385,7 +385,7 @@ foreach(addon ${addons})
 
           # create a forwarding target to the addon-package target
           add_custom_target(package-${id}
-                    COMMAND ${CMAKE_COMMAND} --build ${BUILD_DIR}/${id}-prefix/src/${id}-build --target addon-package
+                    COMMAND ${CMAKE_COMMAND} --build ${id}-prefix/src/${id}-build --target addon-package
                     DEPENDS ${id})
           add_dependencies(package-addons package-${id})
 
