@@ -65,9 +65,8 @@ void CGUIWindowPVRGuide::OnInitWindow()
   CGUIWindowPVRBase::OnInitWindow();
 }
 
-void CGUIWindowPVRGuide::ResetObservers(void)
+void CGUIWindowPVRGuide::RegisterObservers(void)
 {
-  UnregisterObservers();
   g_EpgContainer.RegisterObserver(this);
 }
 
@@ -107,7 +106,7 @@ void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &butt
           buttons.Add(CONTEXT_BUTTON_DELETE_TIMER, 19060);  /* Delete timer */
       }
     }
-    else
+    else if (g_PVRClients->SupportsTimers())
     {
       if (epg->EndAsLocalTime() > CDateTime::GetCurrentDateTime())
         buttons.Add(CONTEXT_BUTTON_START_RECORD, 264);      /* Record */
@@ -133,7 +132,6 @@ void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &butt
   }
 
   CGUIWindowPVRBase::GetContextButtons(itemNumber, buttons);
-  CContextMenuManager::GetInstance().AddVisibleItems(pItem, buttons);
 }
 
 void CGUIWindowPVRGuide::UpdateSelectedItemPath()
@@ -143,7 +141,7 @@ void CGUIWindowPVRGuide::UpdateSelectedItemPath()
     CGUIEPGGridContainer *epgGridContainer = (CGUIEPGGridContainer*) GetControl(m_viewControl.GetCurrentControl());
     if (epgGridContainer)
     {
-      CPVRChannelPtr channel(epgGridContainer->GetChannel(epgGridContainer->GetSelectedChannel()));
+      CPVRChannelPtr channel(epgGridContainer->GetSelectedChannel());
       if (channel)
         SetSelectedItemPath(m_bRadio, channel->Path());
     }
@@ -364,7 +362,7 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
         {
           m_bUpdateRequired = true;
           // do not allow more than MAX_UPDATE_FREQUENCY updates
-          if (IsActive() && m_nextUpdateTimeout.IsTimePast())
+          if (m_nextUpdateTimeout.IsTimePast())
           {
             Refresh(true);
             m_nextUpdateTimeout.Set(MAX_UPDATE_FREQUENCY);
@@ -374,7 +372,7 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
         }
         case ObservableMessageEpgActiveItem:
         {
-          if (IsActive() && m_viewControl.GetCurrentControl() != GUIDE_VIEW_TIMELINE)
+          if (m_viewControl.GetCurrentControl() != GUIDE_VIEW_TIMELINE)
             SetInvalid();
           else
             m_bUpdateRequired = true;

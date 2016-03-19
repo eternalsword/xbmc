@@ -23,6 +23,7 @@
 #include "DVDStreamInfo.h"
 #include "DVDMessageQueue.h"
 #include "DVDClock.h"
+#include "cores/VideoPlayer/Process/ProcessInfo.h"
 
 #define VideoPlayer_AUDIO    1
 #define VideoPlayer_VIDEO    2
@@ -48,14 +49,14 @@ struct SPlayerState
     time_offset   = 0;
     dts           = DVD_NOPTS_VALUE;
     player_state  = "";
+    isInMenu = false;
+    hasMenu = false;
     chapter       = 0;
     chapters.clear();
     canrecord     = false;
     recording     = false;
     canpause      = false;
     canseek       = false;
-    demux_video   = "";
-    demux_audio   = "";
     cache_bytes   = 0;
     cache_level   = 0.0;
     cache_delay   = 0.0;
@@ -72,6 +73,8 @@ struct SPlayerState
   double dts;               // last known dts
 
   std::string player_state;  // full player state
+  bool isInMenu;
+  bool hasMenu;
 
   int         chapter;                   // current chapter
   std::vector<std::pair<std::string, int64_t>> chapters; // name and position for chapters
@@ -81,9 +84,6 @@ struct SPlayerState
 
   bool canpause;            // pvr: can pause the current playing item
   bool canseek;             // pvr: can seek in the current playing item
-
-  std::string demux_video;
-  std::string demux_audio;
 
   int64_t cache_bytes;   // number of bytes current's cached
   double  cache_level;   // current estimated required cache level
@@ -109,6 +109,7 @@ public:
 class IDVDStreamPlayer
 {
 public:
+  IDVDStreamPlayer(CProcessInfo &processInfo) : m_processInfo(processInfo) {};
   virtual ~IDVDStreamPlayer() {}
   virtual bool OpenStream(CDVDStreamInfo &hint) = 0;
   virtual void CloseStream(bool bWaitForBuffers) = 0;
@@ -124,6 +125,8 @@ public:
     SYNC_WAITSYNC,
     SYNC_INSYNC
   };
+protected:
+  CProcessInfo &m_processInfo;
 };
 
 class CDVDVideoCodec;
@@ -131,8 +134,8 @@ class CDVDVideoCodec;
 class IDVDStreamPlayerVideo : public IDVDStreamPlayer
 {
 public:
+  IDVDStreamPlayerVideo(CProcessInfo &processInfo) : IDVDStreamPlayer(processInfo) {};
   ~IDVDStreamPlayerVideo() {}
-  float GetRelativeUsage() { return 0.0f; }
   virtual bool OpenStream(CDVDStreamInfo &hint) = 0;
   virtual void CloseStream(bool bWaitForBuffers) = 0;
   virtual bool StepFrame() { return false; };
@@ -167,8 +170,8 @@ class CDVDAudioCodec;
 class IDVDStreamPlayerAudio : public IDVDStreamPlayer
 {
 public:
+  IDVDStreamPlayerAudio(CProcessInfo &processInfo) : IDVDStreamPlayer(processInfo) {};
   ~IDVDStreamPlayerAudio() {}
-  float GetRelativeUsage() { return 0.0f; }
   virtual bool OpenStream(CDVDStreamInfo &hints) = 0;
   virtual void CloseStream(bool bWaitForBuffers) = 0;
   virtual void SetSpeed(int speed) = 0;

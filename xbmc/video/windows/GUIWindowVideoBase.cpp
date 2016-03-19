@@ -56,6 +56,7 @@
 #include "utils/Variant.h"
 #include "pvr/PVRManager.h"
 #include "pvr/recordings/PVRRecordings.h"
+#include "pvr/recordings/PVRRecordingsPath.h"
 #include "utils/URIUtils.h"
 #include "GUIUserMessages.h"
 #include "storage/MediaManager.h"
@@ -624,7 +625,8 @@ bool CGUIWindowVideoBase::OnSelect(int iItem)
   if (!item->m_bIsFolder && path != "add" &&
       !StringUtils::StartsWith(path, "newsmartplaylist://") &&
       !StringUtils::StartsWith(path, "newplaylist://") &&
-      !StringUtils::StartsWith(path, "newtag://"))
+      !StringUtils::StartsWith(path, "newtag://") &&
+      !StringUtils::StartsWith(path, "script://"))
     return OnFileAction(iItem, CSettings::GetInstance().GetInt(CSettings::SETTING_MYVIDEOS_SELECTACTION), "");
 
   return CGUIMediaWindow::OnSelect(iItem);
@@ -756,7 +758,8 @@ std::string CGUIWindowVideoBase::GetResumeString(const CFileItem &item)
   GetResumeItemOffset(&item, startOffset, startPart);
   if (startOffset > 0)
   {
-    resumeString = StringUtils::Format(g_localizeStrings.Get(12022).c_str(), StringUtils::SecondsToTimeString(startOffset/75).c_str());
+    resumeString = StringUtils::Format(g_localizeStrings.Get(12022).c_str(),
+        StringUtils::SecondsToTimeString(startOffset/75, TIME_FORMAT_HH_MM_SS).c_str());
     if (startPart > 0)
     {
       std::string partString = StringUtils::Format(g_localizeStrings.Get(23051).c_str(), startPart);
@@ -853,9 +856,6 @@ void CGUIWindowVideoBase::GetContextButtons(int itemNumber, CContextButtons &but
         }
       }
 
-      if (!m_vecItems->IsPlugin() && (item->IsPlugin() || item->IsScript()))
-        buttons.Add(CONTEXT_BUTTON_INFO,24003); // Add-on info
-
       if (!item->m_bIsFolder && !(item->IsPlayList() && !g_advancedSettings.m_playlistAsFolders))
       { // get players
         std::vector<std::string> players;
@@ -874,13 +874,6 @@ void CGUIWindowVideoBase::GetContextButtons(int itemNumber, CContextButtons &but
         buttons.Add(CONTEXT_BUTTON_PLAY_PARTYMODE, 15216); // Play in Partymode
       }
 
-      // if autoresume is enabled then add restart video button
-      // check to see if the Resume Video button is applicable
-      // only if the video is NOT a DVD (in that case the resume button will be added by CGUIDialogContextMenu::GetContextButtons)
-      if (!item->IsDVD() && HasResumeItemOffset(item.get()))
-      {
-        buttons.Add(CONTEXT_BUTTON_RESUME_ITEM, GetResumeString(*(item.get())));     // Resume Video
-      }
       //if the item isn't a folder or script, is a member of a list rather than a single item
       //and we're not on the last element of the list, 
       //then add add either 'play from here' or 'play only this' depending on default behaviour
@@ -1029,17 +1022,6 @@ bool CGUIWindowVideoBase::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
     g_partyModeManager.Enable(PARTYMODECONTEXT_VIDEO, m_vecItems->Get(itemNumber)->GetPath());
     return true;
 
-  case CONTEXT_BUTTON_RESTART_ITEM:
-    OnRestartItem(itemNumber);
-    return true;
-
-  case CONTEXT_BUTTON_RESUME_ITEM:
-    return OnFileAction(itemNumber, SELECT_ACTION_RESUME, "");
-
-  case CONTEXT_BUTTON_INFO:
-    OnItemInfo(itemNumber);
-    return true;
-
   case CONTEXT_BUTTON_STOP_SCANNING:
     {
       g_application.StopVideoScan();
@@ -1124,61 +1106,68 @@ bool CGUIWindowVideoBase::OnPlayMedia(int iItem, const std::string &player)
   }
   CLog::Log(LOGDEBUG, "%s %s", __FUNCTION__, CURL::GetRedacted(item.GetPath()).c_str());
 
-  if (StringUtils::StartsWith(item.GetPath(), "pvr://recordings/active/"))
+
+  // TODO: delete entire block in v18
+  // m_strStreamURL is deprecated
+  if (item.IsPVR())
   {
-    if (!g_PVRManager.IsStarted())
-      return false;
-
-    /* For recordings we check here for a available stream URL */
-    CFileItemPtr tag = g_PVRRecordings->GetByPath(item.GetPath());
-    if (tag && tag->HasPVRRecordingInfoTag() && !tag->GetPVRRecordingInfoTag()->m_strStreamURL.empty())
+    CPVRRecordingsPath path(item.GetPath());
+    if (path.IsValid() && path.IsActive())
     {
-      std::string stream = tag->GetPVRRecordingInfoTag()->m_strStreamURL;
+      if (!g_PVRManager.IsStarted())
+        return false;
 
-      /* Isolate the folder from the filename */
-      size_t found = stream.find_last_of("/");
-      if (found == std::string::npos)
-        found = stream.find_last_of("\\");
-
-      if (found != std::string::npos)
+      /* For recordings we check here for a available stream URL */
+      CFileItemPtr tag = g_PVRRecordings->GetByPath(item.GetPath());
+      if (tag && tag->HasPVRRecordingInfoTag() && !tag->GetPVRRecordingInfoTag()->m_strStreamURL.empty())
       {
-        /* Check here for asterix at the begin of the filename */
-        if (stream[found+1] == '*')
+        std::string stream = tag->GetPVRRecordingInfoTag()->m_strStreamURL;
+
+        /* Isolate the folder from the filename */
+        size_t found = stream.find_last_of("/");
+        if (found == std::string::npos)
+          found = stream.find_last_of("\\");
+
+        if (found != std::string::npos)
         {
-          /* Create a "stack://" url with all files matching the extension */
-          std::string ext = URIUtils::GetExtension(stream);
-          std::string dir = stream.substr(0, found).c_str();
-
-          CFileItemList items;
-          CDirectory::GetDirectory(dir, items);
-          items.Sort(SortByFile, SortOrderAscending);
-
-          std::vector<int> stack;
-          for (int i = 0; i < items.Size(); ++i)
+          /* Check here for asterix at the begin of the filename */
+          if (stream[found+1] == '*')
           {
-            if (URIUtils::HasExtension(items[i]->GetPath(), ext))
-              stack.push_back(i);
+            /* Create a "stack://" url with all files matching the extension */
+            std::string ext = URIUtils::GetExtension(stream);
+            std::string dir = stream.substr(0, found).c_str();
+
+            CFileItemList items;
+            CDirectory::GetDirectory(dir, items);
+            items.Sort(SortByFile, SortOrderAscending);
+
+            std::vector<int> stack;
+            for (int i = 0; i < items.Size(); ++i)
+            {
+              if (URIUtils::HasExtension(items[i]->GetPath(), ext))
+                stack.push_back(i);
+            }
+
+            if (stack.size() > 0)
+            {
+              /* If we have a stack change the path of the item to it */
+              CStackDirectory dir;
+              std::string stackPath = dir.ConstructStackPath(items, stack);
+              item.SetPath(stackPath);
+            }
           }
-
-          if (stack.size() > 0)
+          else
           {
-            /* If we have a stack change the path of the item to it */
-            CStackDirectory dir;
-            std::string stackPath = dir.ConstructStackPath(items, stack);
-            item.SetPath(stackPath);
+            /* If no asterix is present play only the given stream URL */
+            item.SetPath(stream);
           }
         }
         else
         {
-          /* If no asterix is present play only the given stream URL */
-          item.SetPath(stream);
+          CLog::Log(LOGERROR, "CGUIWindowTV: Can't open recording, no valid filename!");
+          CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19036});
+          return false;
         }
-      }
-      else
-      {
-        CLog::Log(LOGERROR, "CGUIWindowTV: Can't open recording, no valid filename!");
-        CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19036});
-        return false;
       }
     }
   }

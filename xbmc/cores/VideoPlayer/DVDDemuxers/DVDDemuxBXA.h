@@ -21,13 +21,12 @@
 
 #include "DVDDemux.h"
 
-#ifdef TARGET_WINDOWS
-#define __attribute__(dummy_val)
-#else
-#include <config.h>
+#if defined(HAVE_CONFIG_H)
+  #include "config.h"
 #endif
 
 #ifdef TARGET_WINDOWS
+#define __attribute__(dummy_val)
 #pragma pack(push)
 #pragma pack(1)
 #endif
@@ -68,10 +67,11 @@ public:
   bool SeekTime(int time, bool backwords = false, double* startpts = NULL) { return false; }
   void SetSpeed(int iSpeed) {};
   int GetStreamLength() { return (int)m_header.durationMs; }
-  CDemuxStream* GetStream(int iStreamId);
-  int GetNrOfStreams();
+  CDemuxStream* GetStream(int iStreamId) const override;
+  std::vector<CDemuxStream*> GetStreams() const override;
+  int GetNrOfStreams() const override;
   std::string GetFileName();
-  virtual void GetStreamCodecName(int iStreamId, std::string &strName);
+  virtual std::string GetStreamCodecName(int iStreamId) override;
 
 protected:
   friend class CDemuxStreamAudioBXA;

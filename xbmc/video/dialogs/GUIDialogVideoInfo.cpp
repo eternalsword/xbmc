@@ -59,6 +59,8 @@
 #include "utils/FileUtils.h"
 #include "utils/Variant.h"
 
+#include <iterator>
+
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 using namespace XFILE;
 using namespace KODI::MESSAGING;
@@ -988,20 +990,6 @@ int CGUIDialogVideoInfo::ManageVideoItem(const CFileItemPtr &item)
   if (type == MediaTypeMovie || type == MediaTypeTvShow)
     buttons.Add(CONTEXT_BUTTON_EDIT_SORTTITLE, 16107);
 
-  if (item->m_bIsFolder)
-  {
-    // Have both options for folders since we don't know whether all childs are watched/unwatched
-    buttons.Add(CONTEXT_BUTTON_MARK_UNWATCHED, 16104); //Mark as UnWatched
-    buttons.Add(CONTEXT_BUTTON_MARK_WATCHED, 16103);   //Mark as Watched
-  }
-  else
-  {
-    if (item->GetOverlayImage() == "OverlayWatched.png")
-      buttons.Add(CONTEXT_BUTTON_MARK_UNWATCHED, 16104); //Mark as UnWatched
-    else
-      buttons.Add(CONTEXT_BUTTON_MARK_WATCHED, 16103);   //Mark as Watched
-  }
-
   if (type == MediaTypeMovie)
   {
     // only show link/unlink if there are tvshows available
@@ -1047,7 +1035,11 @@ int CGUIDialogVideoInfo::ManageVideoItem(const CFileItemPtr &item)
   if (type != MediaTypeSeason)
     buttons.Add(CONTEXT_BUTTON_DELETE, 646);
 
-  CContextMenuManager::GetInstance().AddVisibleItems(item, buttons, CContextMenuManager::MANAGE);
+  //temporary workaround until the context menu ids are removed
+  const int addonItemOffset = 10000;
+  auto addonItems = CContextMenuManager::GetInstance().GetAddonItems(*item, CContextMenuManager::MANAGE);
+  for (int i = 0; i < addonItems.size(); ++i)
+    buttons.Add(addonItemOffset + i, addonItems[i]->GetLabel(*item));
 
   bool result = false;
   int button = CGUIDialogContextMenu::ShowAndGetChoice(buttons);
@@ -1105,14 +1097,9 @@ int CGUIDialogVideoInfo::ManageVideoItem(const CFileItemPtr &item)
         result = RemoveItemsFromTag(item);
         break;
 
-      case CONTEXT_BUTTON_MARK_WATCHED:
-      case CONTEXT_BUTTON_MARK_UNWATCHED:
-        CVideoLibraryQueue::GetInstance().MarkAsWatched(item, (button == (CONTEXT_BUTTON)CONTEXT_BUTTON_MARK_WATCHED));
-        result = true;
-        break;
-
       default:
-        result = CContextMenuManager::GetInstance().OnClick(button, item);
+        if (button >= addonItemOffset)
+          result = CONTEXTMENU::LoopFrom(*addonItems[button - addonItemOffset], item);
         break;
     }
   }
@@ -1149,7 +1136,7 @@ bool CGUIDialogVideoInfo::UpdateVideoItemTitle(const CFileItemPtr &pItem)
   std::string title;
   if (mediaType == MediaTypeMovie)
   {
-    database.GetMovieInfo("", detail, iDbId);
+    database.GetMovieInfo("", detail, iDbId, VideoDbDetailsNone);
     title = detail.m_strTitle;
   }
   else if (mediaType == MediaTypeVideoCollection)
@@ -1159,7 +1146,7 @@ bool CGUIDialogVideoInfo::UpdateVideoItemTitle(const CFileItemPtr &pItem)
   }
   else if (mediaType == MediaTypeEpisode)
   {
-    database.GetEpisodeInfo(pItem->GetPath(), detail, iDbId);
+    database.GetEpisodeInfo(pItem->GetPath(), detail, iDbId, VideoDbDetailsNone);
     title = detail.m_strTitle;
   }
   else if (mediaType == MediaTypeSeason)
@@ -1169,12 +1156,12 @@ bool CGUIDialogVideoInfo::UpdateVideoItemTitle(const CFileItemPtr &pItem)
   }
   else if (mediaType == MediaTypeTvShow)
   {
-    database.GetTvShowInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId);
+    database.GetTvShowInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId, 0, VideoDbDetailsNone);
     title = detail.m_strTitle;
   }
   else if (mediaType == MediaTypeMusicVideo)
   {
-    database.GetMusicVideoInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId);
+    database.GetMusicVideoInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId, VideoDbDetailsNone);
     title = detail.m_strTitle;
   }
 
@@ -1880,9 +1867,9 @@ bool CGUIDialogVideoInfo::UpdateVideoItemSortTitle(const CFileItemPtr &pItem)
   CVideoInfoTag detail;
   VIDEODB_CONTENT_TYPE iType = (VIDEODB_CONTENT_TYPE)pItem->GetVideoContentType();
   if (iType == VIDEODB_CONTENT_MOVIES)
-    database.GetMovieInfo("", detail, iDbId);
+    database.GetMovieInfo("", detail, iDbId, VideoDbDetailsNone);
   else if (iType == VIDEODB_CONTENT_TVSHOWS)
-    database.GetTvShowInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId);
+    database.GetTvShowInfo(pItem->GetVideoInfoTag()->m_strFileNameAndPath, detail, iDbId, 0, VideoDbDetailsNone);
 
   std::string currentTitle;
   if (detail.m_strSortTitle.empty())
@@ -1911,7 +1898,7 @@ bool CGUIDialogVideoInfo::LinkMovieToTvShow(const CFileItemPtr &item, bool bRemo
     for (unsigned int i = 0; i < ids.size(); ++i)
     {
       CVideoInfoTag tag;
-      database.GetTvShowInfo("", tag, ids[i]);
+      database.GetTvShowInfo("", tag, ids[i], 0 , VideoDbDetailsNone);
       CFileItemPtr show(new CFileItem(tag));
       list.Add(show);
     }

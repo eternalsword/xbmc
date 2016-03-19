@@ -818,31 +818,23 @@ bool CRenderSystemDX::CreateWindowSizeDependentResources()
       if (SUCCEEDED(hr))
       {
         m_pSwapChain1->QueryInterface(__uuidof(IDXGISwapChain), reinterpret_cast<void**>(&m_pSwapChain));
+        // this hackish way to disable stereo in windowed mode:
+        // - restart presenting, 0 in sync interval discards current frame also
+        // - wait until new frame will be drawn
+        // sleep value possible depends on hardware m.b. need a setting in as.xml
+        if (m_useWindowedDX && !bHWStereoEnabled && m_bHWStereoEnabled)
+        {
+          DXGI_PRESENT_PARAMETERS presentParams = {};
+          presentParams.DirtyRectsCount = 0;
+          presentParams.pDirtyRects = NULL;
+          presentParams.pScrollRect = NULL;
+          m_pSwapChain1->Present1(0, DXGI_PRESENT_RESTART, &presentParams);
+
+          Sleep(100);
+        }
         m_bHWStereoEnabled = bHWStereoEnabled;
       }
       dxgiFactory2->Release();
-
-      // this hackish way to disable stereo in windowed mode:
-      // - restart presenting, 0 in sync interval discards current frame also
-      // - wait until new frame will be drawn
-      // sleep value possible depends on hardware m.b. need a setting in as.xml
-      if (!bHWStereoEnabled && m_useWindowedDX && bNeedRecreate)
-      {
-        DXGI_PRESENT_PARAMETERS presentParams = {};
-        presentParams.DirtyRectsCount = 0;
-        presentParams.pDirtyRects = NULL;
-        presentParams.pScrollRect = NULL;
-        m_pSwapChain1->Present1(0, DXGI_PRESENT_RESTART, &presentParams);
-
-        Sleep(100);
-      }
-
-      // when transition from/to stereo mode trigger display reset event
-      if (bNeedRecreate)
-      {
-        OnDisplayLost();
-        OnDeviceReset();
-      }
     }
     else
     {
@@ -963,6 +955,13 @@ bool CRenderSystemDX::CreateWindowSizeDependentResources()
 
   if (bRestoreRTView)
     m_pContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_depthStencilView);
+
+  // trigger display reset event when transition from/to stereo mode occured
+  if (bNeedRecreate)
+  {
+    OnDisplayLost();
+    OnDeviceReset();
+  }
 
   m_resizeInProgress = false;
   m_bResizeRequred = false;
@@ -1108,15 +1107,23 @@ bool CRenderSystemDX::CreateStates()
   return true;
 }
 
-bool CRenderSystemDX::PresentRenderImpl(const CDirtyRegionList &dirty)
+void CRenderSystemDX::PresentRenderImpl(bool rendered)
 {
   HRESULT hr;
 
+  if (!rendered)
+    return;
+  
   if (!m_bRenderCreated || m_resizeInProgress)
-    return false;
+    return;
 
   if (m_nDeviceStatus != S_OK)
-    return false;
+  {
+    // if DXGI_STATUS_OCCLUDED occurred we just clear command queue and return
+    if (m_nDeviceStatus == DXGI_STATUS_OCCLUDED)
+      FinishCommandList(false);
+    return;
+  }
 
   if ( m_stereoMode == RENDER_STEREO_MODE_INTERLACED
     || m_stereoMode == RENDER_STEREO_MODE_CHECKERBOARD)
@@ -1149,7 +1156,7 @@ bool CRenderSystemDX::PresentRenderImpl(const CDirtyRegionList &dirty)
   if (DXGI_ERROR_DEVICE_REMOVED == hr)
   {
     CLog::Log(LOGDEBUG, "%s - device removed", __FUNCTION__);
-    return false;
+    return;
   }
 
   if (DXGI_ERROR_INVALID_CALL == hr)
@@ -1162,14 +1169,12 @@ bool CRenderSystemDX::PresentRenderImpl(const CDirtyRegionList &dirty)
   if (FAILED(hr))
   {
     CLog::Log(LOGDEBUG, "%s - Present failed. %s", __FUNCTION__, GetErrorDescription(hr).c_str());
-    return false;
+    return;
   }
 
   // after present swapchain unbinds RT view from immediate context, need to restore it because it can be used by something else
   if (m_pContext == m_pImdContext)
     m_pContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_depthStencilView);
-
-  return true;
 }
 
 bool CRenderSystemDX::BeginRender()
@@ -1214,8 +1219,7 @@ bool CRenderSystemDX::BeginRender()
     if (m_nDeviceStatus != oldStatus)
       CLog::Log(LOGDEBUG, "DXGI_STATUS_OCCLUDED");
     // Status OCCLUDED is not an error and not handled by FAILED macro, 
-    // but if it occurs we should not render anything, so just return false
-    return false;
+    // but if it occurs we should not render anything, this status will be accounted on present stage
   }
 
   if (FAILED(m_nDeviceStatus))

@@ -27,6 +27,7 @@
 #include "guilib/Resolution.h"
 #include "utils/GlobalsHandling.h"
 #include "messaging/IMessageTarget.h"
+#include "addons/BinaryAddonCache.h"
 
 #include <map>
 #include <memory>
@@ -180,7 +181,7 @@ public:
   bool PlayMedia(const CFileItem& item, const std::string &player, int iPlaylist = PLAYLIST_MUSIC);
   bool PlayMediaSync(const CFileItem& item, int iPlaylist = PLAYLIST_MUSIC);
   bool ProcessAndStartPlaylist(const std::string& strPlayList, PLAYLIST::CPlayList& playlist, int iPlaylist, int track=0);
-  PlayBackRet PlayFile(const CFileItem& item, const std::string& player, bool bRestart = false);
+  PlayBackRet PlayFile(CFileItem item, const std::string& player, bool bRestart = false);
   void SaveFileState(bool bForeground = false);
   void UpdateFileState();
   void LoadVideoSettings(const CFileItem& item);
@@ -388,6 +389,8 @@ public:
    \param listener The listener to unregister
    */
   void UnregisterActionListener(IActionListener *listener);
+
+  ADDON::CBinaryAddonCache m_binaryAddonCache;
 
 protected:
   virtual bool OnSettingsSaving() const override;

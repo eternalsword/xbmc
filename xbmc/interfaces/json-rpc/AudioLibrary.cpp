@@ -41,6 +41,23 @@ using namespace JSONRPC;
 using namespace XFILE;
 using namespace KODI::MESSAGING;
 
+JSONRPC_STATUS CAudioLibrary::GetProperties(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+{
+  CVariant properties = CVariant(CVariant::VariantTypeObject);
+  for (CVariant::const_iterator_array it = parameterObject["properties"].begin_array(); it != parameterObject["properties"].end_array(); it++)
+  {
+    std::string propertyName = it->asString();
+    CVariant property;
+    if (propertyName == "missingartistid")
+      property = (int)BLANKARTIST_ID;
+
+    properties[propertyName] = property;
+  }
+
+  result = properties;
+  return OK;
+}
+
 JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   CMusicDatabase musicdatabase;
@@ -57,6 +74,10 @@ JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLa
     genreID = (int)filter["genreid"].asInteger();
   else if (filter.isMember("genre"))
     musicUrl.AddOption("genre", filter["genre"].asString());
+  else if (filter.isMember("roleid"))
+    musicUrl.AddOption("roleid", (int)filter["roleid"].asInteger());
+  else if (filter.isMember("role"))
+    musicUrl.AddOption("role", filter["role"].asString());
   else if (filter.isMember("albumid"))
     albumID = (int)filter["albumid"].asInteger();
   else if (filter.isMember("album"))
@@ -82,6 +103,7 @@ JSONRPC_STATUS CAudioLibrary::GetArtists(const std::string &method, ITransportLa
     return InvalidParams;
 
   CFileItemList items;
+  musicdatabase.SetTranslateBlankArtist(false);  
   if (!musicdatabase.GetArtistsNav(musicUrl.ToString(), items, albumArtistsOnly, genreID, albumID, songID, CDatabase::Filter(), sorting))
     return InternalError;
 
@@ -246,6 +268,10 @@ JSONRPC_STATUS CAudioLibrary::GetSongs(const std::string &method, ITransportLaye
     musicUrl.AddOption("genreid", (int)filter["genreid"].asInteger());
   else if (filter.isMember("genre"))
     musicUrl.AddOption("genre", filter["genre"].asString());
+  else if (filter.isMember("roleid"))
+    musicUrl.AddOption("roleid", (int)filter["roleid"].asInteger());
+  else if (filter.isMember("role"))
+    musicUrl.AddOption("role", filter["role"].asString());
   else if (filter.isMember("albumid"))
     musicUrl.AddOption("albumid", (int)filter["albumid"].asInteger());
   else if (filter.isMember("album"))
@@ -264,8 +290,22 @@ JSONRPC_STATUS CAudioLibrary::GetSongs(const std::string &method, ITransportLaye
   if (!ParseSorting(parameterObject, sorting.sortBy, sorting.sortOrder, sorting.sortAttributes))
     return InvalidParams;
 
+  // Check if any properties from songartistview wanted, only then query artist data for songs
+  // "displayArtist" is held in songview
+  std::set<std::string> checkProperties;
+  checkProperties.insert("artist");
+  checkProperties.insert("artistid");
+  checkProperties.insert("musicbrainzartistid");
+  checkProperties.insert("contributors");
+  checkProperties.insert("displaycomposer");
+  checkProperties.insert("displayconductor");
+  checkProperties.insert("displayorchestra");
+  checkProperties.insert("displaylyricist");
+  std::set<std::string> additionalProperties;
+  bool artistData = CheckForAdditionalProperties(parameterObject["properties"], checkProperties, additionalProperties);
+ 
   CFileItemList items;
-  if (!musicdatabase.GetSongsFullByWhere(musicUrl.ToString(), CDatabase::Filter(), items, sorting, true))
+  if (!musicdatabase.GetSongsFullByWhere(musicUrl.ToString(), CDatabase::Filter(), items, sorting, artistData, false))
     return InternalError; 
 
   JSONRPC_STATUS ret = GetAdditionalSongDetails(parameterObject, items, musicdatabase);
@@ -416,6 +456,24 @@ JSONRPC_STATUS CAudioLibrary::GetGenres(const std::string &method, ITransportLay
     items[i]->GetMusicInfoTag()->SetTitle(items[i]->GetLabel());
 
   HandleFileItemList("genreid", false, "genres", items, parameterObject, result);
+  return OK;
+}
+
+JSONRPC_STATUS CAudioLibrary::GetContributorRoles(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+{
+  CMusicDatabase musicdatabase;
+  if (!musicdatabase.Open())
+    return InternalError;
+
+  CFileItemList items;
+  if (!musicdatabase.GetRolesNav("musicdb://songs/", items))
+    return InternalError;
+
+  /* need to set strTitle in each item*/
+  for (unsigned int i = 0; i < (unsigned int)items.Size(); i++)
+    items[i]->GetMusicInfoTag()->SetTitle(items[i]->GetLabel());
+
+  HandleFileItemList("roleid", false, "roles", items, parameterObject, result);
   return OK;
 }
 

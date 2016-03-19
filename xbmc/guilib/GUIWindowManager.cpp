@@ -73,7 +73,6 @@
 #include "video/windows/GUIWindowFullScreen.h"
 #include "video/dialogs/GUIDialogVideoOSD.h"
 
-
 // Dialog includes
 #include "music/dialogs/GUIDialogMusicOSD.h"
 #include "music/dialogs/GUIDialogVisualisationPresetList.h"
@@ -96,7 +95,6 @@
 #include "dialogs/GUIDialogSeekBar.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogVolumeBar.h"
-#include "dialogs/GUIDialogMuteBug.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogGamepad.h"
 #include "dialogs/GUIDialogSubMenu.h"
@@ -141,7 +139,10 @@
 #include "settings/dialogs/GUIDialogAudioDSPSettings.h"
 
 #include "peripherals/dialogs/GUIDialogPeripheralSettings.h"
-#include "addons/AddonCallbacksGUI.h"
+#include "addons/binary/interfaces/AddonInterfaces.h"
+
+/* Game related include files */
+#include "games/controllers/windows/GUIControllerWindow.h"
 
 using namespace PVR;
 using namespace PERIPHERALS;
@@ -206,7 +207,6 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogNumeric);
   Add(new CGUIDialogGamepad);
   Add(new CGUIDialogButtonMenu);
-  Add(new CGUIDialogMuteBug);
   Add(new CGUIDialogPlayerControls);
   Add(new CGUIDialogSlider);
   Add(new CGUIDialogMusicOSD);
@@ -288,6 +288,8 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIWindowSplash);
 
   Add(new CGUIWindowEventLog);
+
+  Add(new GAME::CGUIControllerWindow);
 }
 
 bool CGUIWindowManager::DestroyWindows()
@@ -390,6 +392,7 @@ bool CGUIWindowManager::DestroyWindows()
     Delete(WINDOW_PROGRAMS);
     Delete(WINDOW_PICTURES);
     Delete(WINDOW_WEATHER);
+    Delete(WINDOW_DIALOG_GAME_CONTROLLERS);
 
     Delete(WINDOW_SETTINGS_MYPICTURES);
     Remove(WINDOW_SETTINGS_MYPROGRAMS);
@@ -813,6 +816,12 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const std::vector
 void CGUIWindowManager::CloseDialogs(bool forceClose) const
 {
   CSingleLock lock(g_graphicsContext);
+
+  //This is to avoid an assert about out of bounds iterator
+  //when m_activeDialogs happens to be empty
+  if (m_activeDialogs.empty())
+    return;
+
   for (const auto& dialog : m_activeDialogs)
   {
     dialog->Close(forceClose);
@@ -822,6 +831,9 @@ void CGUIWindowManager::CloseDialogs(bool forceClose) const
 void CGUIWindowManager::CloseInternalModalDialogs(bool forceClose) const
 {
   CSingleLock lock(g_graphicsContext);
+  if (m_activeDialogs.empty())
+    return;
+
   for (const auto& dialog : m_activeDialogs)
   {
     if (dialog->IsModalDialog() && !IsAddonWindow(dialog->GetID()) && !IsPythonWindow(dialog->GetID()))
@@ -833,7 +845,7 @@ void CGUIWindowManager::OnApplicationMessage(ThreadMessage* pMsg)
 {
   switch (pMsg->dwMessage)
   {
-  case TMSG_GUI_DIALOG_OPEN:  
+  case TMSG_GUI_DIALOG_OPEN:
   {
     if (pMsg->lpVoid)
       static_cast<CGUIDialog*>(pMsg->lpVoid)->Open(pMsg->strParam);
@@ -863,8 +875,8 @@ void CGUIWindowManager::OnApplicationMessage(ThreadMessage* pMsg)
   case TMSG_GUI_ADDON_DIALOG:
   {
     if (pMsg->lpVoid)
-    { // TODO: This is ugly - really these python dialogs should just be normal XBMC dialogs
-      static_cast<ADDON::CGUIAddonWindowDialog *>(pMsg->lpVoid)->Show_Internal(pMsg->param2 > 0);
+    {
+      ADDON::CAddonInterfaces::OnApplicationMessage(pMsg);
     }
   }
   break;
@@ -1020,7 +1032,7 @@ void CGUIWindowManager::RenderPass() const
   // we render the dialogs based on their render order.
   std::vector<CGUIWindow *> renderList = m_activeDialogs;
   stable_sort(renderList.begin(), renderList.end(), RenderOrderSortFunction);
-  
+
   for (iDialog it = renderList.begin(); it != renderList.end(); ++it)
   {
     if ((*it)->IsDialogRunning())

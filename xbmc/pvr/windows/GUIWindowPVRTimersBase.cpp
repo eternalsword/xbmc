@@ -44,20 +44,19 @@ CGUIWindowPVRTimersBase::CGUIWindowPVRTimersBase(bool bRadio, int id, const std:
 {
 }
 
+void CGUIWindowPVRTimersBase::RegisterObservers(void)
+{
+  CSingleLock lock(m_critSection);
+  g_PVRTimers->RegisterObserver(this);
+  g_infoManager.RegisterObserver(this);
+}
+
 void CGUIWindowPVRTimersBase::UnregisterObservers(void)
 {
   CSingleLock lock(m_critSection);
   if (g_PVRTimers)
     g_PVRTimers->UnregisterObserver(this);
   g_infoManager.UnregisterObserver(this);
-}
-
-void CGUIWindowPVRTimersBase::ResetObservers(void)
-{
-  CSingleLock lock(m_critSection);
-  UnregisterObservers();
-  g_PVRTimers->RegisterObserver(this);
-  g_infoManager.RegisterObserver(this);
 }
 
 void CGUIWindowPVRTimersBase::GetContextButtons(int itemNumber, CContextButtons &buttons)
@@ -112,7 +111,6 @@ void CGUIWindowPVRTimersBase::GetContextButtons(int itemNumber, CContextButtons 
   }
 
   CGUIWindowPVRBase::GetContextButtons(itemNumber, buttons);
-  CContextMenuManager::GetInstance().AddVisibleItems(pItem, buttons);
 }
 
 bool CGUIWindowPVRTimersBase::OnAction(const CAction &action)
@@ -233,15 +231,13 @@ bool CGUIWindowPVRTimersBase::OnMessage(CGUIMessage &message)
         case ObservableMessageEpgActiveItem:
         case ObservableMessageCurrentItem:
         {
-          if (IsActive())
-            SetInvalid();
+          SetInvalid();
           bReturn = true;
           break;
         }
         case ObservableMessageTimersReset:
         {
-          if (IsActive())
-            Refresh(true);
+          Refresh(true);
           bReturn = true;
           break;
         }
@@ -360,6 +356,12 @@ bool CGUIWindowPVRTimersBase::ActionDeleteTimer(CFileItem *item)
 
 bool CGUIWindowPVRTimersBase::ActionShowTimer(CFileItem *item)
 {
+  if (!g_PVRClients->SupportsTimers())
+  {
+    CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19215}); // "Information", "The PVR backend does not support timers."
+    return false;
+  }
+
   bool bReturn = false;
 
   /* Check if "Add timer..." entry is pressed by OK, if yes

@@ -43,7 +43,7 @@ class CDVDInputStreamBluray
   : public CDVDInputStream
   , public CDVDInputStream::IDisplayTime
   , public CDVDInputStream::IChapter
-  , public CDVDInputStream::ISeekTime
+  , public CDVDInputStream::IPosTime
   , public CDVDInputStream::IMenus
 {
 public:
@@ -101,9 +101,12 @@ public:
   int64_t GetChapterPos(int ch);
   bool SeekChapter(int ch);
 
-  int GetTotalTime();
-  int GetTime();
-  bool SeekTime(int ms);
+  CDVDInputStream::IDisplayTime* GetIDisplayTime() override { return this; }
+  int GetTotalTime() override;
+  int GetTime() override;
+
+  CDVDInputStream::IPosTime* GetIPosTime() override { return this; }
+  bool PosTime(int ms);
 
   void GetStreamInfo(int pid, char* language);
 
@@ -134,6 +137,7 @@ protected:
   uint32_t            m_angle;
   bool                m_menu;
   bool                m_navmode;
+  int m_dispTimeBeforeRead;
 
   typedef std::shared_ptr<CDVDOverlayImage> SOverlay;
   typedef std::list<SOverlay>                 SOverlays;

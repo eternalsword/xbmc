@@ -28,11 +28,6 @@
 class CDemuxStreamAudioCDDA
   : public CDemuxStreamAudio
 {
-public:
-  void GetStreamInfo(std::string& strInfo)
-  {
-    strInfo = "pcm";
-  }
 };
 
 CDVDDemuxCDDA::CDVDDemuxCDDA() : CDVDDemux()
@@ -166,7 +161,7 @@ int CDVDDemuxCDDA::GetStreamLength()
   return (int)track_mseconds;
 }
 
-CDemuxStream* CDVDDemuxCDDA::GetStream(int iStreamId)
+CDemuxStream* CDVDDemuxCDDA::GetStream(int iStreamId) const
 {
   if(iStreamId != 0)
     return NULL;
@@ -174,7 +169,19 @@ CDemuxStream* CDVDDemuxCDDA::GetStream(int iStreamId)
   return m_stream;
 }
 
-int CDVDDemuxCDDA::GetNrOfStreams()
+std::vector<CDemuxStream*> CDVDDemuxCDDA::GetStreams() const
+{
+  std::vector<CDemuxStream*> streams;
+
+  if (m_stream != nullptr)
+  {
+    streams.push_back(m_stream);
+  }
+
+  return streams;
+}
+
+int CDVDDemuxCDDA::GetNrOfStreams() const
 {
   return (m_stream == NULL ? 0 : 1);
 }
@@ -187,8 +194,10 @@ std::string CDVDDemuxCDDA::GetFileName()
     return "";
 }
 
-void CDVDDemuxCDDA::GetStreamCodecName(int iStreamId, std::string &strName)
+std::string CDVDDemuxCDDA::GetStreamCodecName(int iStreamId)
 {
   if (m_stream && iStreamId == 0)
-    strName = "pcm";
+    return "pcm";
+  else
+    return "";
 }

@@ -20,7 +20,7 @@
 
 #include "GUIDialogPVRTimerSettings.h"
 
-#include "addons/include/xbmc_pvr_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "FileItem.h"
 #include "guilib/GUIWindowManager.h"
@@ -72,7 +72,7 @@ using namespace PVR;
 #define ENTRY_ANY_CHANNEL (-1)
 
 CGUIDialogPVRTimerSettings::CGUIDialogPVRTimerSettings() :
-  CGUIDialogSettingsManualBase(WINDOW_DIALOG_PVR_TIMER_SETTING, "DialogPVRTimerSettings.xml"),
+  CGUIDialogSettingsManualBase(WINDOW_DIALOG_PVR_TIMER_SETTING, "DialogSettings.xml"),
   m_bIsRadio(false),
   m_bIsNewTimer(true),
   m_bTimerActive(false),
@@ -93,6 +93,16 @@ CGUIDialogPVRTimerSettings::CGUIDialogPVRTimerSettings() :
 
 CGUIDialogPVRTimerSettings::~CGUIDialogPVRTimerSettings()
 {
+}
+
+bool CGUIDialogPVRTimerSettings::CanBeActivated() const
+{
+  if (!m_timerInfoTag)
+  {
+    CLog::Log(LOGERROR, "CGUIDialogPVRTimerSettings::CanBeActivated - no timer info tag");
+    return false;
+  }
+  return true;
 }
 
 void CGUIDialogPVRTimerSettings::SetTimer(CFileItem *item)
@@ -152,7 +162,7 @@ void CGUIDialogPVRTimerSettings::SetTimer(CFileItem *item)
   // Channel
   m_channel = ChannelDescriptor();
 
-  if (m_timerInfoTag->m_iClientChannelUid == PVR_INVALID_CHANNEL_UID)
+  if (m_timerInfoTag->m_iClientChannelUid == PVR_CHANNEL_INVALID_UID)
   {
     bool bChannelSet(false);
     if (m_timerType && m_timerType->IsRepeatingEpgBased())
@@ -170,7 +180,7 @@ void CGUIDialogPVRTimerSettings::SetTimer(CFileItem *item)
       // Select first real (not "Any channel") entry.
       for (const auto &channel : m_channelEntries)
       {
-        if (channel.second.channelUid != PVR_INVALID_CHANNEL_UID)
+        if (channel.second.channelUid != PVR_CHANNEL_INVALID_UID)
         {
           m_channel = channel.second;
           bChannelSet = true;
@@ -180,7 +190,7 @@ void CGUIDialogPVRTimerSettings::SetTimer(CFileItem *item)
     }
 
     if (!bChannelSet)
-      CLog::Log(LOGERROR, "CGUIDialogPVRTimerSettings::SetTimer - Unable to map PVR_INVALID_CHANNEL_UID to channel entry!");
+      CLog::Log(LOGERROR, "CGUIDialogPVRTimerSettings::SetTimer - Unable to map PVR_CHANNEL_INVALID_UID to channel entry!");
   }
   else
   {
@@ -209,6 +219,10 @@ void CGUIDialogPVRTimerSettings::SetTimer(CFileItem *item)
 void CGUIDialogPVRTimerSettings::SetupView()
 {
   CGUIDialogSettingsManualBase::SetupView();
+  SetHeading(19065);
+  SET_CONTROL_HIDDEN(CONTROL_SETTINGS_CUSTOM_BUTTON);
+  SET_CONTROL_LABEL(CONTROL_SETTINGS_OKAY_BUTTON, 186);
+  SET_CONTROL_LABEL(CONTROL_SETTINGS_CANCEL_BUTTON, 222);
   SetButtonLabels();
 }
 
@@ -773,7 +787,7 @@ void CGUIDialogPVRTimerSettings::InitializeChannelsList()
   // Add special "any channel" entry (used for epg-based repeating timers).
   m_channelEntries.insert(
     std::make_pair(
-      ENTRY_ANY_CHANNEL, ChannelDescriptor(PVR_INVALID_CHANNEL_UID, 0, g_localizeStrings.Get(809))));
+      ENTRY_ANY_CHANNEL, ChannelDescriptor(PVR_CHANNEL_INVALID_UID, 0, g_localizeStrings.Get(809))));
 }
 
 void CGUIDialogPVRTimerSettings::TypesFiller(

@@ -22,7 +22,7 @@
 #include <map>
 #include <memory>
 
-#include "addons/include/xbmc_pvr_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
 #include "PVRTimerInfoTag.h"
 #include "utils/Observer.h"
 #include "XBDateTime.h"
@@ -198,7 +198,6 @@ namespace PVR
     typedef std::vector<CPVRTimerInfoTagPtr> VecTimerInfoTag;
 
     void Unload(void);
-    void UpdateEpgEvent(CPVRTimerInfoTagPtr timer);
     bool UpdateEntries(const CPVRTimers &timers);
     CPVRTimerInfoTagPtr GetByClient(int iClientId, unsigned int iClientTimerId) const;
     bool GetRootDirectory(const CPVRTimersPath &path, CFileItemList &items) const;

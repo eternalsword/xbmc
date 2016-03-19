@@ -462,7 +462,6 @@ bool CApplication::Create()
 #endif
 
   // only the InitDirectories* for the current platform should return true
-  // putting this before the first log entries saves another ifdef for g_advancedSettings.m_logFolder
   bool inited = InitDirectoriesLinux();
   if (!inited)
     inited = InitDirectoriesOSX();
@@ -474,9 +473,9 @@ bool CApplication::Create()
   CopyUserDataIfNeeded("special://masterprofile/", "favourites.xml");
   CopyUserDataIfNeeded("special://masterprofile/", "Lircmap.xml");
 
-  if (!CLog::Init(CSpecialProtocol::TranslatePath(g_advancedSettings.m_logFolder).c_str()))
+  if (!CLog::Init(CSpecialProtocol::TranslatePath("special://logpath").c_str()))
   {
-    fprintf(stderr,"Could not init logging classes. Log folder error (%s)\n", CSpecialProtocol::TranslatePath(g_advancedSettings.m_logFolder).c_str());
+    fprintf(stderr,"Could not init logging classes. Log folder error (%s)\n", CSpecialProtocol::TranslatePath("special://logpath").c_str());
     return false;
   }
 
@@ -568,7 +567,7 @@ bool CApplication::Create()
   CLog::Log(LOGNOTICE, "Local hostname: %s", hostname.c_str());
   std::string lowerAppName = CCompileInfo::GetAppName();
   StringUtils::ToLower(lowerAppName);
-  CLog::Log(LOGNOTICE, "Log File is located: %s/%s.log", g_advancedSettings.m_logFolder.c_str(), lowerAppName.c_str());
+  CLog::Log(LOGNOTICE, "Log File is located: %s/%s.log", CSpecialProtocol::TranslatePath("special://logpath").c_str(), lowerAppName.c_str());
   CRegExp::LogCheckUtf8Support();
   CLog::Log(LOGNOTICE, "-----------------------------------------------------------------------");
 
@@ -665,6 +664,7 @@ bool CApplication::Create()
     CLog::Log(LOGFATAL, "CApplication::Create: Unable to start CAddonMgr");
     return false;
   }
+  m_binaryAddonCache.Init();
 
   // Create the Mouse, Keyboard, Remote, and Joystick devices
   // Initialize after loading settings to get joystick deadzone setting
@@ -704,10 +704,6 @@ bool CApplication::CreateGUI()
 
 #if defined(TARGET_DARWIN_OSX)
   sdlFlags |= SDL_INIT_VIDEO;
-#endif
-
-#if defined(HAS_SDL_JOYSTICK) && !defined(TARGET_WINDOWS)
-  sdlFlags |= SDL_INIT_JOYSTICK;
 #endif
 
   //depending on how it's compiled, SDL periodically calls XResetScreenSaver when it's fullscreen
@@ -911,9 +907,7 @@ bool CApplication::InitDirectoriesLinux()
     if (getenv(envAppTemp))
       strTempPath = getenv(envAppTemp);
     CSpecialProtocol::SetTempPath(strTempPath);
-
-    URIUtils::AddSlashAtEnd(strTempPath);
-    g_advancedSettings.m_logFolder = strTempPath;
+    CSpecialProtocol::SetLogPath(strTempPath);
 
     CreateUserDirs();
 
@@ -921,7 +915,6 @@ bool CApplication::InitDirectoriesLinux()
   else
   {
     URIUtils::AddSlashAtEnd(appPath);
-    g_advancedSettings.m_logFolder = appPath;
 
     CSpecialProtocol::SetXBMCBinPath(appBinPath);
     CSpecialProtocol::SetXBMCPath(appPath);
@@ -933,10 +926,8 @@ bool CApplication::InitDirectoriesLinux()
     if (getenv(envAppTemp))
       strTempPath = getenv(envAppTemp);
     CSpecialProtocol::SetTempPath(strTempPath);
+    CSpecialProtocol::SetLogPath(strTempPath);
     CreateUserDirs();
-
-    URIUtils::AddSlashAtEnd(strTempPath);
-    g_advancedSettings.m_logFolder = strTempPath;
   }
 
   return true;
@@ -1008,15 +999,12 @@ bool CApplication::InitDirectoriesOSX()
     #else
       strTempPath = userHome + "/Library/Logs";
     #endif
-    URIUtils::AddSlashAtEnd(strTempPath);
-    g_advancedSettings.m_logFolder = strTempPath;
-
+    CSpecialProtocol::SetLogPath(strTempPath);
     CreateUserDirs();
   }
   else
   {
     URIUtils::AddSlashAtEnd(appPath);
-    g_advancedSettings.m_logFolder = appPath;
 
     CSpecialProtocol::SetXBMCBinPath(appPath);
     CSpecialProtocol::SetXBMCPath(appPath);
@@ -1025,9 +1013,7 @@ bool CApplication::InitDirectoriesOSX()
 
     std::string strTempPath = URIUtils::AddFileToFolder(appPath, "portable_data/temp");
     CSpecialProtocol::SetTempPath(strTempPath);
-
-    URIUtils::AddSlashAtEnd(strTempPath);
-    g_advancedSettings.m_logFolder = strTempPath;
+    CSpecialProtocol::SetLogPath(strTempPath);
   }
 
   return true;
@@ -1047,8 +1033,7 @@ bool CApplication::InitDirectoriesWin32()
   CSpecialProtocol::SetXBMCPath(xbmcPath);
 
   std::string strWin32UserFolder = CWIN32Util::GetProfilePath();
-
-  g_advancedSettings.m_logFolder = strWin32UserFolder;
+  CSpecialProtocol::SetLogPath(strWin32UserFolder);
   CSpecialProtocol::SetHomePath(strWin32UserFolder);
   CSpecialProtocol::SetMasterProfilePath(URIUtils::AddFileToFolder(strWin32UserFolder, "userdata"));
   CSpecialProtocol::SetTempPath(URIUtils::AddFileToFolder(strWin32UserFolder,"cache"));
@@ -1075,6 +1060,7 @@ void CApplication::CreateUserDirs()
   CDirectory::Create("special://home/system");
   CDirectory::Create("special://masterprofile/");
   CDirectory::Create("special://temp/");
+  CDirectory::Create("special://logpath");
   CDirectory::Create("special://temp/temp"); // temp directory for python and dllGetTempPathA
 }
 
@@ -1223,11 +1209,6 @@ bool CApplication::Initialize()
 
   // reset our screensaver (starts timers etc.)
   ResetScreenSaver();
-
-#ifdef HAS_SDL_JOYSTICK
-  CInputManager::GetInstance().SetEnabledJoystick(CSettings::GetInstance().GetBool(CSettings::SETTING_INPUT_ENABLEJOYSTICK) &&
-                    CPeripheralImon::GetCountOfImonsConflictWithDInput() == 0 );
-#endif
 
   // if the user interfaces has been fully initialized let everyone know
   if (uiInitializationFinished)
@@ -1870,8 +1851,7 @@ void CApplication::Render()
 
   bool hasRendered = false;
   bool limitFrames = false;
-  unsigned int singleFrameTime = 10; // default limit 100 fps
-  bool vsync = true;
+  unsigned int singleFrameTime = 40; // default limit 25 fps
 
   // Whether externalplayer is playing and we're unfocused
   bool extPlayerActive = m_pPlayer->IsExternalPlaying() && !m_AppFocused;
@@ -1884,24 +1864,22 @@ void CApplication::Render()
     if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
     {
       m_bPresentFrame = m_pPlayer->HasFrame();
-      if (vsync_mode == VSYNC_DISABLED)
-        vsync = false;
     }
     else
     {
       // engage the frame limiter as needed
       limitFrames = lowfps || extPlayerActive;
-      // DXMERGE - we checked for g_videoConfig.GetVSyncMode() before this
-      //           perhaps allowing it to be set differently than the UI option??
+
+      // TODO:
+      // remove those useless modes, they don't do any good
       if (vsync_mode == VSYNC_DISABLED || vsync_mode == VSYNC_VIDEO)
       {
         limitFrames = true; // not using vsync.
-        vsync = false;
+        singleFrameTime = 10;
       }
-      else if ((g_infoManager.GetFPS() > g_graphicsContext.GetFPS() + 10) && g_infoManager.GetFPS() > 1000.0f / singleFrameTime)
+      else if ((g_infoManager.GetFPS() > g_graphicsContext.GetFPS() + 10) && g_infoManager.GetFPS() > 100)
       {
         limitFrames = true; // using vsync, but it isn't working.
-        vsync = false;
       }
 
       if (limitFrames)
@@ -1923,7 +1901,9 @@ void CApplication::Render()
   else if (vsync_mode == VSYNC_ALWAYS)
     g_Windowing.SetVSync(true);
   else if (vsync_mode != VSYNC_DRIVER)
+  {
     g_Windowing.SetVSync(false);
+  }
 
   if (m_bPresentFrame && m_pPlayer->IsPlaying() && !m_pPlayer->IsPaused())
     ResetScreenSaver();
@@ -1975,7 +1955,7 @@ void CApplication::Render()
     m_lastRenderTime = now;
   }
 
-  if (g_graphicsContext.IsFullScreenVideo())
+  if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
   {
     g_Windowing.FinishPipeline();
   }
@@ -1992,16 +1972,12 @@ void CApplication::Render()
   //fps limiter, make sure each frame lasts at least singleFrameTime milliseconds
   if (limitFrames || !(flip || m_bPresentFrame))
   {
-    if (!limitFrames)
-      singleFrameTime = 40; //if not flipping, loop at 25 fps
-
     unsigned int frameTime = now - m_lastFrameTime;
     if (frameTime < singleFrameTime)
       Sleep(singleFrameTime - frameTime);
   }
 
-  if (flip)
-    g_graphicsContext.Flip(dirtyRegions);
+  g_graphicsContext.Flip(flip);
 
   if (!extPlayerActive && g_graphicsContext.IsFullScreenVideo() && !m_pPlayer->IsPausedPlayback())
   {
@@ -2009,7 +1985,7 @@ void CApplication::Render()
   }
 
   m_lastFrameTime = XbmcThreads::SystemClockMillis();
-  CTimeUtils::UpdateFrameTime(flip, vsync);
+  CTimeUtils::UpdateFrameTime(flip);
 }
 
 void CApplication::SetStandAlone(bool value)
@@ -2143,13 +2119,6 @@ bool CApplication::OnAction(const CAction &action)
   if (action.GetID() == ACTION_SHOW_INFO)
   {
     g_infoManager.ToggleShowInfo();
-    return true;
-  }
-
-  // codec info : Shows the current song, video or picture codec information
-  if (action.GetID() == ACTION_SHOW_CODEC)
-  {
-    g_infoManager.ToggleShowCodec();
     return true;
   }
 
@@ -2323,6 +2292,8 @@ bool CApplication::OnAction(const CAction &action)
       {
         // calculate the speed based on the amount the button is held down
         int iPower = (int)(action.GetAmount() * MAX_FFWD_SPEED + 0.5f);
+        // amount can be negative, for example rewind and forward share the same axis
+        iPower = std::abs(iPower);
         // returns 0 -> MAX_FFWD_SPEED
         int iSpeed = 1 << iPower;
         if (iSpeed != 1 && action.GetID() == ACTION_ANALOG_REWIND)
@@ -2367,7 +2338,7 @@ bool CApplication::OnAction(const CAction &action)
       if (!player.empty())
       {
         item.m_lStartOffset = (int)(GetTime() * 75);
-        PlayFile(item, player, true);
+        PlayFile(std::move(item), player, true);
       }
     }
     else
@@ -2377,8 +2348,7 @@ bool CApplication::OnAction(const CAction &action)
       std::string player = CPlayerCoreFactory::GetInstance().SelectPlayerDialog(players);
       if (!player.empty())
       {
-        CFileItem item;
-        PlayFile(item, player, false);
+        PlayFile(CFileItem(), player, false);
       }
     }
   }
@@ -2389,6 +2359,7 @@ bool CApplication::OnAction(const CAction &action)
   if (action.GetID() == ACTION_MUTE)
   {
     ToggleMute();
+    ShowVolumeBar(&action);
     return true;
   }
 
@@ -2822,6 +2793,8 @@ bool CApplication::Cleanup()
   {
     g_windowManager.DestroyWindows();
 
+    m_binaryAddonCache.Deinit();
+
     CAddonMgr::GetInstance().DeInit();
 
     CLog::Log(LOGNOTICE, "closing down remote control service");
@@ -2922,7 +2895,7 @@ void CApplication::Stop(int exitCode)
 
     // stop scanning before we kill the network and so on
     if (m_musicInfoScanner->IsScanning())
-      m_musicInfoScanner->Stop();
+      m_musicInfoScanner->Stop(true);
 
     if (CVideoLibraryQueue::GetInstance().IsRunning())
       CVideoLibraryQueue::GetInstance().CancelAllJobs();
@@ -3233,11 +3206,11 @@ PlayBackRet CApplication::PlayStack(const CFileItem& item, bool bRestart)
   return PLAYBACK_FAIL;
 }
 
-PlayBackRet CApplication::PlayFile(const CFileItem& item, const std::string& player, bool bRestart)
+PlayBackRet CApplication::PlayFile(CFileItem item, const std::string& player, bool bRestart)
 {
   // Ensure the MIME type has been retrieved for http:// and shout:// streams
   if (item.GetMimeType().empty())
-    const_cast<CFileItem&>(item).FillInMimeType();
+    item.FillInMimeType();
 
   if (!bRestart)
   {
@@ -3286,7 +3259,7 @@ PlayBackRet CApplication::PlayFile(const CFileItem& item, const std::string& pla
   { // we modify the item so that it becomes a real URL
     CFileItem item_new(item);
     if (XFILE::CPluginDirectory::GetPluginResult(item.GetPath(), item_new))
-      return PlayFile(item_new, player, false);
+      return PlayFile(std::move(item_new), player, false);
     return PLAYBACK_FAIL;
   }
 
@@ -3303,7 +3276,7 @@ PlayBackRet CApplication::PlayFile(const CFileItem& item, const std::string& pla
   {
     CFileItem item_new(item);
     if (XFILE::CUPnPDirectory::GetResource(item.GetURL(), item_new))
-      return PlayFile(item_new, player, false);
+      return PlayFile(std::move(item_new), player, false);
     return PLAYBACK_FAIL;
   }
 #endif
@@ -3866,12 +3839,12 @@ void CApplication::LoadVideoSettings(const CFileItem& item)
   CVideoDatabase dbs;
   if (dbs.Open())
   {
-    CLog::Log(LOGDEBUG, "Loading settings for %s", item.GetPath().c_str());
-    
+    CLog::Log(LOGDEBUG, "Loading settings for %s", CURL::GetRedacted(item.GetPath()).c_str());
+
     // Load stored settings if they exist, otherwise use default
     if (!dbs.GetVideoSettings(item, CMediaSettings::GetInstance().GetCurrentVideoSettings()))
       CMediaSettings::GetInstance().GetCurrentVideoSettings() = CMediaSettings::GetInstance().GetDefaultVideoSettings();
-    
+
     dbs.Close();
   }
 }
@@ -4193,6 +4166,10 @@ bool CApplication::OnMessage(CGUIMessage& message)
       {
         // remove splash window
         g_windowManager.Delete(WINDOW_SPLASH);
+
+        // show the volumebar if the volume is muted
+        if (IsMuted() || GetVolume(false) <= VOLUME_MINIMUM)
+          ShowVolumeBar();
 
         if (m_fallbackLanguageLoaded)
           CGUIDialogOK::ShowAndGetInput(CVariant{24133}, CVariant{24134});

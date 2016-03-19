@@ -81,8 +81,8 @@ public:
   virtual bool IsConfigured() = 0;
   virtual int GetImage(YV12Image *image, int source = -1, bool readonly = false) = 0;
   virtual void ReleaseImage(int source, bool preserve = false) = 0;
-  virtual bool AddVideoPicture(DVDVideoPicture* picture, int index) { return false; }
   virtual void AddVideoPictureHW(DVDVideoPicture &picture, int index) {};
+  virtual bool IsPictureHW(DVDVideoPicture &picture) { return false; };
   virtual void FlipPage(int source) = 0;
   virtual void PreInit() = 0;
   virtual void UnInit() = 0;
@@ -98,6 +98,7 @@ public:
   virtual void RenderUpdate(bool clear, unsigned int flags = 0, unsigned int alpha = 255) = 0;
   virtual bool RenderCapture(CRenderCapture* capture) = 0;
   virtual EINTERLACEMETHOD AutoInterlaceMethod() = 0;
+  virtual bool HandlesRenderFormat(ERenderFormat format) { return format == m_format; };
 
   // Feature support
   virtual bool SupportsMultiPassRendering() = 0;
@@ -105,8 +106,6 @@ public:
   virtual bool Supports(EDEINTERLACEMODE mode) = 0;
   virtual bool Supports(EINTERLACEMETHOD method) = 0;
   virtual bool Supports(ESCALINGMETHOD method) = 0;
-
-  ERenderFormat GetRenderFormat() { return m_format; }
 
   void SetViewMode(int viewMode);
 

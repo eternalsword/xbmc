@@ -29,8 +29,10 @@
 #include "threads/CriticalSection.h"
 #include "settings/VideoSettings.h"
 #include "OverlayRenderer.h"
+#include "DebugRenderer.h"
 #include <deque>
 #include <map>
+#include <atomic>
 #include "PlatformDefs.h"
 #include "threads/Event.h"
 #include "DVDClock.h"
@@ -49,17 +51,25 @@ class CMMALRenderer;
 class CLinuxRenderer;
 class CLinuxRendererGL;
 class CLinuxRendererGLES;
+class CRenderManager;
+
+class IRenderMsg
+{
+  friend CRenderManager;
+protected:
+  virtual void VideoParamsChange() = 0;
+  virtual void GetDebugInfo(std::string &audio, std::string &video, std::string &general) = 0;
+};
 
 class CRenderManager
 {
 public:
-  CRenderManager(CDVDClock &clock);
+  CRenderManager(CDVDClock &clock, IRenderMsg *player);
   ~CRenderManager();
 
   // Functions called from render thread
   void GetVideoRect(CRect &source, CRect &dest, CRect &view);
   float GetAspectRatio();
-  void Update();
   void FrameMove();
   void FrameFinish();
   void FrameWait(int ms);
@@ -75,6 +85,7 @@ public:
   void UnInit();
   bool Flush();
   bool IsConfigured() const;
+  void ToggleDebug();
 
   unsigned int AllocRenderCapture();
   void ReleaseRenderCapture(unsigned int captureId);
@@ -91,7 +102,6 @@ public:
   static float GetMaximumFPS();
   double GetDisplayLatency() { return m_displayLatency; }
   int GetSkippedFrames()  { return m_QueueSkip; }
-  std::string GetVSyncState();
 
   // Functions called from mplayer
   /**
@@ -120,7 +130,7 @@ public:
    * @param source depreciated
    * @param sync signals frame, top, or bottom field
    */
-  void FlipPage(volatile bool& bStop, double timestamp = 0.0, double pts = 0.0, int source = -1, EFIELDSYNC sync = FS_NONE);
+  void FlipPage(volatile std::atomic_bool& bStop, double timestamp = 0.0, double pts = 0.0, int source = -1, EFIELDSYNC sync = FS_NONE);
 
   void AddOverlay(CDVDOverlay* o, double pts);
 
@@ -135,7 +145,7 @@ public:
    * If no buffering is requested in Configure, player does not need to call this,
    * because FlipPage will block.
    */
-  int WaitForBuffer(volatile bool& bStop, int timeout = 100);
+  int WaitForBuffer(volatile std::atomic_bool& bStop, int timeout = 100);
 
   /**
    * Can be called by player for lateness detection. This is done best by
@@ -162,11 +172,12 @@ protected:
   bool Configure();
   void CreateRenderer();
   void DeleteRenderer();
-
   void ManageCaptures();
+  std::string GetVSyncState();
 
   CBaseRenderer *m_pRenderer;
   OVERLAY::CRenderer m_overlays;
+  CDebugRenderer m_debugRenderer;
   CCriticalSection m_statelock;
   CCriticalSection m_presentlock;
   CCriticalSection m_datalock;
@@ -175,6 +186,9 @@ protected:
   int m_waitForBufferCount;
   int m_rendermethod;
   bool m_renderedOverlay;
+  bool m_renderDebug;
+  XbmcThreads::EndTime m_debugTimer;
+
 
   enum EPRESENTSTEP
   {
@@ -240,6 +254,7 @@ protected:
   CEvent m_flushEvent;
   double m_clock_framefinish;
   CDVDClock &m_dvdClock;
+  IRenderMsg *m_playerPort;
 
   void RenderCapture(CRenderCapture* capture);
   void RemoveCaptures();

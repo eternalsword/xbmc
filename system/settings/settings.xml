@@ -5,7 +5,7 @@
       <group id="1">
         <setting id="lookandfeel.skin" type="addon" label="166" help="36103">
           <level>0</level>
-          <default>skin.confluence</default>
+          <default>skin.estuary</default>
           <constraints>
             <addontype>xbmc.gui.skin</addontype>
           </constraints>
@@ -2298,6 +2298,7 @@
       </group>
     </category>
     <category id="smb" label="1200" help="36346">
+      <requirement>HAS_FILESYSTEM_SMB</requirement>
       <group id="1">
         <setting id="smb.winsserver" type="string" label="1207" help="36347">
           <level>2</level>
@@ -2599,7 +2600,7 @@
             </dependency>
           </dependencies>
         </setting>
-        <setting id="audiooutput.dspresetdb" type="action" label="334" help="36439">
+        <setting id="audiooutput.dspresetdb" type="action" label="14082" help="36439">
           <level>1</level>
           <control type="button" format="action" />
           <dependencies>
@@ -2753,11 +2754,12 @@
           <control type="toggle" />
           <default>true</default>
         </setting>
-        <setting id="input.enablejoystick" type="boolean" label="35100" help="36378">
-          <requirement>HAS_SDL_JOYSTICK</requirement>
+        <setting id="input.controllerconfig" type="action" label="35063" help="35064">
           <level>0</level>
-          <default>true</default>
-          <control type="toggle" />
+          <dependencies>
+            <dependency type="enable" on="property" name="SupportsPeripheralControllers" />
+          </dependencies>
+          <control type="button" format="action" />
         </setting>
       </group>
     </category>
@@ -2913,6 +2915,11 @@
           <dependencies>
             <dependency type="enable" setting="general.addonupdates">0</dependency>
           </dependencies>
+        </setting>
+        <setting id="addons.unknownsources" type="boolean" label="36615" help="36616">
+          <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
         </setting>
       </group>
       <group id="2">

@@ -100,6 +100,7 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "Files.Download",                               CFileOperations::Download },
 
 // Music Library
+  { "AudioLibrary.GetProperties",                   CAudioLibrary::GetProperties },
   { "AudioLibrary.GetArtists",                      CAudioLibrary::GetArtists },
   { "AudioLibrary.GetArtistDetails",                CAudioLibrary::GetArtistDetails },
   { "AudioLibrary.GetAlbums",                       CAudioLibrary::GetAlbums },
@@ -111,6 +112,7 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "AudioLibrary.GetRecentlyPlayedAlbums",         CAudioLibrary::GetRecentlyPlayedAlbums },
   { "AudioLibrary.GetRecentlyPlayedSongs",          CAudioLibrary::GetRecentlyPlayedSongs },
   { "AudioLibrary.GetGenres",                       CAudioLibrary::GetGenres },
+  { "AudioLibrary.GetContributorRoles",             CAudioLibrary::GetContributorRoles },
   { "AudioLibrary.SetArtistDetails",                CAudioLibrary::SetArtistDetails },
   { "AudioLibrary.SetAlbumDetails",                 CAudioLibrary::SetAlbumDetails },
   { "AudioLibrary.SetSongDetails",                  CAudioLibrary::SetSongDetails },
@@ -180,6 +182,9 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "PVR.GetTimerDetails",                          CPVROperations::GetTimerDetails },
   { "PVR.GetRecordings",                            CPVROperations::GetRecordings },
   { "PVR.GetRecordingDetails",                      CPVROperations::GetRecordingDetails },
+  { "PVR.AddTimer",                                 CPVROperations::AddTimer },
+  { "PVR.DeleteTimer",                              CPVROperations::DeleteTimer },
+  { "PVR.ToggleTimer",                              CPVROperations::ToggleTimer },
   { "PVR.Record",                                   CPVROperations::Record },
   { "PVR.Scan",                                     CPVROperations::Scan },
 
