@@ -63,9 +63,6 @@ std::map<std::string, std::string> CSpecialProtocol::m_pathMap;
   XCURL::DllLibCurlGlobal g_curlInterface;
   CPartyModeManager     g_partyModeManager;
 
-#ifdef HAS_PYTHON
-  XBPython           g_pythonParser;
-#endif
   CAlarmClock        g_alarmClock;
   PLAYLIST::CPlayListPlayer g_playlistPlayer;
 
@@ -73,9 +70,6 @@ std::map<std::string, std::string> CSpecialProtocol::m_pathMap;
   CRBP               g_RBP;
 #endif
 
-#ifdef HAS_FILESYSTEM_RAR
-  CRarManager g_RarManager;
-#endif
   CZipManager g_ZipManager;
 
   CDataCacheCore g_dataCacheCore;

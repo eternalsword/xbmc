@@ -20,21 +20,27 @@
 #include "utils/StringUtils.h"
 #include "utils/log.h"
 #include "cores/VideoPlayer/DVDDemuxers/DVDDemux.h"
+#include "threads/SingleLock.h"
 #include "utils/RegExp.h"
 #include "utils/URIUtils.h"
 
 namespace ADDON
 {
 
+std::map<std::string, CInputStream::Config> CInputStream::m_configMap;
+CCriticalSection CInputStream::m_parentSection;
+
 std::unique_ptr<CInputStream> CInputStream::FromExtension(AddonProps props, const cp_extension_t* ext)
 {
   std::string listitemprops = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@listitemprops");
   std::string extensions = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "@extension");
   std::string name(ext->plugin->identifier);
-  return std::unique_ptr<CInputStream>(new CInputStream(std::move(props),
-                                                        std::move(name),
-                                                        std::move(listitemprops),
-                                                        std::move(extensions)));
+  std::unique_ptr<CInputStream> istr(new CInputStream(std::move(props),
+                                                      std::move(name),
+                                                      std::move(listitemprops),
+                                                      std::move(extensions)));
+  istr->CheckConfig();
+  return istr;
 }
 
 CInputStream::CInputStream(AddonProps props, std::string name, std::string listitemprops, std::string extensions)
@@ -54,49 +60,116 @@ CInputStream::CInputStream(AddonProps props, std::string name, std::string listi
   }
 }
 
-bool CInputStream::Supports(CFileItem &fileitem)
+void CInputStream::SaveSettings()
 {
-  std::string extension = URIUtils::GetExtension(fileitem.GetPath());
-  bool match = false;
-  for (auto &ext : m_extensionsList)
+  CAddon::SaveSettings();
+  if (!m_bIsChild)
+    UpdateConfig();
+}
+
+void CInputStream::CheckConfig()
+{
+  bool hasConfig = false;
+
   {
-    if (ext == extension)
-    {
-      match = true;
-      break;
-    }
+    CSingleLock lock(m_parentSection);
+    auto it = m_configMap.find(ID());
+    hasConfig = it != m_configMap.end();
   }
-  if (!match)
-    return false;
 
-  if (!m_pStruct)
-    return true;
+  if (!m_bIsChild && !hasConfig)
+    UpdateConfig();
+}
 
+void CInputStream::UpdateConfig()
+{
   std::string pathList;
-  try
+  ADDON_STATUS status = Create();
+
+  if (status != ADDON_STATUS_PERMANENT_FAILURE)
   {
-    pathList = m_pStruct->GetPathList();
-  }
-  catch (std::exception &e)
-  {
-    CLog::Log(LOGERROR, "CInputStream::Supports - could not get a list of paths. Reason: %s", e.what());
-    return false;
+    try
+    {
+      pathList = m_pStruct->GetPathList();
+    }
+    catch (std::exception &e)
+    {
+      CLog::Log(LOGERROR, "CInputStream::Supports - could not get a list of paths. Reason: %s", e.what());
+    }
+    Destroy();
   }
 
-  m_pathList = StringUtils::Tokenize(pathList, "|");
-  for (auto &path : m_pathList)
+  Config config;
+  config.m_pathList = StringUtils::Tokenize(pathList, "|");
+  for (auto &path : config.m_pathList)
   {
     StringUtils::Trim(path);
   }
 
-  match = false;
-  for (auto &path : m_pathList)
+  CSingleLock lock(m_parentSection);
+  auto it = m_configMap.find(ID());
+  if (it == m_configMap.end())
+    config.m_parentBusy = false;
+  else
+    config.m_parentBusy = it->second.m_parentBusy;
+
+  config.m_ready = true;
+  if (status == ADDON_STATUS_PERMANENT_FAILURE)
+    config.m_ready = false;
+
+  m_configMap[ID()] = config;
+}
+
+bool CInputStream::UseParent()
+{
+  CSingleLock lock(m_parentSection);
+
+  auto it = m_configMap.find(ID());
+  if (it == m_configMap.end())
+    return false;
+  if (it->second.m_parentBusy)
+    return false;
+
+  it->second.m_parentBusy = true;
+  return true;
+}
+
+bool CInputStream::Supports(const CFileItem &fileitem)
+{
+  {
+    CSingleLock lock(m_parentSection);
+
+    auto it = m_configMap.find(ID());
+    if (it == m_configMap.end())
+      return false;
+    if (!it->second.m_ready)
+      return false;
+  }
+
+  // check if a specific inputstream addon is requested
+  CVariant addon = fileitem.GetProperty("inputstreamaddon");
+  if (!addon.isNull())
+  {
+    if (addon.asString() != ID())
+      return false;
+    else
+      return true;
+  }
+
+  // check paths
+  CSingleLock lock(m_parentSection);
+  auto it = m_configMap.find(ID());
+  if (it == m_configMap.end())
+    return false;
+
+  bool match = false;
+  for (auto &path : it->second.m_pathList)
   {
     if (path.empty())
       continue;
 
     CRegExp r(true, CRegExp::asciiOnly, path.c_str());
-    if (r.RegFind(path.c_str()) == 0 && r.GetFindLen() > 5)
+    if (r.RegFind(fileitem.GetPath().c_str()) == 0 && r.GetFindLen() > 5)
     {
       match = true;
       break;
@@ -108,21 +181,28 @@ bool CInputStream::Supports(CFileItem &fileitem)
 bool CInputStream::Open(CFileItem &fileitem)
 {
   INPUTSTREAM props;
-  props.m_nCountInfoValues = 0;
-  std::vector<std::string> values;
+  std::map<std::string, std::string> propsMap;
   for (auto &key : m_fileItemProps)
   {
     if (fileitem.GetProperty(key).isNull())
       continue;
-    props.m_ListItemProperties[props.m_nCountInfoValues].m_strKey = key.c_str();
-    values.push_back(fileitem.GetProperty(key).asString());
-    props.m_ListItemProperties[props.m_nCountInfoValues].m_strValue = values.back().c_str();
+    propsMap[key] = fileitem.GetProperty(key).asString();
+  }
+
+  props.m_nCountInfoValues = 0;
+  for (auto &pair : propsMap)
+  {
+    props.m_ListItemProperties[props.m_nCountInfoValues].m_strKey = pair.first.c_str();
+    props.m_ListItemProperties[props.m_nCountInfoValues].m_strValue = pair.second.c_str();
     props.m_nCountInfoValues++;
   }
+
   props.m_strURL = fileitem.GetPath().c_str();
   
   std::string libFolder = URIUtils::GetDirectory(m_parentLib);
+  std::string profileFolder = CSpecialProtocol::TranslatePath(Profile());
   props.m_libFolder = libFolder.c_str();
+  props.m_profileFolder = profileFolder.c_str();
 
   bool ret = false;
   try
@@ -150,6 +230,14 @@ void CInputStream::Close()
   catch (std::exception &e)
   {
     CLog::Log(LOGERROR, "CInputStream::Close - could not close stream. Reason: %s", e.what());
+  }
+
+  if (!m_bIsChild)
+  {
+    CSingleLock lock(m_parentSection);
+    auto it = m_configMap.find(ID());
+    if (it != m_configMap.end())
+      it->second.m_parentBusy = false;
   }
 }
 
@@ -521,6 +609,18 @@ bool CInputStream::IsRealTimeStream()
     CLog::Log(LOGERROR, "CInputStream::IsRealTimeStream - error. Reason: %s", e.what());
   }
   return ret;
+}
+
+void CInputStream::SetVideoResolution(int width, int height)
+{
+  try
+  {
+    m_pStruct->SetVideoResolution(width, height);
+  }
+  catch (std::exception &e)
+  {
+    CLog::Log(LOGERROR, "CInputStream::SetVideoResolution - error. Reason: %s", e.what());
+  }
 }
 
 } /*namespace ADDON*/

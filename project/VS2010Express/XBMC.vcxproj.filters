@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="win32">
@@ -966,9 +966,6 @@
     <ClCompile Include="..\..\xbmc\guilib\GUIButtonControl.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\guilib\GUICheckMarkControl.cpp">
-      <Filter>guilib</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\GUIColorManager.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
@@ -1044,9 +1041,6 @@
     <ClCompile Include="..\..\xbmc\guilib\GUIMultiImage.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\guilib\GUIMultiSelectText.cpp">
-      <Filter>guilib</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\GUIPanelContainer.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
@@ -1066,9 +1060,6 @@
       <Filter>guilib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\GUIScrollBarControl.cpp">
-      <Filter>guilib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\guilib\GUISelectButtonControl.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\GUISettingsSliderControl.cpp">
@@ -1647,9 +1638,6 @@
     <ClCompile Include="..\..\xbmc\filesystem\PVRDirectory.cpp">
       <Filter>filesystem</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\filesystem\PVRFile.cpp">
-      <Filter>filesystem</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\utils\Observer.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -1724,9 +1712,6 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\pvr\channels\PVRRadioRDSInfoTag.cpp">
       <Filter>pvr\channels</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\pvr\addons\PVRClient.cpp">
-      <Filter>pvr\addons</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\dialogs\GUIDialogExtendedProgressBar.cpp">
       <Filter>dialogs</Filter>
@@ -2095,9 +2080,6 @@
       <Filter>filesystem</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\filesystem\FileCache.cpp">
-      <Filter>filesystem</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\filesystem\MemBufferCache.cpp">
       <Filter>filesystem</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\MediaSource.cpp">
@@ -2608,9 +2590,6 @@
     <ClCompile Include="..\..\xbmc\interfaces\json-rpc\PVROperations.cpp">
       <Filter>interfaces\json-rpc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\filesystem\HTTPFile.cpp">
-      <Filter>filesystem</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\utils\GroupUtils.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -2622,9 +2601,6 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\interfaces\python\PyContext.cpp">
       <Filter>interfaces\python</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\video\FFmpegVideoDecoder.cpp">
-      <Filter>video</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\view\GUIViewControl.cpp">
       <Filter>view</Filter>
@@ -2857,6 +2833,11 @@
     <ClCompile Include="..\..\xbmc\cores\FFmpeg.cpp">
       <Filter>cores</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPRequestHandlerUtils.cpp">
+      <Filter>network\httprequesthandler</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="..\..\xbmc\media\MediaType.cpp">
       <Filter>media</Filter>
     </ClCompile>
@@ -3466,6 +3447,17 @@
     <ClCompile Include="..\..\xbmc\addons\BinaryAddonCache.cpp">
       <Filter>addons</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\ServiceBroker.cpp" />
+    <ClCompile Include="..\..\xbmc\ServiceManager.cpp" />
+    <ClCompile Include="..\..\xbmc\addons\PVRClient.cpp">
+      <Filter>addons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\epg\GUIEPGGridContainerModel.cpp">
+      <Filter>epg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\dialogs\GUIDialogKeyboardTouch.cpp">
+      <Filter>dialogs</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\xbmc\win32\pch.h">
@@ -3551,9 +3543,6 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\cores\VideoPlayer\DVDCodecs\Audio\DVDAudioCodecFFmpeg.h">
       <Filter>cores\VideoPlayer\DVDCodecs\Audio</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\cores\VideoPlayer\DVDCodecs\Video\DllLibMpeg2.h">
-      <Filter>cores\VideoPlayer\DVDCodecs\Video</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\cores\VideoPlayer\DVDCodecs\Video\DVDVideoCodec.h">
       <Filter>cores\VideoPlayer\DVDCodecs\Video</Filter>
@@ -4079,9 +4068,6 @@
     <ClInclude Include="..\..\xbmc\guilib\GUICallback.h">
       <Filter>guilib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\guilib\GUICheckMarkControl.h">
-      <Filter>guilib</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\GUIColorManager.h">
       <Filter>guilib</Filter>
     </ClInclude>
@@ -4157,9 +4143,6 @@
     <ClInclude Include="..\..\xbmc\guilib\GUIMultiImage.h">
       <Filter>guilib</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\guilib\GUIMultiSelectText.h">
-      <Filter>guilib</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\GUIPanelContainer.h">
       <Filter>guilib</Filter>
     </ClInclude>
@@ -4179,9 +4162,6 @@
       <Filter>guilib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\GUIScrollBarControl.h">
-      <Filter>guilib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\guilib\GUISelectButtonControl.h">
       <Filter>guilib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\GUISettingsSliderControl.h">
@@ -4835,9 +4815,6 @@
     <ClInclude Include="..\..\xbmc\epg\EpgInfoTag.h">
       <Filter>epg</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\filesystem\PVRFile.h">
-      <Filter>filesystem</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\filesystem\PVRDirectory.h">
       <Filter>filesystem</Filter>
     </ClInclude>
@@ -4918,9 +4895,6 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\pvr\channels\PVRRadioRDSInfoTag.h">
       <Filter>pvr\channels</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\pvr\addons\PVRClient.h">
-      <Filter>pvr\addons</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\dialogs\GUIDialogExtendedProgressBar.h">
       <Filter>dialogs</Filter>
@@ -5132,9 +5106,6 @@
     <ClInclude Include="..\..\xbmc\filesystem\IFileDirectory.h">
       <Filter>filesystem</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\filesystem\ILiveTV.h">
-      <Filter>filesystem</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\filesystem\iso9660.h">
       <Filter>filesystem</Filter>
     </ClInclude>
@@ -5254,9 +5225,6 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\platform\XbmcContext.h">
       <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\filesystem\MemBufferCache.h">
-      <Filter>filesystem</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\filesystem\CircularCache.h">
       <Filter>filesystem</Filter>
@@ -5710,9 +5678,6 @@
     <ClInclude Include="..\..\xbmc\interfaces\json-rpc\PVROperations.h">
       <Filter>interfaces\json-rpc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\filesystem\HTTPFile.h">
-      <Filter>filesystem</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\utils\GroupUtils.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -5727,9 +5692,6 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\imagefactory.h">
       <Filter>guilib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\video\FFmpegVideoDecoder.h">
-      <Filter>video</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\view\GUIViewControl.h">
       <Filter>view</Filter>
@@ -6736,6 +6698,20 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\music\ContextMenus.h">
       <Filter>music</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\ServiceBroker.h" />
+    <ClInclude Include="..\..\xbmc\ServiceManager.h" />
+    <ClInclude Include="..\..\xbmc\addons\PVRClient.h">
+      <Filter>addons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\epg\GUIEPGGridContainerModel.h">
+      <Filter>epg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\dialogs\GUIDialogKeyboardTouch.h">
+      <Filter>dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPRequestHandlerUtils.h">
+      <Filter>network\httprequesthandler</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -207,7 +207,7 @@ case $host in
       4.* | 4.*.*)
         platform_cc=llvm-gcc-4.2
         platform_cxx=llvm-g++-4.2
-        ;; 
+        ;;
       *)
         platform_cc=clang
         platform_cxx=clang++
@@ -254,7 +254,7 @@ case $host in
             AC_MSG_ERROR(error in configure of --with-sdk=$use_sdk)
         esac
         sdk_name=macosx$use_sdk
-        platform_min_version="macosx-version-min=10.7"
+        platform_min_version="macosx-version-min=10.8"
 
         use_sdk_path=[`$use_xcodebuild -version -sdk $sdk_name Path`]
         platform_os="osx"
@@ -456,7 +456,7 @@ if test "$platform_os" == "android"; then
     AC_MSG_ERROR("NDK path is required for android")
   fi
 
-  if ! test -f "$use_ndk/RELEASE.TXT" ; then
+  if ([! test -f "$use_ndk/source.properties"] && [! test -f "$use_ndk/RELEASE.TXT"]) ; then
     AC_MSG_ERROR("$use_ndk is not an NDK directory")
   fi
 

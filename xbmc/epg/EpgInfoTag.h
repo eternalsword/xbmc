@@ -321,9 +321,9 @@ namespace EPG
 
     /*!
      * @brief Set a timer for this event.
-     * @param iTimerId The id of the new timer.
+     * @param timer The timer.
      */
-    void SetTimer(unsigned int iTimerId);
+    void SetTimer(const PVR::CPVRTimerInfoTagPtr &timer);
 
     /*!
      * @brief Clear the timer for this event.
@@ -408,9 +408,9 @@ namespace EPG
     bool Update(const CEpgInfoTag &tag, bool bUpdateBroadcastId = true);
 
     /*!
-     * @brief status function to extract IsSeries boolean from EPG iFlags bitfield
+     * @return True if this tag has any series attributes, false otherwise
      */
-    bool IsSeries() const { return (m_iFlags & EPG_TAG_FLAG_IS_SERIES) > 0; }
+    bool IsSeries() const;
 
   private:
 

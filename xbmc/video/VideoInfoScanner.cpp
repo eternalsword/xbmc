@@ -139,7 +139,11 @@ namespace VIDEO
          * occurs.
          */
         std::string directory = *m_pathsToScan.begin();
-        if (!CDirectory::Exists(directory))
+        if (m_bStop)
+        {
+          bCancelled = true;
+        }
+        else if (!CDirectory::Exists(directory))
         {
           /*
            * Note that this will skip clean (if m_bClean is enabled) if the directory really
@@ -1574,7 +1578,7 @@ namespace VIDEO
           std::string loweredTitle(file->strTitle);
           StringUtils::ToLower(loweredTitle);
           int index = StringUtils::FindBestMatch(loweredTitle, titles, matchscore);
-          if (matchscore >= minscore)
+          if (index >= 0 && matchscore >= minscore)
           {
             guide = candidates->begin() + index;
             bFound = true;

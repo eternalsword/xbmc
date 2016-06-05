@@ -496,8 +496,8 @@ void CGUIDialogVideoInfo::DoSearch(std::string& strSearch, CFileItemList& items)
   for (int i = 0; i < movies.Size(); ++i)
   {
     std::string label = movies[i]->GetVideoInfoTag()->m_strTitle;
-    if (movies[i]->GetVideoInfoTag()->m_iYear > 0)
-      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->m_iYear);
+    if (movies[i]->GetVideoInfoTag()->HasYear())
+      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->GetYear());
     movies[i]->SetLabel(label);
   }
   CGUIWindowVideoBase::AppendAndClearSearchItems(movies, "[" + g_localizeStrings.Get(20338) + "] ", items);
@@ -506,8 +506,8 @@ void CGUIDialogVideoInfo::DoSearch(std::string& strSearch, CFileItemList& items)
   for (int i = 0; i < movies.Size(); ++i)
   {
     std::string label = movies[i]->GetVideoInfoTag()->m_strShowTitle;
-    if (movies[i]->GetVideoInfoTag()->m_iYear > 0)
-      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->m_iYear);
+    if (movies[i]->GetVideoInfoTag()->HasYear())
+      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->GetYear());
     movies[i]->SetLabel(label);
   }
   CGUIWindowVideoBase::AppendAndClearSearchItems(movies, "[" + g_localizeStrings.Get(20364) + "] ", items);
@@ -524,8 +524,8 @@ void CGUIDialogVideoInfo::DoSearch(std::string& strSearch, CFileItemList& items)
   for (int i = 0; i < movies.Size(); ++i)
   {
     std::string label = StringUtils::Join(movies[i]->GetVideoInfoTag()->m_artist, g_advancedSettings.m_videoItemSeparator) + " - " + movies[i]->GetVideoInfoTag()->m_strTitle;
-    if (movies[i]->GetVideoInfoTag()->m_iYear > 0)
-      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->m_iYear);
+    if (movies[i]->GetVideoInfoTag()->HasYear())
+      label += StringUtils::Format(" (%i)", movies[i]->GetVideoInfoTag()->GetYear());
     movies[i]->SetLabel(label);
   }
   CGUIWindowVideoBase::AppendAndClearSearchItems(movies, "[" + g_localizeStrings.Get(20391) + "] ", items);
@@ -636,7 +636,7 @@ std::string CGUIDialogVideoInfo::ChooseArtType(const CFileItem &videoItem, std::
   for (std::vector<std::string>::const_iterator i = artTypes.begin(); i != artTypes.end(); ++i)
   {
     std::string type = *i;
-    CFileItemPtr item(new CFileItem(type, "false"));
+    CFileItemPtr item(new CFileItem(type, false));
     if (type == "banner")
       item->SetLabel(g_localizeStrings.Get(20020));
     else if (type == "fanart")
@@ -1038,7 +1038,7 @@ int CGUIDialogVideoInfo::ManageVideoItem(const CFileItemPtr &item)
   //temporary workaround until the context menu ids are removed
   const int addonItemOffset = 10000;
   auto addonItems = CContextMenuManager::GetInstance().GetAddonItems(*item, CContextMenuManager::MANAGE);
-  for (int i = 0; i < addonItems.size(); ++i)
+  for (size_t i = 0; i < addonItems.size(); ++i)
     buttons.Add(addonItemOffset + i, addonItems[i]->GetLabel(*item));
 
   bool result = false;
@@ -2031,4 +2031,14 @@ bool CGUIDialogVideoInfo::OnGetFanart(const CFileItemPtr &videoItem)
   CUtil::DeleteVideoDatabaseDirectoryCache();
 
   return true;
+}
+
+void CGUIDialogVideoInfo::ShowFor(const CFileItem& item)
+{
+  auto window = static_cast<CGUIWindowVideoNav*>(g_windowManager.GetWindow(WINDOW_VIDEO_NAV));
+  if (window)
+  {
+    ADDON::ScraperPtr info;
+    window->OnItemInfo(item, info);
+  }
 }

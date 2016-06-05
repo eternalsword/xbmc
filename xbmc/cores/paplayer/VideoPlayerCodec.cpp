@@ -69,8 +69,10 @@ void VideoPlayerCodec::SetContentType(const std::string &strContent)
   StringUtils::ToLower(m_strContentType);
 }
 
-bool VideoPlayerCodec::Init(const std::string &strFile, unsigned int filecache)
+bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
 {
+  const std::string &strFile = file.GetPath();
+
   // take precaution if Init()ialized earlier
   if (m_bInited)
   {
@@ -90,8 +92,9 @@ bool VideoPlayerCodec::Init(const std::string &strFile, unsigned int filecache)
   if (urlFile.IsProtocol("shout") )
     strFileToOpen.replace(0, 8, "http://");
 
-  CFileItem fileitem(urlFile, false);
+  CFileItem fileitem(file);
   fileitem.SetMimeType(m_strContentType);
+  fileitem.SetMimeTypeForInternetFile();
   m_pInputStream = CDVDFactoryInputStream::CreateInputStream(NULL, fileitem);
   if (!m_pInputStream)
   {
@@ -213,7 +216,7 @@ bool VideoPlayerCodec::Init(const std::string &strFile, unsigned int filecache)
   m_bCanSeek = false;
   if (m_pInputStream->Seek(0, SEEK_POSSIBLE))
   {
-    if (Seek(1) != DVD_NOPTS_VALUE)
+    if (Seek(1))
     {
       // rewind stream to beginning
       Seek(0);
@@ -319,7 +322,7 @@ void VideoPlayerCodec::DeInit()
   m_bInited = false;
 }
 
-int64_t VideoPlayerCodec::Seek(int64_t iSeekTime)
+bool VideoPlayerCodec::Seek(int64_t iSeekTime)
 {
   // default to announce backwards seek if !m_pPacket to not make FFmpeg
   // skip mpeg audio frames at playback start
@@ -337,10 +340,7 @@ int64_t VideoPlayerCodec::Seek(int64_t iSeekTime)
 
   m_nDecodedLen = 0;
 
-  if (!ret)
-    return DVD_NOPTS_VALUE;
-
-  return iSeekTime;
+  return ret;
 }
 
 int VideoPlayerCodec::ReadPCM(BYTE *pBuffer, int size, int *actualsize)

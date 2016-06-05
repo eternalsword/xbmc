@@ -26,10 +26,12 @@
 #include "GUIPassword.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
+#include "view/GUIViewState.h"
 #include "dialogs/GUIDialogOK.h"
 #include "PartyModeManager.h"
 #include "music/MusicDatabase.h"
 #include "guilib/GUIWindowManager.h"
+#include "dialogs/GUIDialogMediaSource.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "filesystem/Directory.h"
 #include "FileItem.h"
@@ -93,7 +95,7 @@ bool CGUIWindowVideoNav::OnAction(const CAction &action)
     if (pItem->IsParentFolder())
       return false;
 
-    if (pItem && pItem->HasAddonInfo())
+    if (pItem && pItem->HasVideoInfoTag())
     {
       CVideoLibraryQueue::GetInstance().MarkAsWatched(pItem, pItem->GetVideoInfoTag()->m_playCount == 0);
       return true;
@@ -739,22 +741,22 @@ void CGUIWindowVideoNav::PlayItem(int iItem)
   CGUIWindowVideoBase::PlayItem(iItem);
 }
 
-void CGUIWindowVideoNav::OnItemInfo(CFileItem* pItem, ADDON::ScraperPtr& scraper)
+void CGUIWindowVideoNav::OnItemInfo(const CFileItem& fileItem, ADDON::ScraperPtr& scraper)
 {
   if (!scraper || scraper->Content() == CONTENT_NONE)
   {
     m_database.Open(); // since we can be called from the music library without being inited
-    if (pItem->IsVideoDb())
-      scraper = m_database.GetScraperForPath(pItem->GetVideoInfoTag()->m_strPath);
+    if (fileItem.IsVideoDb())
+      scraper = m_database.GetScraperForPath(fileItem.GetVideoInfoTag()->m_strPath);
     else
     {
       std::string strPath,strFile;
-      URIUtils::Split(pItem->GetPath(),strPath,strFile);
+      URIUtils::Split(fileItem.GetPath(),strPath,strFile);
       scraper = m_database.GetScraperForPath(strPath);
     }
     m_database.Close();
   }
-  CGUIWindowVideoBase::OnItemInfo(pItem,scraper);
+  CGUIWindowVideoBase::OnItemInfo(fileItem, scraper);
 }
 
 void CGUIWindowVideoNav::OnDeleteItem(CFileItemPtr pItem)
@@ -833,9 +835,6 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
 
   CGUIWindowVideoBase::GetContextButtons(itemNumber, buttons);
 
-  if (item && item->GetProperty("pluginreplacecontextitems").asBoolean())
-    return;
-
   CVideoDatabaseDirectory dir;
   NODE_TYPE node = dir.GetDirectoryChildType(m_vecItems->GetPath());
 
@@ -847,9 +846,6 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
   {
     // get the usual shares
     CGUIDialogContextMenu::GetContextButtons("video", item, buttons);
-    // add scan button somewhere here
-    if (g_application.IsVideoScanning())
-      buttons.Add(CONTEXT_BUTTON_STOP_SCANNING, 13353);  // Stop Scanning
     if (!item->IsDVD() && item->GetPath() != "add" && !item->IsParentFolder() &&
         (CProfilesManager::GetInstance().GetCurrentProfile().canWriteDatabases() || g_passwordManager.bMasterUser))
     {
@@ -924,9 +920,6 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
         }
         if (node == NODE_TYPE_TITLE_TVSHOWS)
         {
-          if (g_application.IsVideoScanning())
-            buttons.Add(CONTEXT_BUTTON_STOP_SCANNING, 13353);
-
           buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
         }
 
@@ -1053,6 +1046,11 @@ bool CGUIWindowVideoNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
 
   }
   return CGUIWindowVideoBase::OnContextButton(itemNumber, button);
+}
+
+bool CGUIWindowVideoNav::OnAddMediaSource()
+{
+  return CGUIDialogMediaSource::ShowAndAddMediaSource("video");
 }
 
 bool CGUIWindowVideoNav::OnClick(int iItem, const std::string &player)

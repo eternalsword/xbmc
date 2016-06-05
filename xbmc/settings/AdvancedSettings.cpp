@@ -28,6 +28,7 @@
 #include "addons/AudioDecoder.h"
 #include "addons/IAddon.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "LangInfo.h"
@@ -279,6 +280,7 @@ void CAdvancedSettings::Initialize()
   m_strMusicLibraryAlbumFormat = "";
   m_prioritiseAPEv2tags = false;
   m_musicItemSeparator = " / ";
+  m_musicArtistSeparators = { ";", ":", "|", " feat. ", " ft. " };
   m_videoItemSeparator = " / ";
   m_iMusicLibraryDateAdded = 1; // prefer mtime over ctime and current time
 
@@ -354,11 +356,12 @@ void CAdvancedSettings::Initialize()
   m_bPVRAutoScanIconsUserSet       = false;
   m_iPVRNumericChannelSwitchTimeout = 1000;
 
-  m_cacheMemBufferSize = 1024 * 1024 * 20;
-  m_networkBufferMode = 0; // Default (buffer all internet streams/filesystems)
+  m_cacheMemSize = 1024 * 1024 * 20;
+  m_cacheBufferMode = CACHE_BUFFER_MODE_INTERNET; // Default (buffer all internet streams/filesystems)
   // the following setting determines the readRate of a player data
   // as multiply of the default data read rate
-  m_readBufferFactor = 4.0f;
+  m_cacheReadFactor = 4.0f;
+
   m_addonPackageFolderSize = 200;
 
   m_jsonOutputCompact = true;
@@ -373,7 +376,6 @@ void CAdvancedSettings::Initialize()
 #endif
   m_guiVisualizeDirtyRegions = false;
   m_guiAlgorithmDirtyRegions = 3;
-  m_guiDirtyRegionNoFlipTimeout = 0;
   m_airTunesPort = 36666;
   m_airPlayPort = 36667;
 
@@ -393,6 +395,8 @@ void CAdvancedSettings::Initialize()
   m_stereoscopicregex_3d = "[-. _]3d[-. _]";
   m_stereoscopicregex_sbs = "[-. _]h?sbs[-. _]";
   m_stereoscopicregex_tab = "[-. _]h?tab[-. _]";
+
+  m_useDisplayControlHWStereo = false;
 
   m_videoAssFixedWorks = false;
 
@@ -643,6 +647,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     XMLUtils::GetBoolean(pElement,"forcedxvarenderer", m_DXVAForceProcessorRenderer);
     XMLUtils::GetBoolean(pElement,"dxvanodeintforprogressive", m_DXVANoDeintProcForProgressive);
     XMLUtils::GetBoolean(pElement, "dxvaallowhqscaling", m_DXVAAllowHqScaling);
+    XMLUtils::GetBoolean(pElement, "usedisplaycontrolhwstereo", m_useDisplayControlHWStereo);
     //0 = disable fps detect, 1 = only detect on timestamps with uniform spacing, 2 detect on all timestamps
     XMLUtils::GetInt(pElement, "fpsdetect", m_videoFpsDetect, 0, 2);
 
@@ -698,6 +703,19 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     XMLUtils::GetString(pElement, "albumformat", m_strMusicLibraryAlbumFormat);
     XMLUtils::GetString(pElement, "itemseparator", m_musicItemSeparator);
     XMLUtils::GetInt(pElement, "dateadded", m_iMusicLibraryDateAdded);
+    //Music artist name separators
+    TiXmlElement* separators = pElement->FirstChildElement("artistseparators");
+    if (separators)
+    {
+      m_musicArtistSeparators.clear();
+      TiXmlNode* separator = separators->FirstChild("separator");
+      while (separator)
+      {
+        if (separator->FirstChild())
+          m_musicArtistSeparators.push_back(separator->FirstChild()->ValueStr());
+        separator = separator->NextSibling("separator");
+      }
+    }
   }
 
   pElement = pRootElement->FirstChildElement("videolibrary");
@@ -741,9 +759,14 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     XMLUtils::GetInt(pElement, "curllowspeedtime", m_curllowspeedtime, 1, 1000);
     XMLUtils::GetInt(pElement, "curlretries", m_curlretries, 0, 10);
     XMLUtils::GetBoolean(pElement,"disableipv6", m_curlDisableIPV6);
-    XMLUtils::GetUInt(pElement, "cachemembuffersize", m_cacheMemBufferSize);
-    XMLUtils::GetUInt(pElement, "buffermode", m_networkBufferMode, 0, 3);
-    XMLUtils::GetFloat(pElement, "readbufferfactor", m_readBufferFactor);
+  }
+
+  pElement = pRootElement->FirstChildElement("cache");
+  if (pElement)
+  {
+    XMLUtils::GetUInt(pElement, "memorysize", m_cacheMemSize);
+    XMLUtils::GetUInt(pElement, "buffermode", m_cacheBufferMode, 0, 4);
+    XMLUtils::GetFloat(pElement, "readfactor", m_cacheReadFactor);
   }
 
   pElement = pRootElement->FirstChildElement("jsonrpc");
@@ -1115,7 +1138,6 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   {
     XMLUtils::GetBoolean(pElement, "visualizedirtyregions", m_guiVisualizeDirtyRegions);
     XMLUtils::GetInt(pElement, "algorithmdirtyregions",     m_guiAlgorithmDirtyRegions);
-    XMLUtils::GetInt(pElement, "nofliptimeout",             m_guiDirtyRegionNoFlipTimeout);
   }
 
   std::string seekSteps;
@@ -1327,6 +1349,9 @@ void CAdvancedSettings::SettingOptionsLoggingComponentsFiller(const CSetting *se
 #ifdef HAS_JSONRPC
   list.push_back(std::make_pair(g_localizeStrings.Get(675), LOGJSONRPC));
 #endif
+#ifdef HAS_WEB_SERVER
+  list.push_back(std::make_pair(g_localizeStrings.Get(681), LOGWEBSERVER));
+#endif
 #ifdef HAS_AIRTUNES
   list.push_back(std::make_pair(g_localizeStrings.Get(677), LOGAIRTUNES));
 #endif
@@ -1355,7 +1380,8 @@ std::string CAdvancedSettings::GetMusicExtensions() const
   std::string result(m_musicExtensions);
 
   VECADDONS codecs;
-  g_application.m_binaryAddonCache.GetAddons(codecs, ADDON_AUDIODECODER);
+  CBinaryAddonCache &addonCache = CServiceBroker::GetBinaryAddonCache();
+  addonCache.GetAddons(codecs, ADDON_AUDIODECODER);
   for (size_t i=0;i<codecs.size();++i)
   {
     std::shared_ptr<CAudioDecoder> dec(std::static_pointer_cast<CAudioDecoder>(codecs[i]));

@@ -26,7 +26,7 @@ msgstr "IP"
 
 msgctxt "#31004"
 msgid "Caps[CR]Lock"
-msgstr "Caps[CR]Lock"
+msgstr "Büyük Harf[CR]Kilidi"
 
 msgctxt "#31005"
 msgid "Visualization Options"
@@ -38,11 +38,15 @@ msgstr "Görsel Öğe Önayarları"
 
 msgctxt "#31007"
 msgid "Context Menu"
-msgstr "Kabuk Menü"
+msgstr "İçerik Menüsü"
 
 msgctxt "#31009"
 msgid "Working..."
 msgstr "Çalışıyor..."
+
+msgctxt "#31011"
+msgid "Recent"
+msgstr "En Son"
 
 msgctxt "#31013"
 msgid "Movies"
@@ -50,7 +54,7 @@ msgstr "Filmler"
 
 msgctxt "#31014"
 msgid "Episodes"
-msgstr "Bölüm"
+msgstr "Bölümler"
 
 msgctxt "#31016"
 msgid "Albums"
@@ -67,6 +71,10 @@ msgstr "Bilgi Listesi"
 msgctxt "#31038"
 msgid "Login"
 msgstr "Giriş"
+
+msgctxt "#31039"
+msgid "Updated:"
+msgstr "Güncellendi"
 
 msgctxt "#31044"
 msgid "FAST FORWARD"
@@ -152,6 +160,10 @@ msgctxt "#31356"
 msgid "Download Subtitles"
 msgstr "Altyazıları İndir"
 
+msgctxt "#31358"
+msgid "Teletext"
+msgstr "Teleteks"
+
 msgctxt "#31390"
 msgid "Skin default"
 msgstr "Dış görünüm varsayılanı"
@@ -164,25 +176,9 @@ msgctxt "#31400"
 msgid "Change the skin · Set language and region · Change file listing options · Set up a screensaver"
 msgstr "Dış görünümü değiştir · Bölge ve dili ayarla · Dosya listeleme ayarlarını değiştir · Bir ekran koruyucu ayarla"
 
-msgctxt "#31401"
-msgid "Manage your video library · Set video playback options · Change video listing options · Set subtitle fonts"
-msgstr "Video kitaplığınızı yönetin · Video oynatma seçeneklerini belirle · Video listeleme seçeneklerini değiştir · Altyazı yazı tiplerini belirle"
-
-msgctxt "#31403"
-msgid "Set picture listing options · Configure slideshows"
-msgstr "Fotoğraf listeleme seçeneklerini belirle · Slayt gösterilerini yapılandır"
-
-msgctxt "#31404"
-msgid "Set three cities to collect weather information"
-msgstr "Hava durumu bilgisi almak için üç şehir seçin"
-
-msgctxt "#31405"
-msgid "Setup control of Kodi via UPnP and HTTP · Configure file sharing · Set internet access options"
-msgstr "UPnP ve HTTP üzerinden Kodi kontrolü ayarları · Dosya paylaşımını yapılandır · İnternet erişimi seçeneklerini ayarla"
-
-msgctxt "#31406"
-msgid "Setup and calibrate displays · Configure audio output · Setup remote controls · Set power saving options · Enable debugging · Setup master lock"
-msgstr "Ekranları kur ve kalibre et · Ses çıkışını yapılandır · Uzaktan yönetimi kur · Güç tasarruf seçeneklerini belirle · Hata ayıklamayı etkinleştir · Yönetici kilidini kur"
+msgctxt "#31407"
+msgid "Manage your installed add-ons · Browse for and install add-ons from kodi.tv · Modify add-on settings"
+msgstr "Yüklü eklentilerinizi yönetin · kodi.tv sitesindeki uygulamalara gözatın ve yükleyin · Eklenti ayarlarını değiştirin"
 
 msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
@@ -190,11 +186,11 @@ msgstr "Oturum açıp devam etmek için[CR]Kodi kullanıcı profilinizi seçin"
 
 msgctxt "#31500"
 msgid "Home Menu Catagory Buttons"
-msgstr "Ev Menüsü Kategori Butonları"
+msgstr "Ana Menü Kategori Düğmeleri"
 
 msgctxt "#31501"
 msgid "Home Page Add-on Quick Links"
-msgstr "Anasayfa Eklenti Hızlı Bağlantılar"
+msgstr "Giriş Sayfası Hızlı Eklenti Bağlantıları"
 
 msgctxt "#31502"
 msgid "Miscellaneous Options"
@@ -210,15 +206,15 @@ msgstr "Eklenti Kısayolu"
 
 msgctxt "#31552"
 msgid "SYNC"
-msgstr "EŞİTLEME"
+msgstr "SYNC"
 
 msgctxt "#31553"
 msgid "Use Custom Background"
-msgstr "Özel Arkaplan Kullan"
+msgstr "Özel Arka Plan Kullan"
 
 msgctxt "#31554"
 msgid "Background:"
-msgstr "Arkaplan:"
+msgstr "Arka plan:"
 
 msgctxt "#31555"
 msgid "Configure TV settings · Change full screen info · Manage EPG data settings"
@@ -230,11 +226,11 @@ msgstr "Canlı TV"
 
 msgctxt "#31557"
 msgid "Hide video background"
-msgstr "Video arkaplanı gizle"
+msgstr "Arka plan videoyu gizle"
 
 msgctxt "#31558"
 msgid "Hide visualization background"
-msgstr "Görselleştirme arkaplanını gizle"
+msgstr "Arka plan görselleştirmesini gizle"
 
 msgctxt "#31559"
 msgid "Channel settings"
@@ -255,3 +251,31 @@ msgstr "Grubu Yeniden Adlandır"
 msgctxt "#31563"
 msgid "Delete Group"
 msgstr "Grubu Sil"
+
+msgctxt "#31564"
+msgid "Show hidden"
+msgstr "Gizlileri göster"
+
+msgctxt "#31565"
+msgid "Show deleted"
+msgstr "Silinenleri göster"
+
+msgctxt "#31900"
+msgid "First Run"
+msgstr "İlk Çalıştırma"
+
+msgctxt "#31901"
+msgid "There are two things to know about navigating Estouchy"
+msgstr "Estouchy'de gezinme hakkında bilmeniz gereken iki şey vardır."
+
+msgctxt "#31902"
+msgid "The Kodi logo functions as a 'HOME' button. Whenever you touch it, you will be taken back to the home screen."
+msgstr "Kodi logosu 'Giriş Sayfası' düğmesi olarak işlev görür. Logoya dokunduğunuz zaman giriş ekranına geri gidersiniz."
+
+msgctxt "#31903"
+msgid "When you are playing audio or video, the item title will appear at the top of the screen. Touching it will take you to the fullscreen visualization or video window."
+msgstr "Ses veya video oynatılırken, oynatılan öğenin başlığı ekranın üst kısmında görünür. Buna dokunmak sizi tam ekran görsel öğeye veya video penceresine götürecektir."
+
+msgctxt "#31904"
+msgid "Now Playing Title..."
+msgstr "Şimdi Oynatılan Öğenin Başlığı..."

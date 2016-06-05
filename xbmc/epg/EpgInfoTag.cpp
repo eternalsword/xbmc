@@ -713,9 +713,9 @@ const int CEpgInfoTag::EpgID(void) const
   return m_epg ? m_epg->EpgID() : -1;
 }
 
-void CEpgInfoTag::SetTimer(unsigned int iTimerId)
+void CEpgInfoTag::SetTimer(const CPVRTimerInfoTagPtr &timer)
 {
-  m_timer = g_PVRTimers->GetById(iTimerId);
+  m_timer = timer;
 }
 
 void CEpgInfoTag::ClearTimer(void)
@@ -756,4 +756,13 @@ CPVRRecordingPtr CEpgInfoTag::Recording(void) const
 void CEpgInfoTag::SetEpg(CEpg *epg)
 {
   m_epg = epg;
+}
+
+bool CEpgInfoTag::IsSeries(void) const
+{
+  CSingleLock lock(m_critSection);
+  if ((m_iFlags & EPG_TAG_FLAG_IS_SERIES) > 0 || SeriesNumber() > 0 || EpisodeNumber() > 0 || EpisodePart() > 0)
+    return true;
+  else
+    return false;
 }

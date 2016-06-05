@@ -80,7 +80,7 @@ struct SOmxPlayerState
   bool bOmxWaitAudio;             // whether we need to wait for audio to play out on EOS
   bool bOmxSentEOFs;              // flag if we've send EOFs to audio/video players
   float threshold;                // current fifo threshold required to come out of buffering
-  double last_check_time;         // we periodically check for gpu underrun
+  unsigned int last_check_time;   // we periodically check for gpu underrun
   double stamp;                   // last media timestamp
 };
 
@@ -145,6 +145,7 @@ public:
   void Clear()
   {
     id = -1;
+    demuxerId = -1;
     source = STREAM_SOURCE_NONE;
     dts = DVD_NOPTS_VALUE;
     dur = DVD_NOPTS_VALUE;
@@ -314,14 +315,11 @@ public:
   virtual bool SwitchChannel(const PVR::CPVRChannelPtr &channel);
 
   virtual void FrameMove();
-  virtual void FrameWait(int ms);
   virtual bool HasFrame();
   virtual void Render(bool clear, uint32_t alpha = 255, bool gui = true);
-  virtual void AfterRender();
   virtual void FlushRenderer();
   virtual void SetRenderViewMode(int mode);
   float GetRenderAspectRatio();
-  virtual RESOLUTION GetRenderResolution();
   virtual void TriggerUpdateResolution();
   virtual bool IsRenderingVideo();
   virtual bool IsRenderingGuiLayer();
@@ -526,6 +524,7 @@ protected:
   CEvent m_ready;
 
   CEdl m_Edl;
+  bool m_SkipCommercials;
 
   struct SEdlAutoSkipMarkers {
 

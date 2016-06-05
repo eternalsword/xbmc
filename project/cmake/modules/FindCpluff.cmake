@@ -11,9 +11,8 @@ if(NOT WIN32)
   get_filename_component(expat_dir ${EXPAT_LIBRARY} PATH)
   set(ldflags "-L${expat_dir}")
   ExternalProject_Add(libcpluff SOURCE_DIR ${CORE_SOURCE_DIR}/lib/cpluff
+                      BUILD_IN_SOURCE 1
                       PREFIX ${CORE_BUILD_DIR}/cpluff
-                      PATCH_COMMAND rm -f config.status
-                      UPDATE_COMMAND PATH=${NATIVEPREFIX}/bin:$ENV{PATH} autoreconf -vif
                       CONFIGURE_COMMAND CC=${CMAKE_C_COMPILER} ${CORE_SOURCE_DIR}/lib/cpluff/configure
                                         --disable-nls
                                         --enable-static
@@ -24,6 +23,13 @@ if(NOT WIN32)
                                         CFLAGS=${defines}
                                         LDFLAGS=${ldflags}
                       BUILD_COMMAND make V=1)
+  ExternalProject_Add_Step(libcpluff autoreconf
+                                     DEPENDEES download update patch
+                                     DEPENDERS configure
+                                     COMMAND rm -f config.status
+                                     COMMAND PATH=${NATIVEPREFIX}/bin:$ENV{PATH} autoreconf -vif
+                                     WORKING_DIRECTORY <SOURCE_DIR>)
+
   set(ldflags "${ldflags};-lexpat")
   core_link_library(${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/cpluff/lib/libcpluff.a
                     system/libcpluff libcpluff extras "${ldflags}")
@@ -34,11 +40,11 @@ else()
                       CONFIGURE_COMMAND ""
                       # TODO: Building the project directly from lib/cpluff/libcpluff/win32/cpluff.vcxproj
                       #       fails becaue it imports XBMC.defaults.props
-                      BUILD_COMMAND devenv /build ${CORE_BUILD_CONFIG}
-                                           ${CORE_SOURCE_DIR}/project/VS2010Express/XBMC\ for\ Windows.sln
-                                           /project cpluff
+                      BUILD_COMMAND msbuild ${CORE_SOURCE_DIR}/project/VS2010Express/XBMC\ for\ Windows.sln
+                                            /t:cpluff /p:Configuration=${CORE_BUILD_CONFIG}
                       INSTALL_COMMAND "")
-  # TODO: core_link_library
+  copy_file_to_buildtree(${CORE_SOURCE_DIR}/system/cpluff.dll ${CORE_SOURCE_DIR})
+  add_dependencies(export-files libcpluff)
 endif()
 
 set(CPLUFF_INCLUDE_DIRS ${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/cpluff/include)

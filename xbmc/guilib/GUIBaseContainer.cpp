@@ -19,7 +19,6 @@
  */
 
 #include "GUIBaseContainer.h"
-#include "ContextMenuManager.h"
 #include "utils/CharsetConverter.h"
 #include "GUIInfoManager.h"
 #include "utils/TimeUtils.h"
@@ -353,17 +352,24 @@ bool CGUIBaseContainer::OnAction(const CAction &action)
     if (m_listProvider)
     {
       int selected = GetSelectedItem();
-      if (selected >= 0 && selected < m_items.size())
+      if (selected >= 0 && selected < static_cast<int>(m_items.size()))
       {
-        CFileItemPtr fileItem = std::dynamic_pointer_cast<CFileItem>(m_items[selected]);
-        if (fileItem)
-          CONTEXTMENU::ShowFor(fileItem);
+        m_listProvider->OnContextMenu(m_items[selected]);
         return true;
       }
     }
     break;
   case ACTION_SHOW_INFO:
-    if (OnInfo())
+    if (m_listProvider)
+    {
+      int selected = GetSelectedItem();
+      if (selected >= 0 && selected < static_cast<int>(m_items.size()))
+      {
+        m_listProvider->OnInfo(m_items[selected]);
+        return true;
+      }
+    }
+    else if (OnInfo())
       return true;
     else if (action.GetID())
       return OnClick(action.GetID());
@@ -1094,17 +1100,15 @@ void CGUIBaseContainer::LoadLayout(TiXmlElement *layout)
   TiXmlElement *itemElement = layout->FirstChildElement("itemlayout");
   while (itemElement)
   { // we have a new item layout
-    CGUIListItemLayout itemLayout;
-    itemLayout.LoadLayout(itemElement, GetParentID(), false);
-    m_layouts.push_back(itemLayout);
+    m_layouts.emplace_back();
+    m_layouts.back().LoadLayout(itemElement, GetParentID(), false);
     itemElement = itemElement->NextSiblingElement("itemlayout");
   }
   itemElement = layout->FirstChildElement("focusedlayout");
   while (itemElement)
   { // we have a new item layout
-    CGUIListItemLayout itemLayout;
-    itemLayout.LoadLayout(itemElement, GetParentID(), true);
-    m_focusedLayouts.push_back(itemLayout);
+    m_focusedLayouts.emplace_back();
+    m_focusedLayouts.back().LoadLayout(itemElement, GetParentID(), true);
     itemElement = itemElement->NextSiblingElement("focusedlayout");
   }
 }
@@ -1200,28 +1204,28 @@ bool CGUIBaseContainer::GetCondition(int condition, int data) const
 void CGUIBaseContainer::GetCurrentLayouts()
 {
   m_layout = NULL;
-  for (unsigned int i = 0; i < m_layouts.size(); i++)
+  for (auto &layout : m_layouts)
   {
-    if (m_layouts[i].CheckCondition())
+    if (layout.CheckCondition())
     {
-      m_layout = &m_layouts[i];
+      m_layout = &layout;
       break;
     }
   }
-  if (!m_layout && m_layouts.size())
-    m_layout = &m_layouts[0];  // failsafe
+  if (!m_layout && !m_layouts.empty())
+    m_layout = &m_layouts.front(); // failsafe
 
   m_focusedLayout = NULL;
-  for (unsigned int i = 0; i < m_focusedLayouts.size(); i++)
+  for (auto &layout : m_focusedLayouts)
   {
-    if (m_focusedLayouts[i].CheckCondition())
+    if (layout.CheckCondition())
     {
-      m_focusedLayout = &m_focusedLayouts[i];
+      m_focusedLayout = &layout;
       break;
     }
   }
-  if (!m_focusedLayout && m_focusedLayouts.size())
-    m_focusedLayout = &m_focusedLayouts[0];  // failsafe
+  if (!m_focusedLayout && !m_focusedLayouts.empty())
+    m_focusedLayout = &m_focusedLayouts.front(); // failsafe
 }
 
 bool CGUIBaseContainer::HasNextPage() const

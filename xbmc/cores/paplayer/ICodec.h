@@ -31,6 +31,8 @@
 #define READ_SUCCESS   0
 #define READ_ERROR     1
 
+class CFileItem;
+
 class ICodec
 {
 public:
@@ -53,7 +55,7 @@ public:
   // 2.  If it's using a filereader, initialize it with the appropriate cache size.
   // 3.  Load the file (or at least attempt to load it)
   // 4.  Fill in the m_TotalTime, m_SampleRate, m_BitsPerSample and m_Channels parameters.
-  virtual bool Init(const std::string &strFile, unsigned int filecache)=0;
+  virtual bool Init(const CFileItem &file, unsigned int filecache)=0;
 
   // DeInit()
   // Should just cleanup anything as necessary.  No need to free buffers here if they
@@ -66,7 +68,7 @@ public:
   // Should seek to the appropriate time (in ms) in the file, and return the
   // time to which we managed to seek (in the case where seeking is problematic)
   // This is used in FFwd/Rewd so can be called very often.
-  virtual int64_t Seek(int64_t iSeekTime)=0;
+  virtual bool Seek(int64_t iSeekTime)=0;
 
   // ReadPCM()
   // Decodes audio into pBuffer up to size bytes.  The actual amount of returned data

@@ -52,7 +52,7 @@ public:
     }
     if (m_context)
     {
-      avcodec_close(m_context);
+      avcodec_free_context(&m_context);
       m_context = nullptr;
     }
   }
@@ -399,7 +399,7 @@ void CDVDDemuxClient::RequestStreams()
 
       if (!source)
       {
-        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid audio stream with id %d", stream->uniqueId);
+        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid video stream with id %d", stream->uniqueId);
         DisposeStreams();
         return;
       }
@@ -416,8 +416,8 @@ void CDVDDemuxClient::RequestStreams()
           streamVideo->m_parser->flags |= PARSER_FLAG_COMPLETE_FRAMES;
       }
 
-      streamVideo->iFpsScale       = source->irFpsScale;
-      streamVideo->iFpsRate        = source->irFpsRate;
+      streamVideo->iFpsScale       = source->iFpsScale;
+      streamVideo->iFpsRate        = source->iFpsRate;
       streamVideo->iHeight         = source->iHeight;
       streamVideo->iWidth          = source->iWidth;
       streamVideo->fAspect         = source->fAspect;
@@ -440,7 +440,7 @@ void CDVDDemuxClient::RequestStreams()
 
       if (!source)
       {
-        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid audio stream with id %d", stream->uniqueId);
+        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid subtitle stream with id %d", stream->uniqueId);
         DisposeStreams();
         return;
       }
@@ -472,7 +472,7 @@ void CDVDDemuxClient::RequestStreams()
 
       if (!source)
       {
-        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid audio stream with id %d", stream->uniqueId);
+        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid teletext stream with id %d", stream->uniqueId);
         DisposeStreams();
         return;
       }
@@ -494,7 +494,7 @@ void CDVDDemuxClient::RequestStreams()
 
       if (!source)
       {
-        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid audio stream with id %d", stream->uniqueId);
+        CLog::Log(LOGERROR, "CDVDDemuxClient::RequestStreams - invalid radio-rds stream with id %d", stream->uniqueId);
         DisposeStreams();
         return;
       }
@@ -615,5 +615,13 @@ void CDVDDemuxClient::EnableStreamAtPTS(int id, uint64_t pts)
   if (m_IDemux)
   {
     m_IDemux->EnableStreamAtPTS(id, pts);
+  }
+}
+
+void CDVDDemuxClient::SetVideoResolution(int width, int height)
+{
+  if (m_IDemux)
+  {
+    m_IDemux->SetVideoResolution(width, height);
   }
 }

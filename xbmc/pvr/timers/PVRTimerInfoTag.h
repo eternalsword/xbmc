@@ -97,22 +97,30 @@ namespace PVR
 
     bool SetDuration(int iDuration);
 
-    static CPVRTimerInfoTagPtr CreateFromEpg(const EPG::CEpgInfoTagPtr &tag, bool bRepeating = false);
+    static const int DEFAULT_PVRRECORD_INSTANTRECORDTIME = -1;
 
     /*!
-     * @return Return corresponding epg info tag, NULL otherwise
+     * @brief create a tag for an instant timer for a given channel
+     * @param channel is the channel the instant timer is to be created for
+     * @param iDuration is the duration for the instant timer, DEFAULT_PVRRECORD_INSTANTRECORDTIME denotes system default (setting value)
+     * @return the timer or null if timer could not be created
      */
-    EPG::CEpgInfoTagPtr GetEpgInfoTag(void) const;
+    static CPVRTimerInfoTagPtr CreateInstantTimerTag(const CPVRChannelPtr &channel, int iDuration = DEFAULT_PVRRECORD_INSTANTRECORDTIME);
 
     /*!
-     * @return True if this timer has a corresponding epg info tag, false otherwise
+     * @brief create a timer or timer rule for the given epg info tag.
+     * @param tag the epg info tag
+     * @param bCreateRule if true, create a timer rule, create a one shot timer otherwise
+     * @return the timer or null if timer could not be created
      */
-    bool HasEpgInfoTag() const;
+    static CPVRTimerInfoTagPtr CreateFromEpg(const EPG::CEpgInfoTagPtr &tag, bool bCreateRule = false);
 
     /*!
-     * @return True if this timer has corresponding epg info tag with series attributes, false otherwise
+     * @brief get the epg info tag associated with this timer, if any
+     * @param bCreate if true, try to find the epg tag if not yet set (lazy evaluation)
+     * @return the epg info tag associated with this timer or null if there is no tag
      */
-    bool HasSeriesEpgInfoTag() const;
+    EPG::CEpgInfoTagPtr GetEpgInfoTag(bool bCreate = true) const;
 
     int ChannelNumber(void) const;
     std::string ChannelName(void) const;
@@ -283,7 +291,7 @@ namespace PVR
 
   private:
     std::string GetWeekdaysString() const;
-    EPG::CEpgInfoTagPtr GetEpgInfoTag(bool bSetTimer) const;
+    void UpdateEpgInfoTag(void);
 
     CCriticalSection      m_critSection;
     unsigned int          m_iEpgUid;   /*!< id of epg event associated with this timer, EPG_TAG_INVALID_UID if none. */
