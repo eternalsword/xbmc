@@ -633,8 +633,8 @@ void CGUIWindowManager::PreviousWindow()
   // check to see whether our current window has a <previouswindow> tag
   if (pCurrentWindow->GetPreviousWindow() != WINDOW_INVALID)
   {
-    // TODO: we may need to test here for the
-    //       whether our history should be changed
+    //! @todo we may need to test here for the
+    //!       whether our history should be changed
 
     // don't reactivate the previouswindow if it is ourselves.
     if (currentWindow != pCurrentWindow->GetPreviousWindow())
@@ -764,10 +764,14 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const std::vector
   if (!pNewWindow)
   { // nothing to see here - move along
     CLog::Log(LOGERROR, "Unable to locate window with id %d.  Check skin files", iWindowID - WINDOW_HOME);
+    if (GetActiveWindowID() == WINDOW_STARTUP_ANIM)
+      ActivateWindow(WINDOW_HOME);
     return ;
   }
   else if (!pNewWindow->CanBeActivated())
   {
+    if (GetActiveWindowID() == WINDOW_STARTUP_ANIM)
+      ActivateWindow(WINDOW_HOME);
     return;
   }
   else if (pNewWindow->IsDialog())
