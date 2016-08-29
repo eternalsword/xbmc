@@ -319,11 +319,20 @@ bool CRenderManager::Configure()
     m_renderState = STATE_CONFIGURED;
 
     CLog::Log(LOGDEBUG, "CRenderManager::Configure - %d", m_QueueSize);
+
+    std::list<EINTERLACEMETHOD> deintmethods;
+    for (int deint = EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE; deint != EINTERLACEMETHOD::VS_INTERLACEMETHOD_MAX; deint++)
+    {
+      if (m_pRenderer->Supports((EINTERLACEMETHOD)deint))
+        deintmethods.push_back((EINTERLACEMETHOD)deint);
+    }
+    m_playerPort->UpdateDeinterlacingMethods(deintmethods);
   }
   else
     m_renderState = STATE_UNCONFIGURED;
 
   m_stateEvent.Set();
+  m_playerPort->VideoParamsChange();
   return result;
 }
 
@@ -796,17 +805,16 @@ void CRenderManager::FlipPage(volatile std::atomic_bool& bStop, double pts /* = 
 
   EPRESENTMETHOD presentmethod;
 
-  EDEINTERLACEMODE deinterlacemode = CMediaSettings::GetInstance().GetCurrentVideoSettings().m_DeinterlaceMode;
   EINTERLACEMETHOD interlacemethod = AutoInterlaceMethodInternal(CMediaSettings::GetInstance().GetCurrentVideoSettings().m_InterlaceMethod);
 
-  if (deinterlacemode == VS_DEINTERLACEMODE_OFF)
+  if (interlacemethod == VS_INTERLACEMETHOD_NONE)
   {
     presentmethod = PRESENT_METHOD_SINGLE;
     sync = FS_NONE;
   }
   else
   {
-    if (deinterlacemode == VS_DEINTERLACEMODE_AUTO && sync == FS_NONE)
+    if (sync == FS_NONE)
       presentmethod = PRESENT_METHOD_SINGLE;
     else
     {
@@ -827,17 +835,16 @@ void CRenderManager::FlipPage(volatile std::atomic_bool& bStop, double pts /* = 
         presentmethod = PRESENT_METHOD_BOB;
         invert = true;
       }
-      else if (interlacemethod == VS_INTERLACEMETHOD_IMX_FASTMOTION_DOUBLE)
-        presentmethod = PRESENT_METHOD_BOB;
       else
-        presentmethod = PRESENT_METHOD_SINGLE;
+      {
+        if (!m_pRenderer->WantsDoublePass())
+          presentmethod = PRESENT_METHOD_SINGLE;
+        else
+          presentmethod = PRESENT_METHOD_BOB;
+      }
 
       if (presentmethod != PRESENT_METHOD_SINGLE)
       {
-        /* default to odd field if we want to deinterlace and don't know better */
-        if (deinterlacemode == VS_DEINTERLACEMODE_FORCE && sync == FS_NONE)
-          sync = FS_TOP;
-
         /* invert present field */
         if (invert)
         {
@@ -935,10 +942,10 @@ void CRenderManager::Render(bool clear, DWORD flags, DWORD alpha, bool gui)
       vsync = StringUtils::Format("VSyncOff: %.1f  ", m_clockSync.m_syncOffset / 1000);
       if (m_dvdClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
       {
-        vsync += StringUtils::Format("VSync: refresh:%.3f missed:%i speed:%+.3f%%",
+        vsync += StringUtils::Format("VSync: refresh:%.3f missed:%i speed:%.3f%%",
                                      refreshrate,
                                      missedvblanks,
-                                     clockspeed - 100.0);
+                                     clockspeed * 100);
       }
 
       m_debugRenderer.SetInfo(audio, video, player, vsync);
@@ -1193,17 +1200,11 @@ bool CRenderManager::Supports(ERENDERFEATURE feature)
     return false;
 }
 
-bool CRenderManager::Supports(EDEINTERLACEMODE method)
-{
-  CSingleLock lock(m_statelock);
-  if (m_pRenderer)
-    return m_pRenderer->Supports(method);
-  else
-    return false;
-}
-
 bool CRenderManager::Supports(EINTERLACEMETHOD method)
 {
+  if (method == VS_INTERLACEMETHOD_NONE)
+    return true;
+  
   CSingleLock lock(m_statelock);
   if (m_pRenderer)
     return m_pRenderer->Supports(method);
@@ -1316,6 +1317,8 @@ void CRenderManager::PrepareNextRender()
   double renderPts = frameOnScreen + totalLatency;
 
   double nextFramePts = m_Queue[m_queued.front()].pts;
+  if (m_dvdClock.GetClockSpeed() < 0)
+    nextFramePts = renderPts;
 
   if (m_clockSync.m_enabled)
   {
@@ -1408,10 +1411,18 @@ void CRenderManager::CheckEnableClockSync()
 
   if (m_fps != 0)
   {
-    if (g_graphicsContext.GetFPS() >= m_fps)
-      diff = fmod(g_graphicsContext.GetFPS(), m_fps);
+    float fps = m_fps;
+    double refreshrate, clockspeed;
+    int missedvblanks;
+    if (m_dvdClock.GetClockInfo(missedvblanks, clockspeed, refreshrate))
+    {
+      fps *= clockspeed;
+    }
+
+    if (g_graphicsContext.GetFPS() >= fps)
+      diff = fmod(g_graphicsContext.GetFPS(), fps);
     else
-      diff = m_fps - g_graphicsContext.GetFPS();
+      diff = fps - g_graphicsContext.GetFPS();
   }
 
   if (diff < 0.01)
@@ -1421,6 +1432,8 @@ void CRenderManager::CheckEnableClockSync()
   else
   {
     m_clockSync.m_enabled = false;
-    m_dvdClock.SetSpeedAdjust(0);
+    m_dvdClock.SetVsyncAdjust(0);
   }
+
+  m_playerPort->UpdateClockSync(m_clockSync.m_enabled);
 }

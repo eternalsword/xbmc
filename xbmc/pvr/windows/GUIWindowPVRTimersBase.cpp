@@ -48,16 +48,17 @@ CGUIWindowPVRTimersBase::CGUIWindowPVRTimersBase(bool bRadio, int id, const std:
 void CGUIWindowPVRTimersBase::RegisterObservers(void)
 {
   CSingleLock lock(m_critSection);
-  g_PVRTimers->RegisterObserver(this);
+  g_PVRManager.RegisterObserver(this);
   g_infoManager.RegisterObserver(this);
+  CGUIWindowPVRBase::RegisterObservers();
 }
 
 void CGUIWindowPVRTimersBase::UnregisterObservers(void)
 {
   CSingleLock lock(m_critSection);
-  if (g_PVRTimers)
-    g_PVRTimers->UnregisterObserver(this);
+  CGUIWindowPVRBase::UnregisterObservers();
   g_infoManager.UnregisterObserver(this);
+  g_PVRManager.UnregisterObserver(this);
 }
 
 void CGUIWindowPVRTimersBase::GetContextButtons(int itemNumber, CContextButtons &buttons)
@@ -93,6 +94,8 @@ void CGUIWindowPVRTimersBase::GetContextButtons(int itemNumber, CContextButtons 
 
         if (timerType && !timerType->IsReadOnly() && timer->GetTimerRuleId() == PVR_TIMER_NO_PARENT)
           buttons.Add(CONTEXT_BUTTON_EDIT_TIMER, 21450);  /* Edit */
+        else
+          buttons.Add(CONTEXT_BUTTON_EDIT_TIMER, 19241);  /* View timer information */
 
         // As epg-based timers will get it's title from the epg tag, they should not be renamable.
         if (timer->IsManual() && !timerType->IsReadOnly())
@@ -146,11 +149,6 @@ bool CGUIWindowPVRTimersBase::OnContextButton(int itemNumber, CONTEXT_BUTTON but
       CGUIWindowPVRBase::OnContextButton(itemNumber, button);
 }
 
-bool CGUIWindowPVRTimersBase::Update(const std::string &strDirectory, bool updateFilterPath /* = true */)
-{
-  return CGUIWindowPVRBase::Update(strDirectory);
-}
-
 void CGUIWindowPVRTimersBase::UpdateButtons(void)
 {
   SET_CONTROL_SELECTED(GetID(), CONTROL_BTNHIDEDISABLEDTIMERS, CSettings::GetInstance().GetBool(CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS));
@@ -169,9 +167,6 @@ void CGUIWindowPVRTimersBase::UpdateButtons(void)
 
 bool CGUIWindowPVRTimersBase::OnMessage(CGUIMessage &message)
 {
-  if (!IsValidMessage(message))
-    return false;
-  
   bool bReturn = false;
   switch (message.GetMessage())
   {
@@ -371,12 +366,7 @@ bool CGUIWindowPVRTimersBase::ActionShowTimer(CFileItem *item)
   }
   else
   {
-    const CPVRTimerInfoTagPtr tag(item->GetPVRTimerInfoTag());
-    if (ShowTimerSettings(tag) && !tag->GetTimerType()->IsReadOnly())
-    {
-      /* Update timer on pvr backend */
-      bReturn = g_PVRTimers->UpdateTimer(tag);
-    }
+    bReturn = EditTimer(item);
   }
 
   return bReturn;

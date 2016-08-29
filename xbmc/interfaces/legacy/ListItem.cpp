@@ -147,6 +147,24 @@ namespace XBMCAddon
       }
     }
 
+    void ListItem::setUniqueIDs(const Properties& dictionary)
+    {
+      if (!item) return;
+
+      LOCKGUI;
+      CVideoInfoTag& vtag = *item->GetVideoInfoTag();
+      for (Properties::const_iterator it = dictionary.begin(); it != dictionary.end(); ++it)
+        vtag.SetUniqueID(it->second, it->first);
+    }
+
+    void ListItem::setRating(std::string type, float rating, int votes /* = 0 */, bool def /* = false */)
+    {
+      if (!item) return;
+
+      LOCKGUI;
+      item->GetVideoInfoTag()->SetRating(rating, votes, type, def);
+    }
+
     void ListItem::select(bool selected)
     {
       if (!item) return;
@@ -230,6 +248,23 @@ namespace XBMCAddon
       return item->GetArt(key);
     }
 
+    String ListItem::getUniqueID(const char* key)
+    {
+      LOCKGUI;
+      return item->GetVideoInfoTag()->GetUniqueID(key);
+    }
+
+    float ListItem::getRating(const char* key)
+    {
+      LOCKGUI;
+      return item->GetVideoInfoTag()->GetRating(key).rating;
+    }
+
+    int ListItem::getVotes(const char* key)
+    {
+      LOCKGUI;
+      return item->GetVideoInfoTag()->GetRating(key).votes;
+    }
 
     void ListItem::setPath(const String& path)
     {
@@ -398,7 +433,7 @@ namespace XBMCAddon
           else if (key == "set")
             item->GetVideoInfoTag()->m_strSet = value;
           else if (key == "imdbnumber")
-            item->GetVideoInfoTag()->m_strIMDBNumber = value;
+            item->GetVideoInfoTag()->SetUniqueID(value);
           else if (key == "code")
             item->GetVideoInfoTag()->m_strProductionCode = value;
           else if (key == "aired")

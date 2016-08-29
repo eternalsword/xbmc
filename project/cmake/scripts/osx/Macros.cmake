@@ -1,5 +1,5 @@
 function(core_link_library lib wraplib)
-  if(CMAKE_GENERATOR MATCHES "Unix Makefiles")
+  if(CMAKE_GENERATOR MATCHES "Unix Makefiles" OR CMAKE_GENERATOR STREQUAL Ninja)
     set(wrapper_obj cores/dll-loader/exports/CMakeFiles/wrapper.dir/wrapper.c.o)
   elseif(CMAKE_GENERATOR MATCHES "Xcode")
     set(wrapper_obj cores/dll-loader/exports/kodi.build/$(CONFIGURATION)/wrapper.build/Objects-$(CURRENT_VARIANT)/$(CURRENT_ARCH)/wrapper.o)
@@ -8,8 +8,8 @@ function(core_link_library lib wraplib)
   endif()
 
   set(export -bundle -undefined dynamic_lookup -read_only_relocs suppress
-             -Wl,-alias_list,${CORE_BUILD_DIR}/cores/dll-loader/exports/wrapper.def
-             ${CORE_BUILD_DIR}/${wrapper_obj})
+             -Wl,-alias_list,${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/cores/dll-loader/exports/wrapper.def
+             ${CMAKE_BINARY_DIR}/${CORE_BUILD_DIR}/${wrapper_obj})
   set(extension ${CMAKE_SHARED_MODULE_SUFFIX})
   set(check_arg "")
   if(TARGET ${lib})
@@ -26,9 +26,6 @@ function(core_link_library lib wraplib)
   if(check_arg STREQUAL export)
     set(export ${export}
         -Wl,--version-script=${ARGV3})
-  elseif(check_arg STREQUAL nowrap)
-    set(export -undefined dynamic_lookup -dynamiclib ${data_arg})
-    set(extension ${CMAKE_SHARED_LIBRARY_SUFFIX})
   elseif(check_arg STREQUAL extras)
     foreach(arg ${data_arg})
       list(APPEND export ${arg})
@@ -49,12 +46,12 @@ function(core_link_library lib wraplib)
                      DEPENDS ${target} wrapper.def wrapper
                      VERBATIM)
 
-  # Uncomment to create wrap_<lib> targets for debugging
-  #get_filename_component(libname ${wraplib} NAME_WE)
-  #add_custom_target(wrap_${libname} ALL DEPENDS ${wraplib}-${ARCH}${extension})
+  get_filename_component(libname ${wraplib} NAME_WE)
+  add_custom_target(wrap_${libname} ALL DEPENDS ${wraplib}-${ARCH}${extension})
+  set_target_properties(wrap_${libname} PROPERTIES FOLDER lib/wrapped)
+  add_dependencies(${APP_NAME_LC}-libraries wrap_${libname})
 
-  list(APPEND WRAP_FILES ${wraplib}-${ARCH}${extension})
-  set(WRAP_FILES ${WRAP_FILES} PARENT_SCOPE)
+  set(LIBRARY_FILES ${LIBRARY_FILES} ${CMAKE_BINARY_DIR}/${wraplib}-${ARCH}${extension} CACHE STRING "" FORCE)
 endfunction()
 
 function(find_soname lib)
@@ -100,7 +97,9 @@ function(find_soname lib)
                       OUTPUT_VARIABLE filename
                       OUTPUT_STRIP_TRAILING_WHITESPACE)
       get_filename_component(${lib}_SONAME "${filename}" NAME)
-      message(STATUS "${lib} soname: ${${lib}_SONAME}")
+      if(VERBOSE)
+        message(STATUS "${lib} soname: ${${lib}_SONAME}")
+      endif()
     endif()
   endforeach()
   if(arg_REQUIRED AND NOT ${lib}_SONAME)

@@ -36,6 +36,7 @@
 #include "FileItem.h"
 #include "storage/MediaManager.h"
 #include "URL.h"
+#include "filesystem/CurlFile.h"
 #include "filesystem/File.h"
 #include "utils/URIUtils.h"
 #include "ServiceBroker.h"
@@ -76,6 +77,10 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
       ADDON_STATUS status = addon->Create();
       if (status == ADDON_STATUS_OK)
       {
+        unsigned int videoWidth, videoHeight;
+        pPlayer->GetVideoResolution(videoWidth, videoHeight);
+        addon->SetVideoResolution(videoWidth, videoHeight);
+
         return new CInputStreamAddon(fileitem, addon);
       }
     }
@@ -98,7 +103,7 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
   if(file.compare(g_mediaManager.TranslateDevicePath("")) == 0)
   {
 #ifdef HAVE_LIBBLURAY
-    if(XFILE::CFile::Exists(URIUtils::AddFileToFolder(file, "BDMV/index.bdmv")))
+    if(XFILE::CFile::Exists(URIUtils::AddFileToFolder(file, "BDMV", "index.bdmv")))
         return new CDVDInputStreamBluray(pPlayer, fileitem);
 #endif
 
@@ -127,17 +132,37 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
   else if(file.substr(0, 8) == "stack://")
     return new CDVDInputStreamStack(fileitem);
 #endif
-  else if (fileitem.IsInternetStream())
-  {
-    if (fileitem.IsType(".m3u8"))
-      return new CDVDInputStreamFFmpeg(fileitem);
+  else if(file.substr(0, 7) == "rtmp://"
+       || file.substr(0, 8) == "rtmpt://"
+       || file.substr(0, 8) == "rtmpe://"
+       || file.substr(0, 9) == "rtmpte://"
+       || file.substr(0, 8) == "rtmps://")
+    return new CDVDInputStreamFFmpeg(fileitem);
 
-    if (fileitem.GetMimeType() == "application/vnd.apple.mpegurl")
-      return new CDVDInputStreamFFmpeg(fileitem);
+  CFileItem finalFileitem(fileitem);
+
+  if (finalFileitem.IsInternetStream())
+  {
+    if (finalFileitem.ContentLookup())
+    {
+      XFILE::CCurlFile url;
+      // try opening the url to resolve all redirects if any
+      if (url.Open(finalFileitem.GetURL()))
+      {
+        finalFileitem.SetPath(url.GetURL());
+      }
+      url.Close();
+    }
+
+    if (finalFileitem.IsType(".m3u8"))
+      return new CDVDInputStreamFFmpeg(finalFileitem);
+
+    if (finalFileitem.GetMimeType() == "application/vnd.apple.mpegurl")
+      return new CDVDInputStreamFFmpeg(finalFileitem);
   }
 
   // our file interface handles all these types of streams
-  return (new CDVDInputStreamFile(fileitem));
+  return (new CDVDInputStreamFile(finalFileitem));
 }
 
 CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer, const CFileItem &fileitem, const std::vector<std::string>& filenames)

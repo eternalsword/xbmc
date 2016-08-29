@@ -22,6 +22,7 @@
  */
 
 #if HAS_GLES == 2
+#include <vector>
 
 #include "system_gl.h"
 
@@ -145,7 +146,6 @@ public:
   // Feature support
   virtual bool SupportsMultiPassRendering() override;
   virtual bool Supports(ERENDERFEATURE feature) override;
-  virtual bool Supports(EDEINTERLACEMODE mode) override;
   virtual bool Supports(EINTERLACEMETHOD method) override;
   virtual bool Supports(ESCALINGMETHOD method) override;
   virtual EINTERLACEMETHOD AutoInterlaceMethod() override;
@@ -265,7 +265,6 @@ protected:
 
   Features m_renderFeatures;
   Features m_deinterlaceMethods;
-  Features m_deinterlaceModes;
   Features m_scalingMethods;
 
   // clear colour for "black" bars

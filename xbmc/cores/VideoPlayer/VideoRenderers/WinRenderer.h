@@ -21,6 +21,7 @@
  */
 
 #if !defined(TARGET_POSIX) && !defined(HAS_GL)
+#include <vector>
 
 #include "BaseRenderer.h"
 #include "HwDecRender/DXVAHD.h"
@@ -181,7 +182,6 @@ public:
   // Feature support
   virtual bool SupportsMultiPassRendering() { return false; }
   virtual bool Supports(ERENDERFEATURE feature);
-  virtual bool Supports(EDEINTERLACEMODE mode);
   virtual bool Supports(EINTERLACEMETHOD method);
   virtual bool Supports(ESCALINGMETHOD method);
 

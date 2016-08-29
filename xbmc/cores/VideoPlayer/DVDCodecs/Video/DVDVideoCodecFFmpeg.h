@@ -119,6 +119,23 @@ protected:
   bool   m_requestSkipDeint;
   int    m_codecControlFlags;
   bool m_interlaced;
+  double m_DAR;
   CDVDStreamInfo m_hints;
   CDVDCodecOptions m_options;
+
+  struct CDropControl
+  {
+    CDropControl();
+    void Reset(bool init);
+    void Process(int64_t pts, bool drop);
+
+    int64_t m_lastPTS;
+    int64_t m_diffPTS;
+    int m_count;
+    enum
+    {
+      INIT,
+      VALID
+    } m_state;
+  } m_dropCtrl;
 };

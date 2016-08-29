@@ -50,10 +50,9 @@ struct SActorInfo
 class CRating
 {
 public:
-  CRating()
-    : CRating(0.0f, 0)
-  { }
-  CRating(float r, int v) { rating = r; votes = v; }
+  CRating(): rating(0.0f), votes(0) {}
+  CRating(float r): rating(r), votes(0) {}
+  CRating(float r, int v): rating(r), votes(v) {}
   float rating;
   int votes;
 };
@@ -85,6 +84,11 @@ public:
   virtual void Serialize(CVariant& value) const;
   virtual void ToSortable(SortItem& sortable, Field field) const;
   const CRating GetRating(std::string type = "") const;
+  const std::string& GetDefaultRating() const;
+  const std::string GetUniqueID(std::string type = "") const;
+  const std::map<std::string, std::string>& GetUniqueIDs() const;
+  const std::string& GetDefaultUniqueID() const;
+  const bool HasUniqueID() const;
   const bool HasYear() const;
   const int GetYear() const;
   const bool HasPremiered() const;
@@ -123,10 +127,13 @@ public:
   void SetTitle(std::string title);
   void SetSortTitle(std::string sortTitle);
   void SetPictureURL(CScraperUrl &pictureURL);
-  void AddRating(float rating, int votes, const std::string& type = "");
-  void AddRating(CRating rating, const std::string& type = "");
-  void SetRating(float rating, const std::string& type = "");
+  void SetRating(float rating, int votes, const std::string& type = "", bool def = false);
+  void SetRating(CRating rating, const std::string& type = "", bool def = false);
+  void SetRating(float rating, const std::string& type = "", bool def = false);
+  void RemoveRating(const std::string& type);
+  void SetRatings(RatingMap ratings);
   void SetVotes(int votes, const std::string& type = "");
+  void SetUniqueIDs(std::map<std::string, std::string> uniqueIDs);
   void SetPremiered(CDateTime premiered);
   void SetPremieredFromDBDate(std::string premieredString);
   void SetYear(int year);
@@ -136,7 +143,6 @@ public:
   void SetTags(std::vector<std::string> tags);
   void SetFile(std::string file);
   void SetPath(std::string path);
-  void SetIMDBNumber(std::string imdbNumber);
   void SetMPAARating(std::string mpaaRating);
   void SetFileNameAndPath(std::string fileNameAndPath);
   void SetOriginalTitle(std::string originalTitle);
@@ -147,7 +153,8 @@ public:
   void SetStudio(std::vector<std::string> studio);
   void SetAlbum(std::string album);
   void SetShowLink(std::vector<std::string> showLink);
-  void SetUniqueId(std::string uniqueId);
+  void SetUniqueID(const std::string& uniqueid, const std::string& type = "", bool def = false);
+  void RemoveUniqueID(const std::string& type);
   void SetNamedSeasons(std::map<int, std::string> namedSeasons);
   void SetUserrating(int userrating);
 
@@ -173,7 +180,6 @@ public:
   std::vector<std::string> m_tags;
   std::string m_strFile;
   std::string m_strPath;
-  std::string m_strIMDBNumber;
   std::string m_strMPAARating;
   std::string m_strFileNameAndPath;
   std::string m_strOriginalTitle;
@@ -193,7 +199,7 @@ public:
   int m_iTop250;
   int m_iSeason;
   int m_iEpisode;
-  std::string m_strUniqueId;
+  int m_iIdUniqueID;
   int m_iDbId;
   int m_iFileId;
   int m_iSpecialSortSeason;
@@ -201,7 +207,6 @@ public:
   int m_iTrack;
   RatingMap m_ratings;
   int m_iIdRating;
-  std::string m_strDefaultRating;
   int m_iUserRating;
   CBookmark m_EpBookmark;
   int m_iBookmarkId;
@@ -226,6 +231,9 @@ private:
    */
   void ParseNative(const TiXmlElement* element, bool prioritise);
 
+  std::string m_strDefaultRating;
+  std::string m_strDefaultUniqueID;
+  std::map<std::string, std::string> m_uniqueIDs;
   std::string Trim(std::string &&value);
   std::vector<std::string> Trim(std::vector<std::string> &&items);
 };

@@ -37,8 +37,6 @@
 
 #include "GUIWindowPVRGuide.h"
 
-#define MAX_UPDATE_FREQUENCY 3000 // limit to maximum one update/refresh in x milliseconds
-
 using namespace PVR;
 using namespace EPG;
 
@@ -55,13 +53,19 @@ CGUIWindowPVRGuide::~CGUIWindowPVRGuide(void)
   StopRefreshTimelineItemsThread();
 }
 
-void CGUIWindowPVRGuide::OnInitWindow()
+CGUIEPGGridContainer* CGUIWindowPVRGuide::GetGridControl()
 {
-  if (m_guiState.get())
-    m_viewControl.SetCurrentView(m_guiState->GetViewAsControl(), false);
+  return dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+}
 
-  CGUIEPGGridContainer *epgGridContainer =
-    dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+bool CGUIWindowPVRGuide::CanBeActivated() const
+{
+  return true;
+}
+
+void CGUIWindowPVRGuide::Init()
+{
+  CGUIEPGGridContainer *epgGridContainer = GetGridControl();
   if (epgGridContainer)
   {
     epgGridContainer->SetChannel(GetSelectedItemPath(m_bRadio));
@@ -70,6 +74,15 @@ void CGUIWindowPVRGuide::OnInitWindow()
 
   m_bRefreshTimelineItems = true;
   StartRefreshTimelineItemsThread();
+}
+
+void CGUIWindowPVRGuide::OnInitWindow()
+{
+  if (m_guiState.get())
+    m_viewControl.SetCurrentView(m_guiState->GetViewAsControl(), false);
+
+  if (InitChannelGroup()) // no channels -> lazy init
+    Init();
 
   CGUIWindowPVRBase::OnInitWindow();
 }
@@ -95,11 +108,17 @@ void CGUIWindowPVRGuide::StopRefreshTimelineItemsThread()
 
 void CGUIWindowPVRGuide::RegisterObservers(void)
 {
+  CSingleLock lock(m_critSection);
   g_EpgContainer.RegisterObserver(this);
+  g_PVRManager.RegisterObserver(this);
+  CGUIWindowPVRBase::RegisterObservers();
 }
 
 void CGUIWindowPVRGuide::UnregisterObservers(void)
 {
+  CSingleLock lock(m_critSection);
+  CGUIWindowPVRBase::UnregisterObservers();
+  g_PVRManager.UnregisterObserver(this);
   g_EpgContainer.UnregisterObserver(this);
 }
 
@@ -108,6 +127,7 @@ void CGUIWindowPVRGuide::Notify(const Observable &obs, const ObservableMessage m
   if (m_viewControl.GetCurrentControl() == GUIDE_VIEW_TIMELINE &&
       (msg == ObservableMessageEpg ||
        msg == ObservableMessageEpgContainer ||
+       msg == ObservableMessageChannelGroupReset ||
        msg == ObservableMessageChannelGroup))
   {
     CSingleLock lock(m_critSection);
@@ -117,6 +137,15 @@ void CGUIWindowPVRGuide::Notify(const Observable &obs, const ObservableMessage m
   {
     CGUIWindowPVRBase::Notify(obs, msg);
   }
+}
+
+void CGUIWindowPVRGuide::SetInvalid()
+{
+  CGUIEPGGridContainer *epgGridContainer = GetGridControl();
+  if (epgGridContainer)
+    epgGridContainer->SetInvalid();
+
+  CGUIWindowPVRBase::SetInvalid();
 }
 
 void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &buttons)
@@ -142,8 +171,10 @@ void CGUIWindowPVRGuide::GetContextButtons(int itemNumber, CContextButtons &butt
       }
 
       const CPVRTimerTypePtr timerType(timer->GetTimerType());
-      if (timerType && !timerType->IsReadOnly())
+      if (timerType && !timerType->IsReadOnly() && timer->GetTimerRuleId() == PVR_TIMER_NO_PARENT)
         buttons.Add(CONTEXT_BUTTON_EDIT_TIMER, 19242);    /* Edit timer */
+      else
+        buttons.Add(CONTEXT_BUTTON_EDIT_TIMER, 19241);    /* View timer information */
 
       if (timer->IsRecording())
         buttons.Add(CONTEXT_BUTTON_STOP_RECORD, 19059);   /* Stop recording */
@@ -224,7 +255,7 @@ void CGUIWindowPVRGuide::UpdateButtons(void)
       break;
   }
 
-  SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetGroup()->GroupName());
+  SET_CONTROL_LABEL(CONTROL_LABEL_HEADER2, GetChannelGroup()->GroupName());
 }
 
 bool CGUIWindowPVRGuide::GetDirectory(const std::string &strDirectory, CFileItemList &items)
@@ -274,9 +305,6 @@ bool CGUIWindowPVRGuide::OnAction(const CAction &action)
 
 bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
 {
-  if (!IsValidMessage(message))
-    return false;
-  
   bool bReturn = false;
   switch (message.GetMessage())
   {
@@ -350,8 +378,7 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
             case ACTION_PLAY:
             {
               // EPG "gap" selected => switch to associated channel.
-              CGUIEPGGridContainer *epgGridContainer =
-                dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+              CGUIEPGGridContainer *epgGridContainer = GetGridControl();
               if (epgGridContainer)
               {
                 CFileItemPtr item(epgGridContainer->GetSelectedChannelItem());
@@ -386,11 +413,25 @@ bool CGUIWindowPVRGuide::OnMessage(CGUIMessage& message)
     case GUI_MSG_REFRESH_LIST:
       switch(message.GetParam1())
       {
+        case ObservableMessageChannelGroupsLoaded:
+        {
+          // late init
+          InitChannelGroup();
+          Init();
+          break;
+        }
+        case ObservableMessageChannelGroupReset:
         case ObservableMessageChannelGroup:
         case ObservableMessageEpg:
         case ObservableMessageEpgContainer:
         {
           Refresh(true);
+          break;
+        }
+        case ObservableMessageTimersReset:
+        case ObservableMessageTimers:
+        {
+          SetInvalid();
           break;
         }
         case ObservableMessageEpgActiveItem:
@@ -444,7 +485,7 @@ void CGUIWindowPVRGuide::GetViewChannelItems(CFileItemList &items)
 void CGUIWindowPVRGuide::GetViewNowItems(CFileItemList &items)
 {
   items.Clear();
-  int iEpgItems = GetGroup()->GetEPGNow(items);
+  int iEpgItems = GetChannelGroup()->GetEPGNow(items);
 
   if (iEpgItems == 0)
   {
@@ -459,7 +500,7 @@ void CGUIWindowPVRGuide::GetViewNowItems(CFileItemList &items)
 void CGUIWindowPVRGuide::GetViewNextItems(CFileItemList &items)
 {
   items.Clear();
-  int iEpgItems = GetGroup()->GetEPGNext(items);
+  int iEpgItems = GetChannelGroup()->GetEPGNext(items);
 
   if (iEpgItems)
   {
@@ -477,10 +518,10 @@ bool CGUIWindowPVRGuide::RefreshTimelineItems()
   {
     m_bRefreshTimelineItems = false;
 
-    CGUIEPGGridContainer* epgGridContainer = dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+    CGUIEPGGridContainer* epgGridContainer = GetGridControl();
     if (epgGridContainer)
     {
-      const CPVRChannelGroupPtr group(GetGroup());
+      const CPVRChannelGroupPtr group(GetChannelGroup());
       std::unique_ptr<CFileItemList> timeline(new CFileItemList);
 
       // can be very expensive. never call with lock acquired.
@@ -521,9 +562,9 @@ void CGUIWindowPVRGuide::GetViewTimelineItems(CFileItemList &items)
   CSingleLock lock(m_critSection);
 
   // group change detected reset grid coordinates and refresh grid items
-  if (!m_bRefreshTimelineItems && *m_cachedChannelGroup != *GetGroup())
+  if (!m_bRefreshTimelineItems && *m_cachedChannelGroup != *GetChannelGroup())
   {
-    CGUIEPGGridContainer* epgGridContainer = dynamic_cast<CGUIEPGGridContainer*>(GetControl(m_viewControl.GetCurrentControl()));
+    CGUIEPGGridContainer* epgGridContainer = GetGridControl();
     if (!epgGridContainer)
       return;
 

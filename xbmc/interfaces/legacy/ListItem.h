@@ -258,6 +258,75 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_xbmcgui_listitem
+      /// @brief \python_func{ setUniqueIDs(values) }
+      ///-----------------------------------------------------------------------
+      /// Sets the listitem's uniqueID
+      ///
+      /// @param values             dictionary - pairs of `{ label: value }`.
+      ///  - Some example values (any string possible):
+      ///  | Label         | Type                                              |
+      ///  |:-------------:|:--------------------------------------------------|
+      ///  | imdb          | string - uniqueid name
+      ///  | tvdb          | string - uniqueid name
+      ///  | tmdb          | string - uniqueid name
+      ///  | anidb         | string - uniqueid name
+      ///
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// # setUniqueIDs(values)
+      /// self.list.getSelectedItem().setUniqueIDs({ 'imdb': 'tt8938399', 'tmdb' : '9837493' })
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      setUniqueIDs(...);
+#else
+      void setUniqueIDs(const Properties& dictionary);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_xbmcgui_listitem
+      /// @brief \python_func{ setRating(type, rating, votes = 0, default = True) }
+      ///-----------------------------------------------------------------------
+      /// Sets a listitem's rating. It needs at least type and rating param
+      ///
+      /// @param type       string - the type of the rating. Any string.
+      /// @param rating     float - the value of the rating.
+      /// @param votes      int - the number of votes. Default 0.
+      /// @param default    bool - is the default rating?. Default False.
+      ///  - Some example type (any string possible):
+      ///  | Label         | Type                                              |
+      ///  |:-------------:|:--------------------------------------------------|
+      ///  | imdb          | string - rating type
+      ///  | tvdb          | string - rating type
+      ///  | tmdb          | string - rating type
+      ///  | anidb         | string - rating type
+      ///
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// # setRating(type, rating, votes, default))
+      /// self.list.getSelectedItem().setRating("imdb", 4.6, 8940, True)
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      setRating(...);
+#else
+      void setRating(std::string type, float rating, int votes = 0, bool def = false);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_xbmcgui_listitem
       /// @brief \python_func{ getArt(key) }
       ///-----------------------------------------------------------------------
       /// Returns a listitem art path as a string, similar to an infolabel.\n
@@ -289,6 +358,102 @@ namespace XBMCAddon
       getArt(key);
 #else
       String getArt(const char* key);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_xbmcgui_listitem
+      /// @brief \python_func{ getUniqueID(key) }
+      ///-----------------------------------------------------------------------
+      /// Returns a listitem uniqueID as a string, similar to an infolabel.\n
+      ///
+      /// @param key            string - uniqueID name.
+      /// - Some default uniqueID values (any string possible):
+      ///  | Label         | Type                                             |
+      ///  |---------------|--------------------------------------------------|
+      ///  | imdb          | string - uniqueid name
+      ///  | tvdb          | string - uniqueid name
+      ///  | tmdb          | string - uniqueid name
+      ///  | anidb         | string - uniqueid name
+      ///
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// uniqueID = self.list.getSelectedItem().getUniqueID('imdb')
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      getUniqueID(key);
+#else
+      String getUniqueID(const char* key);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_xbmcgui_listitem
+      /// @brief \python_func{ getRating(key) }
+      ///-----------------------------------------------------------------------
+      /// Returns a listitem rating as a float.\n
+      ///
+      /// @param key            string - rating type.
+      /// - Some default key values (any string possible):
+      ///  | Label         | Type                                             |
+      ///  |---------------|--------------------------------------------------|
+      ///  | imdb          | string - type name
+      ///  | tvdb          | string - type name
+      ///  | tmdb          | string - type name
+      ///  | anidb         | string - type name
+      ///
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// rating = self.list.getSelectedItem().getRating('imdb')
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      getRating(key);
+#else
+      float getRating(const char* key);
+#endif
+
+#ifdef DOXYGEN_SHOULD_USE_THIS
+      ///
+      /// \ingroup python_xbmcgui_listitem
+      /// @brief \python_func{ getVotes(key) }
+      ///-----------------------------------------------------------------------
+      /// Returns a listitem votes as a integer.\n
+      ///
+      /// @param key            string - rating type.
+      /// - Some default key values (any string possible):
+      ///  | Label         | Type                                             |
+      ///  |---------------|--------------------------------------------------|
+      ///  | imdb          | string - type name
+      ///  | tvdb          | string - type name
+      ///  | tmdb          | string - type name
+      ///  | anidb         | string - type name
+      ///
+      ///
+      ///
+      ///-----------------------------------------------------------------------
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ...
+      /// votes = self.list.getSelectedItem().getVotes('imdb')
+      /// ...
+      /// ~~~~~~~~~~~~~
+      ///
+      getVotes(key);
+#else
+      int getVotes(const char* key);
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS

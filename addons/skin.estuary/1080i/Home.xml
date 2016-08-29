@@ -293,6 +293,7 @@
 							<param name="list_id" value="7100"/>
 							<param name="onup_id" value="7900"/>
 							<param name="ondown_id" value="7200"/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="WidgetListSquare">
 							<param name="content_path" value="musicdb://recentlyaddedalbums/"/>
@@ -301,6 +302,7 @@
 							<param name="list_id" value="7200"/>
 							<param name="onup_id" value="7100"/>
 							<param name="ondown_id" value="7300"/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="WidgetListSquare">
 							<param name="content_path" value="special://skin/playlists/random_albums.xsp"/>
@@ -309,6 +311,7 @@
 							<param name="list_id" value="7300"/>
 							<param name="onup_id" value="7200"/>
 							<param name="ondown_id" value="7400"/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="WidgetListSquare">
 							<param name="content_path" value="special://skin/playlists/random_artists.xsp"/>
@@ -320,6 +323,7 @@
 							<param name="single_label" value="$INFO[ListItem.Label]"/>
 							<param name="main_label" value=""/>
 							<param name="sub_label" value=""/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="WidgetListSquare">
 							<param name="content_path" value="special://skin/playlists/unplayed_albums.xsp"/>
@@ -328,6 +332,7 @@
 							<param name="list_id" value="7500"/>
 							<param name="onup_id" value="7400"/>
 							<param name="ondown_id" value="7600"/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="WidgetListSquare">
 							<param name="content_path" value="special://skin/playlists/mostplayed_albums.xsp"/>
@@ -338,6 +343,7 @@
 							<param name="ondown_id" value="20001"/>
 							<param name="sortby" value="playcount"/>
 							<param name="sortorder" value="descending"/>
+							<param name="widget_limit" value="10"/>
 						</include>
 						<include content="ImageWidget">
 							<param name="image_path" value="special://skin/extras/home-images/music.jpg"/>
@@ -376,7 +382,7 @@
 							<param name="item1_label" value="$LOCALIZE[10040]" />
 							<param name="item2_onclick" value="ActivateWindow(systemsettings,addons)" />
 							<param name="item2_icon" value="settings.png" />
-							<param name="item2_label" value="$LOCALIZE[1045]" />
+							<param name="item2_label" value="$LOCALIZE[5]" />
 							<param name="item3_vis" value="False" />
 							<param name="item4_vis" value="False" />
 							<param name="item5_vis" value="False" />
@@ -444,20 +450,10 @@
 							<param name="sortorder" value="descending"/>
 							<param name="list_id" value="8500"/>
 							<param name="onup_id" value="8400"/>
-							<param name="ondown_id" value="8600"/>
+							<param name="ondown_id" value="20001"/>
 							<param name="single_label" value="$INFO[ListItem.Label]"/>
 							<param name="main_label" value=""/>
 							<param name="sub_label" value=""/>
-						</include>
-						<include content="ImageWidget">
-							<param name="image_path" value="special://skin/extras/home-images/add-ons.jpg"/>
-							<param name="text_label" value="$LOCALIZE[31119]" />
-							<param name="button_label" value="$LOCALIZE[31118]" />
-							<param name="button_onclick" value="ActivateWindow(addonbrowser)"/>
-							<param name="button_id" value="8600"/>
-							<param name="onup_id" value="8100"/>
-							<param name="visible" value="!Integer.IsGreater(Container(8100).NumItems,0) + !Integer.IsGreater(Container(8200).NumItems,0) + !Integer.IsGreater(Container(8300).NumItems,0) + !Integer.IsGreater(Container(8400).NumItems,0) + !Integer.IsGreater(Container(8500).NumItems,0)"/>
-							<param name="button2_onclick" value="Skin.SetBool(HomeMenuNoProgramsButton)"/>
 						</include>
 					</control>
 				</control>
@@ -570,8 +566,10 @@
 							<param name="item7_vis" value="False" />
 							<param name="item8_vis" value="False" />
 						</include>
-						<include content="WidgetListChannels" condition="PVR.HasTVChannels">
+						<include content="WidgetListChannels">
 							<param name="content_path" value="pvr://channels/tv/All channels/"/>
+							<param name="sortby" value="lastplayed"/>
+							<param name="sortorder" value="descending"/>
 							<param name="widget_header" value="$LOCALIZE[31016]"/>
 							<param name="widget_target" value="pvr"/>
 							<param name="list_id" value="12200"/>
@@ -650,8 +648,10 @@
 							<param name="item7_vis" value="False" />
 							<param name="item8_vis" value="False" />
 						</include>
-						<include content="WidgetListChannels" condition="PVR.HasRadioChannels">
+						<include content="WidgetListChannels">
 							<param name="content_path" value="pvr://channels/radio/All channels/"/>
+							<param name="sortby" value="lastplayed"/>
+							<param name="sortorder" value="descending"/>
 							<param name="widget_header" value="$LOCALIZE[31018]"/>
 							<param name="widget_target" value="files"/>
 							<param name="list_id" value="13200"/>
@@ -690,7 +690,7 @@
 							<param name="item3_onclick" value="Weather.LocationNext" />
 							<param name="item3_icon" value="location-next.png" />
 							<param name="item3_label" value="$LOCALIZE[31078]" />
-							<param name="item4_onclick" value="ActivateWindow(weathersettings)" />
+							<param name="item4_onclick" value="ActivateWindow(servicesettings,weather)" />
 							<param name="item4_icon" value="weather-settings.png" />
 							<param name="item4_label" value="$LOCALIZE[1390]" />
 							<param name="item5_vis" value="False" />
@@ -794,7 +794,7 @@
 							<param name="image_path" value="special://skin/extras/home-images/weather.jpg"/>
 							<param name="text_label" value="$LOCALIZE[31120]" />
 							<param name="button_label" value="$LOCALIZE[31121]" />
-							<param name="button_onclick" value="ActivateWindow(weathersettings)"/>
+							<param name="button_onclick" value="ActivateWindow(servicesettings,weather)"/>
 							<param name="button_id" value="15300"/>
 							<param name="visible" value="String.IsEmpty(Weather.plugin)"/>
 							<param name="button2_onclick" value="Skin.SetBool(HomeMenuNoWeatherButton)"/>
@@ -1106,21 +1106,25 @@
 						<param name="control_id" value="804" />
 						<param name="onclick" value="ActivateWindow(shutdownmenu)" />
 						<param name="icon" value="icons/power.png" />
+						<param name="label" value="$LOCALIZE[33060]" />
 					</include>
 					<include content="BottomMainMenuItem">
 						<param name="control_id" value="802" />
 						<param name="onclick" value="ActivateWindow(settings)" />
 						<param name="icon" value="icons/settings.png" />
+						<param name="label" value="$LOCALIZE[21417]" />
 					</include>
 					<include content="BottomMainMenuItem">
 						<param name="control_id" value="803" />
 						<param name="onclick" value="ActivateWindow(favourites)" />
 						<param name="icon" value="icons/favourites.png" />
+						<param name="label" value="$LOCALIZE[10134]" />
 					</include>
 					<include content="BottomMainMenuItem">
 						<param name="control_id" value="801" />
 						<param name="onclick" value="ActivateWindow(filemanager)" />
 						<param name="icon" value="icons/filemanager.png" />
+						<param name="label" value="$LOCALIZE[10003]" />
 					</include>
 				</control>
 			</control>
@@ -1157,7 +1161,7 @@
 					<left>0</left>
 					<top>1041</top>
 					<height>30</height>
-					<width>1920</width>
+					<width>100%</width>
 					<font>font12</font>
 					<urlset>1</urlset>
 					<titlecolor>button_focus</titlecolor>

@@ -27,7 +27,7 @@
 #include "FileItem.h"
 #include "filesystem/Directory.h"
 #include "GUIDialogAddonSettings.h"
-#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
+#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogTextViewer.h"
 #include "dialogs/GUIDialogOK.h"
@@ -36,6 +36,7 @@
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
+#include "pictures/GUIWindowSlideShow.h"
 #include "settings/Settings.h"
 #include "utils/JobManager.h"
 #include "utils/FileOperationJob.h"
@@ -55,6 +56,7 @@
 #define CONTROL_BTN_SETTINGS         9
 #define CONTROL_BTN_SELECT          12
 #define CONTROL_BTN_AUTOUPDATE      13
+#define CONTROL_LIST_SCREENSHOTS    50
 
 using namespace ADDON;
 using namespace XFILE;
@@ -135,6 +137,17 @@ bool CGUIDialogAddonInfo::OnMessage(CGUIMessage& message)
         OnToggleAutoUpdates();
         return true;
       }
+      else if (iControl == CONTROL_LIST_SCREENSHOTS)
+      {
+        if (message.GetParam1() == ACTION_SELECT_ITEM || message.GetParam1() == ACTION_MOUSE_LEFT_CLICK)
+        {
+          CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), iControl);
+          OnMessage(msg);
+          int start = msg.GetParam1();
+          if (start >= 0 && start < m_item->GetAddonInfo()->Screenshots().size())
+            CGUIWindowSlideShow::RunSlideShow(m_item->GetAddonInfo()->Screenshots(), start);
+        }
+      }
     }
     break;
 default:
@@ -170,7 +183,6 @@ void CGUIDialogAddonInfo::UpdateControls()
   bool canDisable = isInstalled && CAddonMgr::GetInstance().CanAddonBeDisabled(m_localAddon->ID());
   bool canInstall = !isInstalled && m_item->GetAddonInfo()->Broken().empty();
   bool canUninstall = m_localAddon && CAddonMgr::GetInstance().CanUninstall(m_localAddon);
-  bool isRepo = (isInstalled && m_localAddon->Type() == ADDON_REPOSITORY) || (m_item->GetAddonInfo()->Type() == ADDON_REPOSITORY);
 
   CONTROL_ENABLE_ON_CONDITION(CONTROL_BTN_INSTALL, canInstall || canUninstall);
   SET_CONTROL_LABEL(CONTROL_BTN_INSTALL, isInstalled ? 24037 : 24038);
@@ -199,6 +211,16 @@ void CGUIDialogAddonInfo::UpdateControls()
   SET_CONTROL_LABEL(CONTROL_BTN_SELECT, CanUse() ? 21480 : (CanOpen() ? 21478 : 21479));
 
   CONTROL_ENABLE_ON_CONDITION(CONTROL_BTN_SETTINGS, isInstalled && m_localAddon->HasSettings());
+
+  CFileItemList items;
+  for (const auto& screenshot : m_item->GetAddonInfo()->Screenshots())
+  {
+    auto item = std::make_shared<CFileItem>("");
+    item->SetArt("thumb", screenshot);
+    items.Add(std::move(item));
+  }
+  CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_LIST_SCREENSHOTS, 0, 0, &items);
+  OnMessage(msg);
 }
 
 static const std::string LOCAL_CACHE = "\\0_local_cache"; // \0 to give it the lowest priority when sorting
@@ -435,7 +457,6 @@ void CGUIDialogAddonInfo::OnEnableDisable()
     CAddonMgr::GetInstance().EnableAddon(m_localAddon->ID());
 
   UpdateControls();
-  g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE);
 }
 
 void CGUIDialogAddonInfo::OnSettings()

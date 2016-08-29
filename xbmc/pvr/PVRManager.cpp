@@ -99,7 +99,8 @@ CPVRManager::CPVRManager(void) :
     m_bIsSwitchingChannels(false),
     m_bEpgsCreated(false),
     m_progressHandle(NULL),
-    m_managerState(ManagerStateStopped)
+    m_managerState(ManagerStateStopped),
+    m_isChannelPreview(false)
 {
   CAnnouncementManager::GetInstance().AddAnnouncer(this);
   m_addons.reset(new CPVRClients);
@@ -235,16 +236,6 @@ void CPVRManager::OnSettingAction(const CSetting *setting)
   }
 }
 
-bool CPVRManager::IsPVRWindowActive(void) const
-{
-  return (IsPVRWindow(g_windowManager.GetActiveWindow() & WINDOW_ID_MASK)) ? true : false;
-}
-
-bool CPVRManager::IsPVRWindow(int windowId)
-{
-  return (windowId >= WINDOW_PVR_ID_START && windowId <= WINDOW_PVR_ID_END) ? true : false;
-}
-
 void CPVRManager::Cleanup(void)
 {
   CSingleLock lock(m_critSection);
@@ -370,13 +361,12 @@ ManagerState CPVRManager::GetState(void) const
 
 void CPVRManager::SetState(ManagerState state)
 {
-  {
-    CSingleLock lock(m_managerStateMutex);
-    m_managerState = state;
-    SetChanged();
-  }
+  CSingleLock lock(m_managerStateMutex);
+  if (m_managerState == state)
+    return;
 
-  NotifyObservers(ObservableMessageManagerStateChanged);
+  m_managerState = state;
+  m_events.Publish(m_managerState);
 }
 
 void CPVRManager::Process(void)
@@ -518,6 +508,9 @@ bool CPVRManager::Load(bool bShowProgress)
     ShowProgressDialog(g_localizeStrings.Get(19236), 0); // Loading channels from clients
   if (!m_channelGroups->Load() || !IsInitialising())
     return false;
+
+  SetChanged();
+  NotifyObservers(ObservableMessageChannelGroupsLoaded);
 
   /* get timers from the backends */
   if (bShowProgress)
@@ -1187,6 +1180,7 @@ void CPVRManager::CloseStream(void)
     g_application.SaveFileState();
   }
 
+  m_isChannelPreview = false;
   m_addons->CloseStream();
   SAFE_DELETE(m_currentFile);
 }
@@ -1235,6 +1229,7 @@ void CPVRManager::UpdateCurrentChannel(void)
     delete m_currentFile;
     m_currentFile = new CFileItem(playingChannel);
     UpdateItem(*m_currentFile);
+    m_isChannelPreview = false;
   }
 }
 
@@ -1421,6 +1416,12 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannelPtr &channel, bool bPrev
     {
       delete m_currentFile;
       m_currentFile = new CFileItem(channel);
+
+      if (IsPlayingChannel(channel))
+        m_isChannelPreview = false;
+      else
+        m_isChannelPreview = true;
+
       return true;
     }
 
@@ -1481,6 +1482,16 @@ bool CPVRManager::PerformChannelSwitch(const CPVRChannelPtr &channel, bool bPrev
   return bSwitched;
 }
 
+void CPVRManager::SetChannelPreview(bool preview)
+{
+  m_isChannelPreview = preview;
+}
+
+bool CPVRManager::IsChannelPreview() const
+{
+  return m_isChannelPreview;
+}
+
 int CPVRManager::GetTotalTime(void) const
 {
   return IsStarted() && m_guiInfo ? m_guiInfo->GetDuration() : 0;
@@ -1506,27 +1517,9 @@ int CPVRManager::TranslateIntInfo(DWORD dwInfo) const
   return IsStarted() && m_guiInfo ? m_guiInfo->TranslateIntInfo(dwInfo) : 0;
 }
 
-bool CPVRManager::HasTimers(void) const
-{
-  return IsStarted() && m_timers ? m_timers->HasActiveTimers() : false;
-}
-
 bool CPVRManager::IsRecording(void) const
 {
   return IsStarted() && m_timers ? m_timers->IsRecording() : false;
-}
-
-bool CPVRManager::IsIdle(void) const
-{
-  bool bReturn(true);
-  if (IsStarted())
-  {
-    if (IsRecording() || IsPlaying()) // pvr recording or playing?
-      bReturn = false;
-    else
-      bReturn = !IsNextEventWithinBackendIdleTime();
-  }
-  return bReturn;
 }
 
 bool CPVRManager::CanSystemPowerdown(bool bAskUser /*= true*/) const

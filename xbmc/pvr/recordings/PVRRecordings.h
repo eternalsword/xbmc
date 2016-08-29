@@ -19,17 +19,25 @@
  *
  */
 
+#include <memory>
+#include <map>
+
 #include "FileItem.h"
-#include "utils/Observer.h"
 #include "video/VideoDatabase.h"
 
 #include "PVRRecording.h"
+
+namespace EPG
+{
+  class CEpgInfoTag;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+}
 
 namespace PVR
 {
   class CPVRRecordingsPath;
 
-  class CPVRRecordings : public Observable
+  class CPVRRecordings
   {
   private:
     typedef std::map<CPVRRecordingUid, CPVRRecordingPtr> PVR_RECORDINGMAP;
@@ -40,7 +48,6 @@ namespace PVR
     bool                         m_bIsUpdating;
     PVR_RECORDINGMAP             m_recordings;
     unsigned int                 m_iLastId;
-    bool                         m_bGroupItems;
     CVideoDatabase               m_database;
     bool                         m_bDeletedTVRecordings;
     bool                         m_bDeletedRadioRecordings;
@@ -60,15 +67,26 @@ namespace PVR
     bool DeleteDirectory(const CFileItem &item);
     bool DeleteRecording(const CFileItem &item);
 
+    /**
+     * @brief special value for parameter count of method ChangeRecordingsPlayCount
+     */
+    static const int INCREMENT_PLAY_COUNT = -1;
+
+    /**
+     * @brief change the playcount of the given recording or recursively of all children of the given recordings folder
+     * @param item the recording or directory containing recordings
+     * @param count the new playcount or INCREMENT_PLAY_COUNT to denote that the current playcount(s) are to be incremented by one
+     * @return true if all playcounts were changed
+     */
+    bool ChangeRecordingsPlayCount(const CFileItemPtr &item, int count);
+
   public:
     CPVRRecordings(void);
     virtual ~CPVRRecordings(void);
 
     int Load();
-    void Unload();
     void Clear();
     void UpdateFromClient(const CPVRRecordingPtr &tag);
-    void UpdateEpgTags(void);
 
     /**
      * @brief refresh the recordings list from the clients.
@@ -90,6 +108,7 @@ namespace PVR
     bool DeleteAllRecordingsFromTrash();
     bool RenameRecording(CFileItem &item, std::string &strNewName);
     bool SetRecordingsPlayCount(const CFileItemPtr &item, int count);
+    bool IncrementRecordingsPlayCount(const CFileItemPtr &item);
 
     bool GetDirectory(const std::string& strPath, CFileItemList &items);
     CFileItemPtr GetByPath(const std::string &path);
@@ -97,7 +116,11 @@ namespace PVR
     void GetAll(CFileItemList &items, bool bDeleted = false);
     CFileItemPtr GetById(unsigned int iId) const;
 
-    void SetGroupItems(bool value) { m_bGroupItems = value; };
-    bool IsGroupItems() const { return m_bGroupItems; };
+    /*!
+     * @brief Get the recording for the given epg tag, if any.
+     * @param epgTag The epg tag.
+     * @return The requested recording, or an empty recordingptr if none was found.
+     */
+    CPVRRecordingPtr GetRecordingForEpgTag(const EPG::CEpgInfoTagPtr &epgTag) const;
   };
 }

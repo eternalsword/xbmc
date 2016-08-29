@@ -29,12 +29,12 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace PERIPHERALS
 {
   class CPeripheralBusAddon : public CPeripheralBus,
-                              public ADDON::IAddonMgrCallback,
-                              public Observer
+                              public ADDON::IAddonMgrCallback
   {
   public:
     CPeripheralBusAddon(CPeripherals *manager);
@@ -56,11 +56,20 @@ namespace PERIPHERALS
     unsigned int GetAddonCount(void) const;
 
     /*!
-     * \brief Initialize the properties of a peripheral with a known location
+     * \brief Set the rumble state of a rumble motor
+     *
+     * \param strLocation The location of the peripheral with the motor
+     * \param motorIndex  The index of the motor being rumbled
+     * \param magnitude   The amount of vibration in the closed interval [0.0, 1.0]
+     *
+     * \return true if the rumble motor's state is set, false otherwise
+     *
+     * TODO: Move declaration to parent class
      */
-    bool InitializeProperties(CPeripheral* peripheral);
+    bool SendRumbleEvent(const std::string& strLocation, unsigned int motorIndex, float magnitude);
 
     // Inherited from CPeripheralBus
+    virtual bool         InitializeProperties(CPeripheral* peripheral) override;
     virtual void         Register(CPeripheral *peripheral) override;
     virtual void         GetFeatures(std::vector<PeripheralFeature> &features) const override;
     virtual bool         HasFeature(const PeripheralFeature feature) const override;
@@ -70,13 +79,11 @@ namespace PERIPHERALS
     virtual size_t       GetNumberOfPeripherals(void) const override;
     virtual size_t       GetNumberOfPeripheralsWithId(const int iVendorId, const int iProductId) const override;
     virtual void         GetDirectory(const std::string &strPath, CFileItemList &items) const override;
+    virtual void         ProcessEvents(void) override;
 
     // implementation of IAddonMgrCallback
     bool RequestRestart(ADDON::AddonPtr addon, bool datachanged) override;
     bool RequestRemoval(ADDON::AddonPtr addon) override;
-
-    // implementation of Observer
-    void Notify(const Observable &obs, const ObservableMessage msg) override;
 
     bool SplitLocation(const std::string& strLocation, PeripheralAddonPtr& addon, unsigned int& peripheralIndex) const;
 
@@ -84,10 +91,10 @@ namespace PERIPHERALS
     // Inherited from CPeripheralBus
     virtual bool PerformDeviceScan(PeripheralScanResults &results) override;
     virtual void UnregisterRemovedDevices(const PeripheralScanResults &results) override;
-    virtual void ProcessEvents(void) override;
 
   private:
     void UpdateAddons(void);
+    void OnEvent(const ADDON::AddonEvent& event);
 
     PeripheralAddonVector m_addons;
     PeripheralAddonVector m_failedAddons;

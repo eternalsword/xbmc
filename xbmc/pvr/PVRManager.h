@@ -25,13 +25,16 @@
 #include "settings/lib/ISettingCallback.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
+#include "utils/EventStream.h"
 #include "utils/JobManager.h"
 #include "utils/Observer.h"
 
+#include "pvr/PVRManagerState.h"
 #include "pvr/recordings/PVRRecording.h"
 
 #include <map>
 #include <memory>
+#include <vector>
 
 class CGUIDialogProgressBarHandle;
 class CStopWatch;
@@ -58,16 +61,6 @@ namespace PVR
   class CPVRGUIInfo;
   class CPVRDatabase;
   class CGUIWindowPVRCommon;
-
-  enum ManagerState
-  {
-    ManagerStateError = 0,
-    ManagerStateStopped,
-    ManagerStateStarting,
-    ManagerStateStopping,
-    ManagerStateInterrupted,
-    ManagerStateStarted
-  };
 
   enum PlaybackType
   {
@@ -170,16 +163,6 @@ private:
      * @brief Delete PVRManager's objects.
      */
     void Cleanup(void);
-
-    /*!
-     * @return True when a PVR window is active, false otherwise.
-     */
-    bool IsPVRWindowActive(void) const;
-
-    /*!
-     * @return True when the given window id is an PVR window, false otherwise.
-     */
-    static bool IsPVRWindow(int windowId);
 
     /*!
      * @brief Get the TV database.
@@ -353,22 +336,10 @@ private:
     bool SetRecordingOnChannel(const CPVRChannelPtr &channel, bool bOnOff);
 
     /*!
-     * @brief Check whether there are active timers.
-     * @return True if there are active timers, false otherwise.
-     */
-    bool HasTimers(void) const;
-
-    /*!
      * @brief Check whether there are active recordings.
      * @return True if there are active recordings, false otherwise.
      */
     bool IsRecording(void) const;
-
-    /*!
-     * @brief Check whether the pvr backend is idle.
-     * @return True if there are no active timers/recordings/wake-ups within the configured time span.
-     */
-    bool IsIdle(void) const;
 
     /*!
      * @brief Check whether the system Kodi is running on can be powered down
@@ -564,12 +535,6 @@ private:
     void OnWake();
 
     /*!
-     * @brief Wait until the pvr manager is loaded
-     * @return True when loaded, false otherwise
-     */
-    bool WaitUntilInitialised(void);
-
-    /*!
      * @brief Create EPG tags for all channels in internal channel groups
      * @return True if EPG tags where created successfully, false otherwise
      */
@@ -585,6 +550,33 @@ private:
      * @brief Signal a connection change of a client
      */
     void ConnectionStateChange(int clientId, std::string connectString, PVR_CONNECTION_STATE state, std::string message);
+
+    /*!
+     * @brief Explicitly set the state of channel preview. This is when channel is displayed on OSD without actually switching
+     */
+    void SetChannelPreview(bool preview);
+
+    /*!
+     * @brief Query the state of channel preview
+     */
+    bool IsChannelPreview() const;
+
+    /*!
+     * @brief Query the events available for CEventStream
+     */
+    CEventStream<ManagerState>& Events() { return m_events; }
+
+    /*!
+     * @brief Show or update the progress dialog.
+     * @param strText The current status.
+     * @param iProgress The current progress in %.
+     */
+    void ShowProgressDialog(const std::string &strText, int iProgress);
+
+    /*!
+     * @brief Hide the progress dialog if it's visible.
+     */
+    void HideProgressDialog(void);
 
   protected:
     /*!
@@ -625,18 +617,6 @@ private:
      * @return True if playback was continued, false otherwise.
      */
     bool ContinueLastChannel(void);
-
-    /*!
-     * @brief Show or update the progress dialog.
-     * @param strText The current status.
-     * @param iProgress The current progress in %.
-     */
-    void ShowProgressDialog(const std::string &strText, int iProgress);
-
-    /*!
-     * @brief Hide the progress dialog if it's visible.
-     */
-    void HideProgressDialog(void);
 
     void ExecutePendingJobs(void);
 
@@ -682,6 +662,9 @@ private:
     ManagerState                    m_managerState;
     std::unique_ptr<CStopWatch>     m_parentalTimer;
     static const int                m_pvrWindowIds[12];
+
+    std::atomic_bool m_isChannelPreview;
+    CEventSource<ManagerState> m_events;
   };
 
   class CPVRStartupJob : public CJob

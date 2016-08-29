@@ -20,7 +20,8 @@
 
 #include "ServiceManager.h"
 #include "addons/BinaryAddonCache.h"
-#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
+#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
+#include "cores/DataCacheCore.h"
 #include "utils/log.h"
 #include "interfaces/AnnouncementManager.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
@@ -34,12 +35,16 @@ bool CServiceManager::Init1()
 
   m_XBPython.reset(new XBPython());
   CScriptInvocationManager::GetInstance().RegisterLanguageInvocationHandler(m_XBPython.get(), ".py");
+  
+  m_Platform.reset(CPlatform::CreateInstance());
 
   return true;
 }
 
 bool CServiceManager::Init2()
 {
+  m_Platform->Init();
+  
   m_addonMgr.reset(new ADDON::CAddonMgr());
   if (!m_addonMgr->Init())
   {
@@ -49,6 +54,7 @@ bool CServiceManager::Init2()
 
   m_ADSPManager.reset(new ActiveAE::CActiveAEDSP());
   m_PVRManager.reset(new PVR::CPVRManager());
+  m_dataCacheCore.reset(new CDataCacheCore());
 
   m_binaryAddonCache.reset( new ADDON::CBinaryAddonCache());
   m_binaryAddonCache->Init();
@@ -103,4 +109,20 @@ PVR::CPVRManager& CServiceManager::GetPVRManager()
 ActiveAE::CActiveAEDSP& CServiceManager::GetADSPManager()
 {
   return *m_ADSPManager;
+}
+
+CDataCacheCore& CServiceManager::GetDataCacheCore()
+{
+  return *m_dataCacheCore;
+}
+
+CPlatform& CServiceManager::GetPlatform()
+{
+  return *m_Platform;
+}
+
+// deleters for unique_ptr
+void CServiceManager::delete_dataCacheCore::operator()(CDataCacheCore *p) const
+{
+  delete p;
 }

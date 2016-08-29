@@ -135,6 +135,8 @@ void CPVRChannel::Serialize(CVariant& value) const
   epg = GetEPGNext();
   if (epg)
     epg->Serialize(value["broadcastnext"]);
+
+  value["isrecording"] = IsRecording();
 }
 
 /********** XBMC related channel methods **********/
@@ -673,11 +675,6 @@ bool CPVRChannel::IsHidden(void) const
 bool CPVRChannel::IsSubChannel(void) const
 {
   return SubChannelNumber() > 0;
-}
-
-bool CPVRChannel::IsClientSubChannel(void) const
-{
-  return ClientSubChannelNumber() > 0;
 }
 
 std::string CPVRChannel::FormattedChannelNumber(void) const

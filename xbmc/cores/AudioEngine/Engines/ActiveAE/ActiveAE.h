@@ -19,6 +19,10 @@
  *
  */
 
+#include <list>
+#include <string>
+#include <vector>
+
 #include "system.h"
 #include "threads/Thread.h"
 
@@ -67,6 +71,7 @@ struct AudioSettings
   int guisoundmode;
   unsigned int samplerate;
   AEQuality resampleQuality;
+  double atempoThreshold;
 };
 
 class CActiveAEControlProtocol : public Protocol

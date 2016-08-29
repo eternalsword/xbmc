@@ -37,14 +37,14 @@ CPeripheralBusAddon::CPeripheralBusAddon(CPeripherals *manager) :
     CPeripheralBus("PeripBusAddon", manager, PERIPHERAL_BUS_ADDON)
 {
   CAddonMgr::GetInstance().RegisterAddonMgrCallback(ADDON_PERIPHERALDLL, this);
-  CAddonMgr::GetInstance().RegisterObserver(this);
+  CAddonMgr::GetInstance().Events().Subscribe(this, &CPeripheralBusAddon::OnEvent);
 
   UpdateAddons();
 }
 
 CPeripheralBusAddon::~CPeripheralBusAddon()
 {
-  CAddonMgr::GetInstance().UnregisterObserver(this);
+  CAddonMgr::GetInstance().Events().Unsubscribe(this);
   CAddonMgr::GetInstance().UnregisterAddonMgrCallback(ADDON_PERIPHERALDLL);
 
   // stop everything before destroying any (loaded) addons
@@ -80,15 +80,34 @@ bool CPeripheralBusAddon::GetAddon(const std::string &strId, AddonPtr &addon) co
 bool CPeripheralBusAddon::GetAddonWithButtonMap(const CPeripheral* device, PeripheralAddonPtr &addon) const
 {
   CSingleLock lock(m_critSection);
-  for (const auto& addonIt : m_addons)
+
+  // If device is from an add-on, try to use that add-on
+  if (device && device->GetBusType() == PERIPHERAL_BUS_ADDON)
   {
-    if (addonIt->HasButtonMaps())
+    PeripheralAddonPtr addonWithButtonMap;
+    unsigned int index;
+    if (SplitLocation(device->Location(), addonWithButtonMap, index))
     {
-      addon = addonIt;
-      return true;
+      if (addonWithButtonMap->HasButtonMaps())
+        addon = std::move(addonWithButtonMap);
+      else
+        CLog::Log(LOGDEBUG, "Add-on %s doesn't provide button maps for its controllers", addonWithButtonMap->ID().c_str());
     }
   }
-  return false;
+
+  if (!addon)
+  {
+    auto it = std::find_if(m_addons.begin(), m_addons.end(),
+      [](const PeripheralAddonPtr& addon)
+      {
+        return addon->HasButtonMaps();
+      });
+
+    if (it != m_addons.end())
+      addon = *it;
+  }
+
+  return addon.get() != nullptr;
 }
 
 unsigned int CPeripheralBusAddon::GetAddonCount(void) const
@@ -133,6 +152,18 @@ bool CPeripheralBusAddon::InitializeProperties(CPeripheral* peripheral)
   }
 
   return bSuccess;
+}
+
+bool CPeripheralBusAddon::SendRumbleEvent(const std::string& strLocation, unsigned int motorIndex, float magnitude)
+{
+  bool bHandled = false;
+
+  PeripheralAddonPtr addon;
+  unsigned int peripheralIndex;
+  if (SplitLocation(strLocation, addon, peripheralIndex))
+    bHandled = addon->SendRumbleEvent(peripheralIndex, motorIndex, magnitude);
+
+  return bHandled;
 }
 
 void CPeripheralBusAddon::ProcessEvents(void)
@@ -293,9 +324,9 @@ bool CPeripheralBusAddon::RequestRemoval(ADDON::AddonPtr addon)
   return true;
 }
 
-void CPeripheralBusAddon::Notify(const Observable &obs, const ObservableMessage msg)
+void CPeripheralBusAddon::OnEvent(const ADDON::AddonEvent& event)
 {
-  if (msg == ObservableMessageAddons)
+  if (typeid(event) == typeid(AddonEvents::InstalledChanged))
     UpdateAddons();
 }
 

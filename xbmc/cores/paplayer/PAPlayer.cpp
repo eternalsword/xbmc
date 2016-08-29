@@ -21,6 +21,7 @@
 #include "PAPlayer.h"
 #include "CodecFactory.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "music/tags/MusicInfoTag.h"
@@ -759,7 +760,7 @@ inline bool PAPlayer::ProcessStream(StreamInfo *si, double &freeBufferTime)
       time = si->m_startOffset;
       si->m_framesSent      = 0;
       si->m_seekNextAtFrame = 0;
-      ToFFRW(1);
+      SetSpeed(1);
     }
 
     si->m_decoder.Seek(time);
@@ -914,11 +915,6 @@ bool PAPlayer::IsPlaying() const
   return m_isPlaying;
 }
 
-bool PAPlayer::IsPaused() const
-{
-  return m_isPaused;
-}
-
 void PAPlayer::Pause()
 {
   if (m_isPaused)
@@ -945,10 +941,32 @@ void PAPlayer::SetDynamicRangeCompression(long drc)
 
 }
 
-void PAPlayer::ToFFRW(int iSpeed)
+void PAPlayer::SetSpeed(float speed)
 {
-  m_playbackSpeed     = iSpeed;
+  m_playbackSpeed = static_cast<int>(speed);
+  if (m_playbackSpeed != 0 && m_isPaused)
+  {
+    m_isPaused = false;
+    SoftStart();
+  }
+  else if (m_playbackSpeed == 0 && !m_isPaused)
+  {
+    m_isPaused = true;
+    SoftStop(true, false);
+  }
   m_signalSpeedChange = true;
+}
+
+float PAPlayer::GetSpeed()
+{
+  //! @todo: remove extra member for pause state
+  //! there was inconsistency throughout the entire application on how speed
+  //! and pause were used. Now speed is defined as current playback speed.
+  //! as a result speed must be 0 if player is paused.
+  if (m_isPaused)
+    return 0;
+
+  return m_playbackSpeed;
 }
 
 int64_t PAPlayer::GetTimeInternal()
@@ -1079,7 +1097,7 @@ void PAPlayer::SeekTime(int64_t iTime /*=0*/)
   int seekOffset = (int)(iTime - GetTimeInternal());
 
   if (m_playbackSpeed != 1)
-    ToFFRW(1);
+    SetSpeed(1);
 
   m_currentStream->m_seekFrame = (int)((float)m_currentStream->m_audioFormat.m_sampleRate * ((float)iTime + (float)m_currentStream->m_startOffset) / 1000.0f);
   m_callback.OnPlayBackSeek((int)iTime, seekOffset);
@@ -1130,7 +1148,7 @@ void PAPlayer::UpdateGUIData(StreamInfo *si)
   total -= m_currentStream->m_startOffset;
   m_playerGUIData.m_totalTime = total;
 
-  g_dataCacheCore.SignalAudioInfoChange();
+  CServiceBroker::GetDataCacheCore().SignalAudioInfoChange();
 }
 
 void PAPlayer::OnJobComplete(unsigned int jobID, bool success, CJob *job)

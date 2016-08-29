@@ -26,6 +26,11 @@
 
 class CSetting;
 
+namespace EPG
+{
+  class CGUIEPGGridContainer;
+}
+
 namespace PVR
 {
   class CPVRRefreshTimelineItemsThread;
@@ -36,6 +41,7 @@ namespace PVR
     CGUIWindowPVRGuide(bool bRadio);
     virtual ~CGUIWindowPVRGuide(void);
 
+    virtual bool CanBeActivated() const override;
     virtual void OnInitWindow() override;
     virtual void OnDeinitWindow(int nextWindowID) override;
     virtual bool OnMessage(CGUIMessage& message) override;
@@ -44,6 +50,7 @@ namespace PVR
     virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
     virtual void UpdateButtons(void) override;
     virtual void Notify(const Observable &obs, const ObservableMessage msg) override;
+    virtual void SetInvalid() override;
 
     bool RefreshTimelineItems();
 
@@ -55,6 +62,10 @@ namespace PVR
     virtual void UnregisterObservers(void) override;
 
   private:
+    void Init();
+
+    EPG::CGUIEPGGridContainer* GetGridControl();
+
     bool SelectPlayingFile(void);
 
     bool OnContextButtonBegin(CFileItem *item, CONTEXT_BUTTON button);

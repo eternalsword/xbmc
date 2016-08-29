@@ -36,17 +36,6 @@
 using namespace PVR;
 using namespace EPG;
 
-CPVRRecordingUid::CPVRRecordingUid() :
-    m_iClientId(PVR_INVALID_CLIENT_ID)
-{
-}
-
-CPVRRecordingUid::CPVRRecordingUid(const CPVRRecordingUid &recordingId) :
-  m_iClientId(recordingId.m_iClientId),
-  m_strRecordingId(recordingId.m_strRecordingId)
-{
-}
-
 CPVRRecordingUid::CPVRRecordingUid(int iClientId, const std::string& strRecordingId) :
   m_iClientId(iClientId),
   m_strRecordingId(strRecordingId)
@@ -92,7 +81,8 @@ CPVRRecording::CPVRRecording(const PVR_RECORDING &recording, unsigned int iClien
   m_strShowTitle                   = recording.strEpisodeName;
   m_iSeason                        = recording.iSeriesNumber;
   m_iEpisode                       = recording.iEpisodeNumber;
-  SetYear(recording.iYear);
+  if (recording.iYear > 0)
+    SetYear(recording.iYear);
   m_iClientId                      = iClientId;
   m_recordingTime                  = recording.recordingTime + g_advancedSettings.m_iPVRTimeCorrection;
   m_duration                       = CDateTimeSpan(0, 0, recording.iDuration / 60, recording.iDuration % 60);
@@ -192,8 +182,8 @@ void CPVRRecording::Serialize(CVariant& value) const
   value["starttime"] = m_recordingTime.IsValid() ? m_recordingTime.GetAsDBDateTime() : "";
   value["endtime"] = m_recordingTime.IsValid() ? (m_recordingTime + m_duration).GetAsDBDateTime() : "";
   value["recordingid"] = m_iRecordingId;
-  value["deleted"] = m_bIsDeleted;
-  value["epgevent"] = m_iEpgEventId;
+  value["isdeleted"] = m_bIsDeleted;
+  value["epgeventid"] = m_iEpgEventId;
   value["channeluid"] = m_iChannelUid;
   value["radio"] = m_bRadio;
 
@@ -482,16 +472,12 @@ CPVRChannelPtr CPVRRecording::Channel(void) const
   return CPVRChannelPtr();
 }
 
-bool CPVRRecording::IsBeingRecorded(void) const
+int CPVRRecording::ChannelUid(void) const
 {
-  if (m_iEpgEventId != EPG_TAG_INVALID_UID)
-  {
-    const CPVRChannelPtr channel(Channel());
-    if (channel)
-    {
-      const EPG::CEpgInfoTagPtr epgTag(EPG::CEpgContainer::GetInstance().GetTagById(channel, m_iEpgEventId));
-      return epgTag ? epgTag->HasRecording() : false;
-    }
-  }
-  return false;
+  return m_iChannelUid;
+}
+
+int CPVRRecording::ClientID(void) const
+{
+  return m_iClientId;
 }

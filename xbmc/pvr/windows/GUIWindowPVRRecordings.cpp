@@ -20,13 +20,14 @@
 
 #include "ContextMenuManager.h"
 #include "GUIInfoManager.h"
-#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
+#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIRadioButtonControl.h"
 #include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
+#include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -52,19 +53,17 @@ CGUIWindowPVRRecordings::CGUIWindowPVRRecordings(bool bRadio) :
 void CGUIWindowPVRRecordings::RegisterObservers(void)
 {
   CSingleLock lock(m_critSection);
-  g_PVRRecordings->RegisterObserver(this);
-  g_PVRTimers->RegisterObserver(this);
+  g_PVRManager.RegisterObserver(this);
   g_infoManager.RegisterObserver(this);
+  CGUIWindowPVRBase::RegisterObservers();
 }
 
 void CGUIWindowPVRRecordings::UnregisterObservers(void)
 {
   CSingleLock lock(m_critSection);
-  if (g_PVRRecordings)
-    g_PVRRecordings->UnregisterObserver(this);
-  if (g_PVRTimers)
-    g_PVRTimers->UnregisterObserver(this);
+  CGUIWindowPVRBase::UnregisterObservers();
   g_infoManager.UnregisterObserver(this);
+  g_PVRManager.UnregisterObserver(this);
 }
 
 void CGUIWindowPVRRecordings::OnWindowLoaded()
@@ -102,7 +101,7 @@ std::string CGUIWindowPVRRecordings::GetResumeString(const CFileItem& item)
 
     // Suppress resume from 0
     if (positionInSeconds > 0)
-      resumeString = StringUtils::Format(g_localizeStrings.Get(12022).c_str(), StringUtils::SecondsToTimeString(positionInSeconds).c_str());
+      resumeString = StringUtils::Format(g_localizeStrings.Get(12022).c_str(), StringUtils::SecondsToTimeString(positionInSeconds, TIME_FORMAT_HH_MM_SS).c_str());
   }
   return resumeString;
 }
@@ -124,10 +123,17 @@ void CGUIWindowPVRRecordings::GetContextButtons(int itemNumber, CContextButtons 
     if (!isDeletedRecording)
     {
       buttons.Add(CONTEXT_BUTTON_FIND, 19003);      /* Find similar */
-      buttons.Add(CONTEXT_BUTTON_PLAY_ITEM, 12021); /* Start from beginning */
+
       std::string resumeString = GetResumeString(*pItem);
-      if (!resumeString.empty())
-        buttons.Add(CONTEXT_BUTTON_RESUME_ITEM, resumeString);
+      if (resumeString.empty())
+      {
+        buttons.Add(CONTEXT_BUTTON_PLAY_ITEM, 208); /* Play */
+      }
+      else
+      {
+        buttons.Add(CONTEXT_BUTTON_RESUME_ITEM, resumeString); /* Resume from HH:MM:SS */
+        buttons.Add(CONTEXT_BUTTON_PLAY_ITEM, 12023); /* Play from beginning */
+      }
     }
     else
     {
@@ -210,19 +216,26 @@ bool CGUIWindowPVRRecordings::Update(const std::string &strDirectory, bool updat
 
   bool bReturn = CGUIWindowPVRBase::Update(strDirectory);
 
-  /* empty list for deleted recordings */
-  if (m_vecItems->GetObjectCount() == 0 && m_bShowDeletedRecordings)
+  if (bReturn)
   {
-    /* show the normal recordings instead */
-    m_bShowDeletedRecordings = false;
-    Update(GetDirectoryPath());
-  }
+    CSingleLock lock(m_critSection);
 
+    /* empty list for deleted recordings */
+    if (m_vecItems->GetObjectCount() == 0 && m_bShowDeletedRecordings)
+    {
+      /* show the normal recordings instead */
+      m_bShowDeletedRecordings = false;
+      lock.Leave();
+      Update(GetDirectoryPath());
+    }
+  }
   return bReturn;
 }
 
 void CGUIWindowPVRRecordings::UpdateButtons(void)
 {
+  SET_CONTROL_SELECTED(GetID(), CONTROL_BTNGROUPITEMS, CSettings::GetInstance().GetBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS));
+
   CGUIRadioButtonControl *btnShowDeleted = (CGUIRadioButtonControl*) GetControl(CONTROL_BTNSHOWDELETED);
   if (btnShowDeleted)
   {
@@ -236,9 +249,6 @@ void CGUIWindowPVRRecordings::UpdateButtons(void)
 
 bool CGUIWindowPVRRecordings::OnMessage(CGUIMessage &message)
 {
-  if (!IsValidMessage(message))
-    return false;
-  
   bool bReturn = false;
   switch (message.GetMessage())
   {
@@ -248,26 +258,60 @@ bool CGUIWindowPVRRecordings::OnMessage(CGUIMessage &message)
         int iItem = m_viewControl.GetSelectedItem();
         if (iItem >= 0 && iItem < m_vecItems->Size())
         {
+          const CFileItemPtr item(m_vecItems->Get(iItem));
+          if (item->m_bIsFolder)
+          {
+            // recording folders are handled by base class.
+            bReturn = false;
+            break;
+          }
+
           switch (message.GetParam1())
           {
             case ACTION_SELECT_ITEM:
             case ACTION_MOUSE_LEFT_CLICK:
-            case ACTION_PLAY:
-            {
-              bReturn = PlayFile(m_vecItems->Get(iItem).get());
+              switch(CSettings::GetInstance().GetInt(CSettings::SETTING_MYVIDEOS_SELECTACTION))
+              {
+                case SELECT_ACTION_CHOOSE:
+                  OnPopupMenu(iItem);
+                  bReturn = true;
+                  break;
+                case SELECT_ACTION_PLAY_OR_RESUME:
+                  PlayFile(item.get(), false /* don't play minimized */, true /* check resume */);
+                  bReturn = true;
+                  break;
+                case SELECT_ACTION_RESUME:
+                {
+                  const std::string resumeString = GetResumeString(*item);
+                  item->m_lStartOffset = resumeString.empty() ? 0 : STARTOFFSET_RESUME;
+                  PlayFile(item.get(), false /* don't play minimized */, false /* don't check resume */);
+                  bReturn = true;
+                  break;
+                }
+                case SELECT_ACTION_INFO:
+                  ShowRecordingInfo(item.get());
+                  bReturn = true;
+                  break;
+                default:
+                  bReturn = false;
+                  break;
+              }
               break;
-            }
+            case ACTION_PLAY:
+              PlayFile(item.get(), false /* don't play minimized */, true /* check resume */);
+              bReturn = true;
+              break;
             case ACTION_CONTEXT_MENU:
             case ACTION_MOUSE_RIGHT_CLICK:
               OnPopupMenu(iItem);
               bReturn = true;
               break;
             case ACTION_SHOW_INFO:
-              ShowRecordingInfo(m_vecItems->Get(iItem).get());
+              ShowRecordingInfo(item.get());
               bReturn = true;
               break;
             case ACTION_DELETE_ITEM:
-              ActionDeleteRecording(m_vecItems->Get(iItem).get());
+              ActionDeleteRecording(item.get());
               bReturn = true;
               break;
             default:
@@ -278,8 +322,8 @@ bool CGUIWindowPVRRecordings::OnMessage(CGUIMessage &message)
       }
       else if (message.GetSenderId() == CONTROL_BTNGROUPITEMS)
       {
-        CGUIRadioButtonControl *radioButton = (CGUIRadioButtonControl*) GetControl(CONTROL_BTNGROUPITEMS);
-        g_PVRRecordings->SetGroupItems(radioButton->IsSelected());
+        CSettings::GetInstance().ToggleBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS);
+        CSettings::GetInstance().Save();
         Refresh(true);
       }
       else if (message.GetSenderId() == CONTROL_BTNSHOWDELETED)
@@ -455,7 +499,7 @@ bool CGUIWindowPVRRecordings::OnContextButtonPlay(CFileItem *item, CONTEXT_BUTTO
       (button == CONTEXT_BUTTON_RESUME_ITEM))
   {
     item->m_lStartOffset = button == CONTEXT_BUTTON_RESUME_ITEM ? STARTOFFSET_RESUME : 0;
-    bReturn = PlayFile(item, false); /* play recording */
+    bReturn = PlayFile(item, false, false); /* play recording, don't check resume */
   }
 
   return bReturn;
@@ -490,14 +534,16 @@ bool CGUIWindowPVRRecordings::OnContextButtonMarkWatched(const CFileItemPtr &ite
 
   if (button == CONTEXT_BUTTON_MARK_WATCHED || button == CONTEXT_BUTTON_MARK_UNWATCHED)
   {
-    int playCount = button == CONTEXT_BUTTON_MARK_WATCHED ? 1 : 0;
+    if (button == CONTEXT_BUTTON_MARK_WATCHED)
+      bReturn = g_PVRRecordings->IncrementRecordingsPlayCount(item);
+    else
+      bReturn = g_PVRRecordings->SetRecordingsPlayCount(item, 0);
 
-    if (g_PVRRecordings->SetRecordingsPlayCount(item, playCount))
+    if (bReturn)
     {
       // Advance the selected item one notch
       m_viewControl.SetSelectedItem(m_viewControl.GetSelectedItem() + 1);
       Refresh(true);
-      bReturn = true;
     }
   }
 

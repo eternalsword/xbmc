@@ -1002,6 +1002,8 @@ int CVideoLibrary::RequiresAdditionalDetails(const MediaType& mediaType, const C
       details = details | VideoDbDetailsCast;
     else if (propertyValue == "ratings")
       details = details | VideoDbDetailsRating;
+    else if (propertyValue == "uniqueid")
+      details = details | VideoDbDetailsUniqueID;
     else if (propertyValue == "showlink")
       details = details | VideoDbDetailsShowLink;
     else if (propertyValue == "streamdetails")
@@ -1119,21 +1121,46 @@ void CVideoLibrary::UpdateVideoTag(const CVariant &parameterObject, CVideoInfoTa
     CVariant ratings = parameterObject["ratings"];
     for (CVariant::const_iterator_map rIt = ratings.begin_map(); rIt != ratings.end_map(); rIt++)
     {
-      if (rIt->second.isArray() && ParameterNotNull(rIt->second, "name") && ParameterNotNull(rIt->second, "rating"))
+      if (rIt->second.isObject() && ParameterNotNull(rIt->second, "rating"))
       {
-        details.SetRating(rIt->second["rating"].asFloat(), rIt->second["name"].asString());
-        if (ParameterNotNull(rIt->second, "votes"))
-          details.SetVotes(StringUtils::ReturnDigits(parameterObject["votes"].asString()), rIt->second["name"].asString());
+        const auto& rating = rIt->second;
+        if (ParameterNotNull(rating, "votes"))
+          details.SetRating(rating["rating"].asFloat(), rating["votes"].asFloat(), rIt->first, (ParameterNotNull(rating, "default") && rating["default"].asBoolean()));
+        else
+          details.SetRating(rating["rating"].asFloat(), rIt->first, (ParameterNotNull(rating, "default") && rating["default"].asBoolean()));
+
+        updatedDetails.insert("ratings");
+      }
+      else if (rIt->second.isNull())
+      {
+        details.RemoveRating(rIt->first);
+        updatedDetails.insert("ratings");
       }
     }
-    updatedDetails.insert("ratings");
   }
   if (ParameterNotNull(parameterObject, "userrating"))
     details.m_iUserRating = parameterObject["userrating"].asInteger();
   if (ParameterNotNull(parameterObject, "mpaa"))
     details.SetMPAARating(parameterObject["mpaa"].asString());
   if (ParameterNotNull(parameterObject, "imdbnumber"))
-    details.SetIMDBNumber(parameterObject["imdbnumber"].asString());
+    details.SetUniqueID(parameterObject["imdbnumber"].asString());
+  if (ParameterNotNull(parameterObject, "uniqueid"))
+  {
+    CVariant uniqueids = parameterObject["uniqueid"];
+    for (CVariant::const_iterator_map idIt = uniqueids.begin_map(); idIt != uniqueids.end_map(); idIt++)
+    {
+      if (idIt->second.isString() && !idIt->second.asString().empty())
+      {
+        details.SetUniqueID(idIt->second.asString(), idIt->first);
+        updatedDetails.insert("uniqueid");
+      }
+      else if (idIt->second.isNull() && idIt->first != details.GetDefaultUniqueID())
+      {
+        details.RemoveUniqueID(idIt->first);
+        updatedDetails.insert("uniqueid");
+      }
+    }
+  }
   if (ParameterNotNull(parameterObject, "premiered"))
   {
     CDateTime premiered;

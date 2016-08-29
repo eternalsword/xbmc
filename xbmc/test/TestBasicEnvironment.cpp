@@ -20,7 +20,8 @@
 
 #include "TestBasicEnvironment.h"
 #include "TestUtils.h"
-#include "cores/AudioEngine/DSPAddons/ActiveAEDSP.h"
+#include "cores/DataCacheCore.h"
+#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
@@ -30,9 +31,12 @@
 #include "Util.h"
 #include "Application.h"
 #include "interfaces/AnnouncementManager.h"
+#include "addons/BinaryAddonCache.h"
+#include "interfaces/python/XBPython.h"
+#include "pvr/PVRManager.h"
 
 #if defined(TARGET_WINDOWS)
-#include "win32/WIN32Util.h"
+#include "platform/win32/WIN32Util.h"
 #endif
 
 #include <cstdio>
@@ -89,7 +93,6 @@ void TestBasicEnvironment::SetUp()
   if (!CreateDirectory(lpTempPathBuffer, NULL))
     SetUpError();
   CSpecialProtocol::SetTempPath(lpTempPathBuffer);
-  CWIN32Util::ExtendDllPath(); //Needed for delay loading on windows
 #else
   char buf[MAX_PATH];
   char *tmp;

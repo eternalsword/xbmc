@@ -90,11 +90,13 @@ CVideoPlayerAudio::~CVideoPlayerAudio()
 
 bool CVideoPlayerAudio::OpenStream(CDVDStreamInfo &hints)
 {
+  m_processInfo.ResetAudioCodecInfo();
+
   CLog::Log(LOGNOTICE, "Finding audio codec for: %i", hints.codec);
   bool allowpassthrough = !CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK);
   if (hints.realtime)
     allowpassthrough = false;
-  CDVDAudioCodec* codec = CDVDFactoryCodec::CreateAudioCodec(hints, allowpassthrough, m_processInfo.AllowDTSHDDecode());
+  CDVDAudioCodec* codec = CDVDFactoryCodec::CreateAudioCodec(hints, m_processInfo, allowpassthrough, m_processInfo.AllowDTSHDDecode());
   if(!codec)
   {
     CLog::Log(LOGERROR, "Unsupported audio codec");
@@ -236,7 +238,7 @@ void CVideoPlayerAudio::Process()
   while (!m_bStop)
   {
     CDVDMsg* pMsg;
-    int timeout  = (int)(1000 * m_dvdAudio.GetCacheTime()) + 100;
+    int timeout  = (int)(1000 * m_dvdAudio.GetCacheTime());
 
     // read next packet and return -1 on error
     int priority = 1;
@@ -252,13 +254,6 @@ void CVideoPlayerAudio::Process()
 
     if (m_paused)
       priority = 1;
-
-    // consider stream stalled if queue is empty
-    // we can't sync audio to clock with an empty queue
-    if (ALLOW_AUDIO(m_speed) && !m_stalled && !m_paused)
-    {
-      timeout = 0;
-    }
 
     MsgQueueReturnCode ret = m_messageQueue.Get(&pMsg, timeout, priority);
 
@@ -451,6 +446,11 @@ void CVideoPlayerAudio::Process()
 
           m_streaminfo.channels = audioframe.format.m_channelLayout.Count();
 
+
+          m_processInfo.SetAudioChannels(audioframe.format.m_channelLayout);
+          m_processInfo.SetAudioSampleRate(audioframe.format.m_sampleRate);
+          m_processInfo.SetAudioBitsPerSample(audioframe.bits_per_sample);
+
           m_messageParent.Put(new CDVDMsg(CDVDMsg::PLAYER_AVCHANGE));
         }
 
@@ -595,7 +595,7 @@ bool CVideoPlayerAudio::SwitchCodecIfNeeded()
   bool allowpassthrough = !CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK);
   if (m_streaminfo.realtime)
     allowpassthrough = false;
-  CDVDAudioCodec *codec = CDVDFactoryCodec::CreateAudioCodec(m_streaminfo, allowpassthrough, m_processInfo.AllowDTSHDDecode());
+  CDVDAudioCodec *codec = CDVDFactoryCodec::CreateAudioCodec(m_streaminfo, m_processInfo, allowpassthrough, m_processInfo.AllowDTSHDDecode());
   if (!codec || codec->NeedPassthrough() == m_pAudioCodec->NeedPassthrough()) {
     // passthrough state has not changed
     delete codec;

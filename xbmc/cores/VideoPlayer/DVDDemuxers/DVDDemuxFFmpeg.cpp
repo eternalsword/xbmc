@@ -634,8 +634,8 @@ AVDictionary *CDVDDemuxFFmpeg::GetFFMpegOptionsFromInput()
   const CDVDInputStreamFFmpeg *const input =
     dynamic_cast<CDVDInputStreamFFmpeg*>(m_pInput);
 
-  const CURL url = m_pInput->GetURL();
-  AVDictionary *options = NULL;
+  CURL url = m_pInput->GetURL();
+  AVDictionary *options = nullptr;
 
   if (url.IsProtocol("http") || url.IsProtocol("https"))
   {
@@ -695,6 +695,57 @@ AVDictionary *CDVDDemuxFFmpeg::GetFFMpegOptionsFromInput()
       urlStream << host << ':' << port;
 
       av_dict_set(&options, "http_proxy", urlStream.str().c_str(), 0);
+    }
+
+    // rtmp options
+    if (url.IsProtocol("rtmp")  || url.IsProtocol("rtmpt")  ||
+        url.IsProtocol("rtmpe") || url.IsProtocol("rtmpte") ||
+        url.IsProtocol("rtmps"))
+    {
+      static const std::map<std::string,std::string> optionmap =
+      {{{"SWFPlayer", "rtmp_swfurl"},
+        {"PageURL", "rtmp_pageurl"},
+        {"PlayPath", "rtmp_playpath"},
+        {"TcUrl",    "rtmp_tcurl"},
+        {"IsLive",   "rtmp_live"},
+        {"playpath", "rtmp_playpath"},
+        {"swfurl",   "rtmp_swfurl"},
+        {"swfvfy",   "rtmp_swfverify"},
+      }};
+
+      for (const auto& it : optionmap)
+      {
+        if (input->GetItem().HasProperty(it.first))
+        {
+          av_dict_set(&options, it.second.c_str(),
+                      input->GetItem().GetProperty(it.first).asString().c_str(),0);
+        }
+      }
+
+      CURL tmpUrl = url;
+      std::vector<std::string> opts = StringUtils::Split(tmpUrl.Get(), " ");
+      if (opts.size() > 1) // inline rtmp options
+      {
+        std::string swfurl;
+        bool swfvfy=false;
+        for (size_t i = 1; i < opts.size(); ++i)
+        {
+          std::vector<std::string> value = StringUtils::Split(opts[i], "=");
+          auto it = optionmap.find(value[0]);
+          if (it != optionmap.end())
+          {
+            if (value[0] == "swfurl" || value[0] == "SWFPlayer")
+              swfurl = value[1];
+            if (value[0] == "swfvfy" && value[1] == "true")
+              swfvfy = true;
+            else
+              av_dict_set(&options, it->second.c_str(), value[1].c_str(), 0);
+          }
+          if (swfvfy)
+            av_dict_set(&options, "rtmp_swfverify", swfurl.c_str(), 0);
+        }
+        tmpUrl = CURL(opts.front());
+      }
     }
   }
 
@@ -953,11 +1004,16 @@ DemuxPacket* CDVDDemuxFFmpeg::Read()
 
 bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
 {
+  bool hitEnd = false;
+
   if (!m_pInput)
     return false;
 
-  if(time < 0)
+  if (time < 0)
+  {
     time = 0;
+    hitEnd = true;
+  }
 
   m_pkt.result = -1;
   av_packet_unref(&m_pkt.pkt);
@@ -979,8 +1035,8 @@ bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
     return true;
   }
 
-  if(!m_pInput->Seek(0, SEEK_POSSIBLE)
-  && !m_pInput->IsStreamType(DVDSTREAM_TYPE_FFMPEG))
+  if (!m_pInput->Seek(0, SEEK_POSSIBLE) &&
+      !m_pInput->IsStreamType(DVDSTREAM_TYPE_FFMPEG))
   {
     CLog::Log(LOGDEBUG, "%s - input stream reports it is not seekable", __FUNCTION__);
     return false;
@@ -1002,7 +1058,7 @@ bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
     else if (ret < 0 && m_pInput->IsEOF())
       ret = 0;
 
-    if(ret >= 0)
+    if (ret >= 0)
       UpdateCurrentPTS();
   }
 
@@ -1012,10 +1068,18 @@ bool CDVDDemuxFFmpeg::SeekTime(int time, bool backwords, double *startpts)
     CLog::Log(LOGDEBUG, "%s - seek ended up on time %d", __FUNCTION__, (int)(m_currentPts / DVD_TIME_BASE * 1000));
 
   // in this case the start time is requested time
-  if(startpts)
+  if (startpts)
     *startpts = DVD_MSEC_TO_TIME(time);
 
-  return (ret >= 0);
+  if (ret >= 0)
+  {
+    if (!hitEnd)
+      return true;
+    else
+      return false;
+  }
+  else
+    return false;
 }
 
 bool CDVDDemuxFFmpeg::SeekByte(int64_t pos)
