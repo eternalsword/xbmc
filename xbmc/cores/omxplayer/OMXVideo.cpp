@@ -18,14 +18,13 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#elif defined(TARGET_WINDOWS)
+#if defined(TARGET_WINDOWS)
 #include "system.h"
 #endif
 
 #include "OMXVideo.h"
 
+#include "ServiceBroker.h"
 #include "utils/log.h"
 #include "linux/XMemUtils.h"
 #include "DVDDemuxers/DVDDemuxUtils.h"
@@ -35,6 +34,7 @@
 #include "xbmc/guilib/GraphicContext.h"
 #include "settings/Settings.h"
 #include "utils/BitstreamConverter.h"
+#include "TimingConstants.h"
 
 #include "linux/RBP.h"
 
@@ -434,7 +434,7 @@ bool COMXVideo::Open(CDVDStreamInfo &hints, OMXClock *clock, bool hdmi_clock_syn
           break;
       }
     }
-    if (CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_SUPPORTMVC))
+    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_SUPPORTMVC))
     {
       m_codingType = OMX_VIDEO_CodingMVC;
       m_video_codec_name = "omx-mvc";
@@ -590,7 +590,7 @@ bool COMXVideo::Open(CDVDStreamInfo &hints, OMXClock *clock, bool hdmi_clock_syn
   }
 
   // request portsettingschanged on refresh rate change
-  if (CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) == ADJUST_REFRESHRATE_ALWAYS)
+  if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) == ADJUST_REFRESHRATE_ALWAYS)
   {
     notifications.nIndex = OMX_IndexParamPortDefinition;
     omx_err = m_omx_decoder.SetParameter((OMX_INDEXTYPE)OMX_IndexConfigRequestCallback, &notifications);
@@ -630,7 +630,7 @@ bool COMXVideo::Open(CDVDStreamInfo &hints, OMXClock *clock, bool hdmi_clock_syn
   }
 
 
-  // Alloc buffers for the omx intput port.
+  // Alloc buffers for the omx input port.
   omx_err = m_omx_decoder.AllocInputBuffers();
   if (omx_err != OMX_ErrorNone)
   {

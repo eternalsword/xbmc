@@ -52,9 +52,7 @@ CScraperUrl::CScraperUrl()
   relevance = 0;
 }
 
-CScraperUrl::~CScraperUrl()
-{
-}
+CScraperUrl::~CScraperUrl() = default;
 
 void CScraperUrl::Clear()
 {
@@ -337,6 +335,43 @@ bool CScraperUrl::ParseEpisodeGuide(std::string strUrls)
     return false;
 
   return true;
+}
+
+void CScraperUrl::AddElement(std::string url, std::string aspect, std::string referrer, std::string cache, bool post, bool isgz, int season)
+{
+  TiXmlElement thumb("thumb");
+  thumb.SetAttribute("spoof", referrer);
+  thumb.SetAttribute("cache", cache);
+  if (post)
+    thumb.SetAttribute("post", "yes");
+  if (isgz)
+    thumb.SetAttribute("gzip", "yes");
+  if (season >= 0)
+  {
+    thumb.SetAttribute("season", StringUtils::Format("%i", season));
+    thumb.SetAttribute("type", "season");
+  }
+  thumb.SetAttribute("aspect", aspect);
+  TiXmlText text(url);
+  thumb.InsertEndChild(text);
+  m_xml << thumb;
+  SUrlEntry nUrl;
+  nUrl.m_url = url;
+  nUrl.m_spoof = referrer;
+  nUrl.m_post = post;
+  nUrl.m_isgz = isgz;
+  nUrl.m_cache = cache;
+  if (season >= 0)
+  {
+    nUrl.m_type = URL_TYPE_SEASON;
+    nUrl.m_season = season;
+  }
+  else
+    nUrl.m_type = URL_TYPE_GENERAL;
+  
+  nUrl.m_aspect = aspect;
+
+  m_url.push_back(nUrl);
 }
 
 std::string CScraperUrl::GetThumbURL(const CScraperUrl::SUrlEntry &entry)

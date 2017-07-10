@@ -38,11 +38,12 @@ namespace PERIPHERALS
                                 public IInputDeviceEventHandler
   {
   public:
-    CPeripheralBusAndroid(CPeripherals *manager);
-    virtual ~CPeripheralBusAndroid();
+    CPeripheralBusAndroid(CPeripherals& manager);
+    ~CPeripheralBusAndroid() override;
 
     // specialisation of CPeripheralBus
-    bool InitializeProperties(CPeripheral* peripheral) override;
+    bool InitializeProperties(CPeripheral& peripheral) override;
+    void Initialise(void) override;
     void ProcessEvents() override;
 
     // implementations of IInputDeviceCallbacks

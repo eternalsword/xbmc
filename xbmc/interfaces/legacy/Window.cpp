@@ -81,7 +81,7 @@ namespace XBMCAddon
       inline ProxyExistingWindowInterceptor(CGUIWindow* window) :
         cguiwindow(window) { XBMC_TRACE; }
 
-      virtual CGUIWindow* get();
+      CGUIWindow* get() override;
     };
 
     CGUIWindow* ProxyExistingWindowInterceptor::get() { XBMC_TRACE; return cguiwindow; }
@@ -319,7 +319,7 @@ namespace XBMCAddon
         break;
       case CGUIControl::GUICONTROL_SLIDER:
         pControl = new ControlSlider();
-        break;			
+        break;
       case CGUIControl::GUICONTAINER_LIST:
       case CGUIControl::GUICONTAINER_WRAPLIST:
       case CGUIControl::GUICONTAINER_FIXEDLIST:
@@ -360,7 +360,7 @@ namespace XBMCAddon
       }
 
       if (!pControl)
-        // throw an exeption
+        // throw an exception
         throw WindowException("Unknown control type for python");
 
       // we have a valid control here, fill in all the 'Control' data
@@ -594,13 +594,17 @@ namespace XBMCAddon
     long Window::getHeight()
     {
       XBMC_TRACE;
-      return g_graphicsContext.GetHeight();
+      SingleLockWithDelayGuard gslock(g_graphicsContext, languageHook);
+      RESOLUTION_INFO resInfo = ref(window)->GetCoordsRes();
+      return resInfo.iHeight;
     }
 
     long Window::getWidth()
     {
       XBMC_TRACE;
-      return g_graphicsContext.GetWidth();
+      SingleLockWithDelayGuard gslock(g_graphicsContext, languageHook);
+      RESOLUTION_INFO resInfo = ref(window)->GetCoordsRes();
+      return resInfo.iWidth;
     }
 
     long Window::getResolution()
@@ -685,7 +689,7 @@ namespace XBMCAddon
 
         while (bModal && !g_application.m_bStop)
         {
-//! @todo garbear added this code to the pythin window.cpp class and
+//! @todo garbear added this code to the python window.cpp class and
 //!  commented in XBPyThread.cpp. I'm not sure how to handle this 
 //! in this native implementation.
 //          // Check if XBPyThread::stop() raised a SystemExit exception
@@ -749,7 +753,7 @@ namespace XBMCAddon
       pControl->pGUIControl->SetAction(ACTION_MOVE_LEFT,  pControl->iControlLeft);
       pControl->pGUIControl->SetAction(ACTION_MOVE_RIGHT, pControl->iControlRight);
 
-      // add control to list and allocate recources for the control
+      // add control to list and allocate resources for the control
       vecControls.push_back(AddonClass::Ref<Control>(pControl));
       pControl->pGUIControl->AllocResources();
 

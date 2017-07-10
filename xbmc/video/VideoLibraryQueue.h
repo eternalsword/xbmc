@@ -38,7 +38,7 @@ class CVideoLibraryJob;
 class CVideoLibraryQueue : protected CJobQueue
 {
 public:
-  ~CVideoLibraryQueue();
+  ~CVideoLibraryQueue() override;
 
   /*!
    \brief Gets the singleton instance of the video library queue.
@@ -121,7 +121,7 @@ public:
   /*!
    \brief Cancels the given job and removes it from the queue.
 
-   \param[in] job Video library job to be canceld and removed from the queue.
+   \param[in] job Video library job to be canceled and removed from the queue.
    */
   void CancelJob(CVideoLibraryJob *job);
 
@@ -137,7 +137,7 @@ public:
 
 protected:
   // implementation of IJobCallback
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
   /*!
    \brief Notifies all to refresh the current listings.

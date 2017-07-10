@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,11 +23,14 @@
 
 #include <string>
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   class IInputReceiver;
 
   /*!
+   * \ingroup joystick
    * \brief Interface for handling input events for game controllers
    */
   class IInputHandler
@@ -35,7 +38,7 @@ namespace JOYSTICK
   public:
     IInputHandler(void) : m_receiver(nullptr) { }
 
-    virtual ~IInputHandler(void) { }
+    virtual ~IInputHandler() = default;
 
     /*!
      * \brief The add-on ID of the game controller associated with this input handler
@@ -54,17 +57,17 @@ namespace JOYSTICK
     virtual bool HasFeature(const FeatureName& feature) const = 0;
 
     /*!
-     * \brief Return true if the input handler is currently accepting input
-     */
-    virtual bool AcceptsInput(void) = 0;
-
-    /*!
-     * \brief Get the type of input handled by the specified feature
+     * \brief Return true if the input handler is currently accepting input for the
+     *        given feature
      *
-     * \return INPUT_TYPE::DIGITAL for digital buttons, INPUT::ANALOG for analog
-     *         buttons, or INPUT::UNKNOWN otherwise
+     * \param feature A feature belonging to the controller specified by ControllerID()
+     *
+     * \return True if the feature is currently accepting input, false otherwise
+     *
+     * This does not prevent the input events from being called, but can return
+     * false to indicate that input wasn't handled for the specified feature.
      */
-    virtual INPUT_TYPE GetInputType(const FeatureName& feature) const = 0;
+    virtual bool AcceptsInput(const FeatureName &feature) const = 0;
 
     /*!
      * \brief A digital button has been pressed or released
@@ -77,14 +80,14 @@ namespace JOYSTICK
     virtual bool OnButtonPress(const FeatureName& feature, bool bPressed) = 0;
 
     /*!
-    * \brief A digital button has been pressed for more than one event frame
-    *
-    * \param feature      The feature being held
-    * \param holdTimeMs   The time elapsed since the initial press (ms)
-    *
-    * If OnButtonPress() returns true for the initial press, then this callback
-    * is invoked on subsequent frames until the button is released.
-    */
+     * \brief A digital button has been pressed for more than one event frame
+     *
+     * \param feature      The feature being held
+     * \param holdTimeMs   The time elapsed since the initial press (ms)
+     *
+     * If OnButtonPress() returns true for the initial press, then this callback
+     * is invoked on subsequent frames until the button is released.
+     */
     virtual void OnButtonHold(const FeatureName& feature, unsigned int holdTimeMs) = 0;
 
     /*!
@@ -93,10 +96,11 @@ namespace JOYSTICK
      * \param feature      The feature changing state
      * \param magnitude    The button pressure or trigger travel distance in the
      *                     closed interval [0, 1]
+     * \param motionTimeMs The time elapsed since the magnitude was 0
      *
      * \return True if the event was handled otherwise false
      */
-    virtual bool OnButtonMotion(const FeatureName& feature, float magnitude) = 0;
+    virtual bool OnButtonMotion(const FeatureName& feature, float magnitude, unsigned int motionTimeMs) = 0;
 
     /*!
      * \brief An analog stick has moved
@@ -109,7 +113,7 @@ namespace JOYSTICK
      *
      * \return True if the event was handled otherwise false
      */
-    virtual bool OnAnalogStickMotion(const FeatureName& feature, float x, float y, unsigned int motionTimeMs = 0) = 0;
+    virtual bool OnAnalogStickMotion(const FeatureName& feature, float x, float y, unsigned int motionTimeMs) = 0;
 
     /*!
      * \brief An accelerometer's state has changed
@@ -131,4 +135,5 @@ namespace JOYSTICK
   private:
     IInputReceiver* m_receiver;
   };
+}
 }

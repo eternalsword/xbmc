@@ -21,12 +21,13 @@
  */
 
 #include "system.h" // until we get sane int types used here
-#include <memory>
 #include <vector>
+#include <string>
+
 #include "IPlayerCallback.h"
 #include "guilib/Geometry.h"
 #include "guilib/Resolution.h"
-#include <string>
+#include "pvr/PVRTypes.h"
 
 #define CURRENT_STREAM -1
 #define CAPTUREFLAG_CONTINUOUS  0x01 //after a render is done, render a new one immediately
@@ -37,12 +38,6 @@ struct TextCacheStruct_t;
 class TiXmlElement;
 class CStreamDetails;
 class CAction;
-
-namespace PVR
-{
-  class CPVRChannel;
-  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
-}
 
 class CPlayerOptions
 {
@@ -147,7 +142,6 @@ enum EINTERLACEMETHOD
   VS_INTERLACEMETHOD_DEINTERLACE=7,
 
   VS_INTERLACEMETHOD_VDPAU_BOB=8,
-  VS_INTERLACEMETHOD_INVERSE_TELECINE=9,
 
   VS_INTERLACEMETHOD_VDPAU_INVERSE_TELECINE=11,
   VS_INTERLACEMETHOD_VDPAU_TEMPORAL=12,
@@ -155,8 +149,6 @@ enum EINTERLACEMETHOD
   VS_INTERLACEMETHOD_VDPAU_TEMPORAL_SPATIAL=14,
   VS_INTERLACEMETHOD_VDPAU_TEMPORAL_SPATIAL_HALF=15,
   VS_INTERLACEMETHOD_DEINTERLACE_HALF=16,
-
-  VS_INTERLACEMETHOD_AUTO_ION = 21,
 
   VS_INTERLACEMETHOD_VAAPI_BOB = 22,
   VS_INTERLACEMETHOD_VAAPI_MADI = 23,
@@ -170,6 +162,8 @@ enum EINTERLACEMETHOD
   VS_INTERLACEMETHOD_IMX_FASTMOTION = 29,
   VS_INTERLACEMETHOD_IMX_ADVMOTION = 30,
   VS_INTERLACEMETHOD_IMX_ADVMOTION_HALF = 31,
+
+  VS_INTERLACEMETHOD_DXVA_AUTO = 32,
 
   VS_INTERLACEMETHOD_MAX // do not use and keep as last enum value.
 };
@@ -224,14 +218,16 @@ enum ViewMode {
   ViewModeStretch16x9,
   ViewModeOriginal,
   ViewModeCustom,
-  ViewModeStretch16x9Nonlin
+  ViewModeStretch16x9Nonlin,
+  ViewModeZoom120Width,
+  ViewModeZoom110Width
 };
 
 class IPlayer
 {
 public:
   IPlayer(IPlayerCallback& callback): m_callback(callback){};
-  virtual ~IPlayer(){};
+  virtual ~IPlayer() = default;
   virtual bool Initialize(TiXmlElement* pConfig) { return true; };
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions& options){ return false;}
   virtual bool QueueNextFile(const CFileItem &file) { return false; }
@@ -242,6 +238,7 @@ public:
   virtual void Pause() = 0;
   virtual bool HasVideo() const = 0;
   virtual bool HasAudio() const = 0;
+  virtual bool HasGame() const { return false; }
   virtual bool HasRDS() const { return false; }
   virtual bool IsPassthrough() const { return false;}
   virtual bool CanSeek() {return true;}
@@ -332,10 +329,7 @@ public:
   virtual float GetSpeed() = 0;
   virtual bool SupportsTempo() { return false; }
 
-  // Skip to next track/item inside the current media (if supported).
-  virtual bool SkipNext(){return false;}
-
-  //Returns true if not playback (paused or stopped beeing filled)
+  //Returns true if not playback (paused or stopped being filled)
   virtual bool IsCaching() const {return false;};
   //Cache filled in Percent
   virtual int GetCacheLevel() const {return -1;};
@@ -354,28 +348,6 @@ public:
 
   virtual bool SwitchChannel(const PVR::CPVRChannelPtr &channel) { return false; }
 
-  // Note: the following "OMX" methods are deprecated and will be removed in the future
-  // They should be handled by the video renderer, not the player
-  /*!
-   \brief If the player uses bypass mode, define its rendering capabilities
-   */
-  virtual void OMXGetRenderFeatures(std::vector<int> &renderFeatures) {};
-  /*!
-   \brief If the player uses bypass mode, define its deinterlace algorithms
-   */
-  virtual void OMXGetDeinterlaceMethods(std::vector<int> &deinterlaceMethods) {};
-  /*!
-   \brief If the player uses bypass mode, define how deinterlace is set
-   */
-  virtual void OMXGetDeinterlaceModes(std::vector<int> &deinterlaceModes) {};
-  /*!
-   \brief If the player uses bypass mode, define its scaling capabilities
-   */
-  virtual void OMXGetScalingMethods(std::vector<int> &scalingMethods) {};
-  /*!
-   \brief define the audio capabilities of the player (default=all)
-   */
-
   virtual void GetAudioCapabilities(std::vector<int> &audioCaps) { audioCaps.assign(1,IPC_AUD_ALL); };
   /*!
    \brief define the subtitle capabilities of the player
@@ -383,11 +355,9 @@ public:
   virtual void GetSubtitleCapabilities(std::vector<int> &subCaps) { subCaps.assign(1,IPC_SUBS_ALL); };
 
   /*!
-   \breif hook into render loop of render thread
+   \brief hook into render loop of render thread
    */
   virtual void FrameMove() {};
-
-  virtual bool HasFrame() { return false; };
 
   virtual void Render(bool clear, uint32_t alpha = 255, bool gui = true) {};
 

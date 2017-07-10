@@ -61,7 +61,7 @@ class CSysInfoJob : public CJob
 public:
   CSysInfoJob();
 
-  virtual bool DoWork();
+  bool DoWork() override;
   const CSysData &GetData() const;
 
   static CSysData::INTERNET_STATE GetInternetState();
@@ -83,7 +83,6 @@ public:
   enum WindowsVersion
   {
     WindowsVersionUnknown = -1, // Undetected, unsupported Windows version or OS in not Windows
-    WindowsVersionVista,        // Windows Vista, Windows Server 2008
     WindowsVersionWin7,         // Windows 7, Windows Server 2008 R2
     WindowsVersionWin8,         // Windows 8, Windows Server 2012
     WindowsVersionWin8_1,       // Windows 8.1
@@ -93,10 +92,10 @@ public:
   };
 
   CSysInfo(void);
-  virtual ~CSysInfo();
+  ~CSysInfo() override;
 
-  virtual bool Load(const TiXmlNode *settings) override;
-  virtual bool Save(TiXmlNode *settings) const override;
+  bool Load(const TiXmlNode *settings) override;
+  bool Save(TiXmlNode *settings) const override;
 
   char MD5_Sign[32 + 1];
 
@@ -131,7 +130,7 @@ public:
   std::string GetCPUSerial();
   static std::string GetManufacturerName(void);
   static std::string GetModelName(void);
-  bool GetDiskSpace(const std::string& drive,int& iTotal, int& iTotalFree, int& iTotalUsed, int& iPercentFree, int& iPercentUsed);
+  bool GetDiskSpace(std::string drive,int& iTotal, int& iTotalFree, int& iTotalUsed, int& iPercentFree, int& iPercentUsed);
   std::string GetHddSpaceInfo(int& percent, int drive, bool shortText=false);
   std::string GetHddSpaceInfo(int drive, bool shortText=false);
 
@@ -144,14 +143,16 @@ public:
   static std::string GetBuildTargetCpuFamily(void);
 
   static std::string GetUsedCompilerNameAndVer(void);
+  std::string GetPrivacyPolicy();
 
 protected:
-  virtual CJob *GetJob() const override;
-  virtual std::string TranslateInfo(int info) const override;
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
+  CJob *GetJob() const override;
+  std::string TranslateInfo(int info) const override;
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
 private:
   CSysData m_info;
+  std::string m_privacyPolicy;
   static WindowsVersion m_WinVer;
   int m_iSystemTimeTotalUp; // Uptime in minutes!
   void Reset();

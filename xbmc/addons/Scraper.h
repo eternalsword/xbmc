@@ -87,10 +87,10 @@ class CScraper : public CAddon
 {
 public:
 
-  static std::unique_ptr<CScraper> FromExtension(AddonProps props, const cp_extension_t* ext);
+  static std::unique_ptr<CScraper> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
 
-  explicit CScraper(AddonProps props);
-  CScraper(AddonProps props, bool requiressettings, CDateTimeSpan persistence, CONTENT_TYPE pathContent);
+  explicit CScraper(CAddonInfo addonInfo);
+  CScraper(CAddonInfo addonInfo, bool requiressettings, CDateTimeSpan persistence, CONTENT_TYPE pathContent);
 
   /*! \brief Set the scraper settings for a particular path from an XML string
    Loads the default and user settings (if not already loaded) and, if the given XML string is non-empty,
@@ -120,8 +120,9 @@ public:
   bool RequiresSettings() const { return m_requiressettings; }
   bool Supports(const CONTENT_TYPE &content) const;
 
-  bool IsInUse() const;
+  bool IsInUse() const override;
   bool IsNoop();
+  bool IsPython() const { return m_isPython; }
 
   // scraper media functions
   CScraperUrl NfoUrl(const std::string &sNfoContent);
@@ -177,6 +178,7 @@ private:
                          const std::vector<std::string>* extras);
 
   bool m_fLoaded;
+  bool m_isPython = false;
   bool m_requiressettings;
   CDateTimeSpan m_persistence;
   CONTENT_TYPE m_pathContent;

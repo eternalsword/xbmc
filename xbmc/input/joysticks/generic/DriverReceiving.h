@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016 Team Kodi
+ *      Copyright (C) 2016-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,12 +24,15 @@
 
 #include <map>
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   class IDriverReceiver;
   class IButtonMap;
 
   /*!
+   * \ingroup joystick
    * \brief Class to translate input events from higher-level features to driver primitives
    *
    * A button map is used to translate controller features to driver primitives.
@@ -41,7 +44,7 @@ namespace JOYSTICK
   public:
     CDriverReceiving(IDriverReceiver* receiver, IButtonMap* buttonMap);
 
-    virtual ~CDriverReceiving(void) { }
+    virtual ~CDriverReceiving() = default;
 
     // implementation of IInputReceiver
     virtual bool SetRumbleState(const FeatureName& feature, float magnitude) override;
@@ -50,4 +53,5 @@ namespace JOYSTICK
     IDriverReceiver* const m_receiver;
     IButtonMap*      const m_buttonMap;
   };
+}
 }

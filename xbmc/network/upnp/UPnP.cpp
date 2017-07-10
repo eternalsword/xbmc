@@ -33,6 +33,7 @@
 #include "UPnPSettings.h"
 #include "utils/URIUtils.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "network/Network.h"
 #include "utils/log.h"
@@ -53,8 +54,6 @@
 using namespace UPNP;
 using namespace KODI::MESSAGING;
 
-NPT_SET_LOCAL_LOGGER("xbmc.upnp")
-
 #define UPNP_DEFAULT_MAX_RETURNED_ITEMS 200
 #define UPNP_DEFAULT_MIN_RETURNED_ITEMS 30
 
@@ -65,7 +64,7 @@ NPT_SET_LOCAL_LOGGER("xbmc.upnp")
 DLNA_ORG_PS = 'DLNA.ORG_PS'
 DLNA_ORG_PS_VAL = '1'
 
-# Convertion Indicator
+# Conversion Indicator
 #    1 transcoded
 #    0 not transcoded
 DLNA_ORG_CI = 'DLNA.ORG_CI'
@@ -162,7 +161,7 @@ class CUPnPCleaner : public NPT_Thread
 {
 public:
     CUPnPCleaner(CUPnP* upnp) : NPT_Thread(true), m_UPnP(upnp) {}
-    void Run() {
+    void Run() override {
         delete m_UPnP;
     }
 
@@ -183,7 +182,7 @@ public:
     }
 
     // PLT_MediaBrowser methods
-    virtual bool OnMSAdded(PLT_DeviceDataReference& device)
+    bool OnMSAdded(PLT_DeviceDataReference& device) override
     {
         CGUIMessage message(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_PATH);
         message.SetStringParam("upnp://");
@@ -191,7 +190,7 @@ public:
 
         return PLT_SyncMediaBrowser::OnMSAdded(device);
     }
-    virtual void OnMSRemoved(PLT_DeviceDataReference& device)
+    void OnMSRemoved(PLT_DeviceDataReference& device) override
     {
         PLT_SyncMediaBrowser::OnMSRemoved(device);
 
@@ -203,9 +202,9 @@ public:
     }
 
     // PLT_MediaContainerChangesListener methods
-    virtual void OnContainerChanged(PLT_DeviceDataReference& device,
+    void OnContainerChanged(PLT_DeviceDataReference& device,
                                     const char*              item_id,
-                                    const char*              update_id)
+                                    const char*              update_id) override
     {
         NPT_String path = "upnp://"+device->GetUUID()+"/";
         if (!NPT_StringsEqual(item_id, "0")) {
@@ -214,7 +213,7 @@ public:
             path += id.c_str();
         }
 
-        CLog::Log(LOGDEBUG, "UPNP: notfified container update %s", (const char*)path);
+        CLog::Log(LOGDEBUG, "UPNP: notified container update %s", (const char*)path);
         CGUIMessage message(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_UPDATE_PATH);
         message.SetStringParam(path.GetChars());
         g_windowManager.SendThreadMessage(message);
@@ -243,13 +242,19 @@ public:
         NPT_String curr_value;
         NPT_String new_value;
 
-        if (item.GetVideoInfoTag()->m_resumePoint.timeInSeconds != bookmark.timeInSeconds) {
+        if (item.GetVideoInfoTag()->GetResumePoint().timeInSeconds != bookmark.timeInSeconds) {
             CLog::Log(LOGDEBUG, "UPNP: Updating resume point for item %s", path.c_str());
             long time = (long)bookmark.timeInSeconds;
             if (time < 0) time = 0;
             curr_value.Append(NPT_String::Format("<upnp:lastPlaybackPosition>%ld</upnp:lastPlaybackPosition>",
-                                                 (long)item.GetVideoInfoTag()->m_resumePoint.timeInSeconds));
+                                                 (long)item.GetVideoInfoTag()->GetResumePoint().timeInSeconds));
+            curr_value += "<xbmc:lastPlayerState>";
+            PLT_Didl::AppendXmlEscape(curr_value, item.GetVideoInfoTag()->GetResumePoint().playerState.c_str());
+            curr_value += "</xbmc:lastPlayerState>";
             new_value.Append(NPT_String::Format("<upnp:lastPlaybackPosition>%ld</upnp:lastPlaybackPosition>", time));
+            new_value += "<xbmc:lastPlayerState>";
+            PLT_Didl::AppendXmlEscape(new_value, bookmark.playerState.c_str());
+            new_value += "</xbmc:lastPlayerState>";
         }
         if (updatePlayCount) {
             CLog::Log(LOGDEBUG, "UPNP: Marking video item %s as watched", path.c_str());
@@ -311,7 +316,7 @@ public:
     PLT_MediaController::SetDelegate(this);
   }
 
-  ~CMediaController()
+  ~CMediaController() override
   {
     for (std::set<std::string>::const_iterator itRenderer = m_registeredRenderers.begin(); itRenderer != m_registeredRenderers.end(); ++itRenderer)
       unregisterRenderer(*itRenderer);
@@ -323,62 +328,62 @@ public:
       return;                                    \
   } while(0)
 
-  virtual void OnStopResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnStopResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnStopResult(res, device, userdata);
   }
 
-  virtual void OnSetPlayModeResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnSetPlayModeResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnSetPlayModeResult(res, device, userdata);
   }
 
-  virtual void OnSetAVTransportURIResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnSetAVTransportURIResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnSetAVTransportURIResult(res, device, userdata);
   }
 
-  virtual void OnSeekResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnSeekResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnSeekResult(res, device, userdata);
   }
 
-  virtual void OnPreviousResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnPreviousResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnPreviousResult(res, device, userdata);
   }
 
-  virtual void OnPlayResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnPlayResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnPlayResult(res, device, userdata);
   }
 
-  virtual void OnPauseResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnPauseResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnPauseResult(res, device, userdata);
   }
 
-  virtual void OnNextResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata)
+  void OnNextResult(NPT_Result res, PLT_DeviceDataReference& device, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnNextResult(res, device, userdata);
   }
 
-  virtual void OnGetMediaInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_MediaInfo* info, void* userdata)
+  void OnGetMediaInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_MediaInfo* info, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnGetMediaInfoResult(res, device, info, userdata);
   }
 
-  virtual void OnGetPositionInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_PositionInfo* info, void* userdata)
+  void OnGetPositionInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_PositionInfo* info, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnGetPositionInfoResult(res, device, info, userdata);
   }
 
-  virtual void OnGetTransportInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_TransportInfo* info, void* userdata)
+  void OnGetTransportInfoResult(NPT_Result res, PLT_DeviceDataReference& device, PLT_TransportInfo* info, void* userdata) override
   { CHECK_USERDATA_RETURN(userdata);
     static_cast<PLT_MediaControllerDelegate*>(userdata)->OnGetTransportInfoResult(res, device, info, userdata);
   }
 
-  virtual bool OnMRAdded(PLT_DeviceDataReference& device )
+  bool OnMRAdded(PLT_DeviceDataReference& device ) override
   {
     if (device->GetUUID().IsEmpty() || device->GetUUID().GetChars() == NULL)
       return false;
@@ -390,7 +395,7 @@ public:
     return true;
   }
 
-  virtual void OnMRRemoved(PLT_DeviceDataReference& device )
+  void OnMRRemoved(PLT_DeviceDataReference& device ) override
   {
     if (device->GetUUID().IsEmpty() || device->GetUUID().GetChars() == NULL)
       return;
@@ -636,7 +641,7 @@ CUPnP::CreateServer(int port /* = 0 */)
     // but it doesn't work anyways as it requires multicast for XP to detect us
     device->m_PresentationURL =
         NPT_HttpUrl(m_IP.c_str(),
-                    CSettings::GetInstance().GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
+                    CServiceBroker::GetSettings().GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
                     "/").ToString();
 
     device->m_ModelName        = "Kodi";
@@ -719,7 +724,7 @@ CUPnP::CreateRenderer(int port /* = 0 */)
 
     device->m_PresentationURL =
         NPT_HttpUrl(m_IP.c_str(),
-                    CSettings::GetInstance().GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
+                    CServiceBroker::GetSettings().GetInt(CSettings::SETTING_SERVICES_WEBSERVERPORT),
                     "/").ToString();
     device->m_ModelName        = "Kodi";
     device->m_ModelNumber      = CSysInfo::GetVersion().c_str();

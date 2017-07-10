@@ -31,17 +31,17 @@ class CGUIDialogAddonInfo : public CGUIDialog
 {
 public:
   CGUIDialogAddonInfo(void);
-  virtual ~CGUIDialogAddonInfo(void);
-  virtual bool OnMessage(CGUIMessage& message);
-  virtual bool OnAction(const CAction &action);
+  ~CGUIDialogAddonInfo(void) override;
+  bool OnMessage(CGUIMessage& message) override;
+  bool OnAction(const CAction &action) override;
   
-  virtual CFileItemPtr GetCurrentListItem(int offset = 0) { return m_item; }
-  virtual bool HasListItems() const { return true; }
+  CFileItemPtr GetCurrentListItem(int offset = 0) override { return m_item; }
+  bool HasListItems() const override { return true; }
 
   static bool ShowForItem(const CFileItemPtr& item);
 
 private:
-  void OnInitWindow();
+  void OnInitWindow() override;
 
   /*! \brief Set the item to display addon info on.
    \param item to display
@@ -66,7 +66,7 @@ private:
   bool CanRun() const;
 
   /*!
-   * Returns true if current addon is of a type that can only have one activly
+   * Returns true if current addon is of a type that can only have one active
    * in use at a time and can be changed (e.g skins)*/
   bool CanUse() const;
 

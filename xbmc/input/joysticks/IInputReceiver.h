@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,15 +21,18 @@
 
 #include "JoystickTypes.h"
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   /*!
+   * \ingroup joystick
    * \brief Interface for sending input events to game controllers
    */
   class IInputReceiver
   {
   public:
-    virtual ~IInputReceiver(void) { }
+    virtual ~IInputReceiver() = default;
 
     /*!
      * \brief Set the value of a rumble motor
@@ -41,4 +44,5 @@ namespace JOYSTICK
      */
     virtual bool SetRumbleState(const FeatureName& feature, float magnitude) = 0;
   };
+}
 }

@@ -4,8 +4,13 @@ if(CORE_SYSTEM_NAME STREQUAL windows)
 endif()
 
 if(VAAPI_FOUND)
-  list(APPEND SOURCES RendererVAAPI.cpp)
-  list(APPEND HEADERS RendererVAAPI.h)
+  if(OPENGL_FOUND)
+    list(APPEND SOURCES RendererVAAPIGL.cpp)
+    list(APPEND HEADERS RendererVAAPIGL.h)
+  elseif(OPENGLES_FOUND)
+    list(APPEND SOURCES RendererVAAPIGLES.cpp)
+    list(APPEND HEADERS RendererVAAPIGLES.h)
+  endif()
 endif()
 
 if(VDPAU_FOUND)
@@ -33,11 +38,6 @@ if(AML_FOUND)
   list(APPEND HEADERS RendererAML.h)
 endif()
 
-if(OPENMAX_FOUND)
-  list(APPEND SOURCES RendererOpenMax.cpp)
-  list(APPEND HEADERS RendererOpenMax.h)
-endif()
-
 if(IMX_FOUND)
   list(APPEND SOURCES RendererIMX.cpp)
   list(APPEND HEADERS RendererIMX.h)
@@ -50,4 +50,8 @@ if(CORE_SYSTEM_NAME STREQUAL android)
                       RendererMediaCodecSurface.h)
 endif()
 
-core_add_library(videorenderers_hwdec)
+# we might want to build on linux systems
+# with ENABLE_VDPAU=OFF and ENABLE_VAAPI=OFF
+if(SOURCES)
+  core_add_library(videorenderers_hwdec)
+endif()

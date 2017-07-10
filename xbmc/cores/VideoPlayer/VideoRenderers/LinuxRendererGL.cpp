@@ -21,15 +21,13 @@
  *
  */
 #include "system.h"
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
 
 #ifdef HAS_GL
 #include <locale.h>
 
 #include "LinuxRendererGL.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
@@ -114,10 +112,7 @@ CLinuxRendererGL::YUVBUFFER::YUVBUFFER()
   hwDec = NULL;
 }
 
-CLinuxRendererGL::YUVBUFFER::~YUVBUFFER()
-{
-
-}
+CLinuxRendererGL::YUVBUFFER::~YUVBUFFER() = default;
 
 CLinuxRendererGL::CLinuxRendererGL()
 {
@@ -136,8 +131,8 @@ CLinuxRendererGL::CLinuxRendererGL()
   m_pVideoFilterShader = NULL;
   m_scalingMethod = VS_SCALINGMETHOD_LINEAR;
   m_scalingMethodGui = (ESCALINGMETHOD)-1;
-  m_useDithering = CSettings::GetInstance().GetBool("videoscreen.dither");
-  m_ditherDepth = CSettings::GetInstance().GetInt("videoscreen.ditherdepth");
+  m_useDithering = CServiceBroker::GetSettings().GetBool("videoscreen.dither");
+  m_ditherDepth = CServiceBroker::GetSettings().GetInt("videoscreen.ditherdepth");
   m_fullRange = !g_Windowing.UseLimitedColor();
 
   m_rgbBuffer = NULL;
@@ -194,6 +189,13 @@ CLinuxRendererGL::~CLinuxRendererGL()
     delete m_pYUVShader;
     m_pYUVShader = NULL;
   }
+
+  if (m_pVideoFilterShader)
+  {
+    m_pVideoFilterShader->Free();
+    delete m_pVideoFilterShader;
+    m_pVideoFilterShader = NULL;
+  }
 }
 
 bool CLinuxRendererGL::ValidateRenderer()
@@ -241,6 +243,7 @@ bool CLinuxRendererGL::ValidateRenderTarget()
     m_scalingMethodGui = (ESCALINGMETHOD)-1;
 
      // create the yuv textures
+    UpdateVideoFilter();
     LoadShaders();
     if (m_renderMethod < 0)
       return false;
@@ -259,7 +262,7 @@ bool CLinuxRendererGL::ValidateRenderTarget()
   return false;
 }
 
-bool CLinuxRendererGL::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format, unsigned int orientation)
+bool CLinuxRendererGL::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void *hwPic, unsigned int orientation)
 {
   m_sourceWidth = width;
   m_sourceHeight = height;
@@ -378,7 +381,7 @@ void CLinuxRendererGL::ReleaseImage(int source, bool preserve)
 
   im.flags &= ~IMAGE_FLAG_INUSE;
   im.flags |= IMAGE_FLAG_READY;
-  /* if image should be preserved reserve it so it's not auto seleceted */
+  /* if image should be preserved reserve it so it's not auto selected */
 
   if( preserve )
     im.flags |= IMAGE_FLAG_RESERVED;
@@ -790,7 +793,7 @@ void CLinuxRendererGL::UpdateVideoFilter()
 
   if(!Supports(m_scalingMethod))
   {
-    CLog::Log(LOGWARNING, "CLinuxRendererGL::UpdateVideoFilter - choosen scaling method %d, is not supported by renderer", (int)m_scalingMethod);
+    CLog::Log(LOGWARNING, "CLinuxRendererGL::UpdateVideoFilter - chosen scaling method %d, is not supported by renderer", (int)m_scalingMethod);
     m_scalingMethod = VS_SCALINGMETHOD_LINEAR;
   }
 
@@ -908,9 +911,11 @@ void CLinuxRendererGL::UpdateVideoFilter()
 
 void CLinuxRendererGL::LoadShaders(int field)
 {
+  m_reloadShaders = 0;
+
   if (!LoadShadersHook())
   {
-    int requestedMethod = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
+    int requestedMethod = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
     CLog::Log(LOGDEBUG, "GL: Requested render method: %d", requestedMethod);
 
     if (m_pYUVShader)
@@ -944,7 +949,8 @@ void CLinuxRendererGL::LoadShaders(int field)
                                m_cmsOn ? m_tCLUTTex : 0,
                                m_CLUTsize);
         }
-        m_pYUVShader = new YUV2RGBProgressiveShader(m_textureTarget==GL_TEXTURE_RECTANGLE_ARB, m_iFlags, m_format,
+        EShaderFormat shaderFormat = GetShaderFormat(m_format);
+        m_pYUVShader = new YUV2RGBProgressiveShader(m_textureTarget==GL_TEXTURE_RECTANGLE_ARB, m_iFlags, shaderFormat,
                                                     m_nonLinStretch && m_renderQuality == RQ_SINGLEPASS,
                                                     out);
         if (!m_cmsOn)
@@ -975,7 +981,8 @@ void CLinuxRendererGL::LoadShaders(int field)
         m_renderMethod = RENDER_ARB ;
 
         // create regular progressive scan shader
-        m_pYUVShader = new YUV2RGBProgressiveShaderARB(m_textureTarget==GL_TEXTURE_RECTANGLE_ARB, m_iFlags, m_format);
+        EShaderFormat shaderFormat = GetShaderFormat(m_format);
+        m_pYUVShader = new YUV2RGBProgressiveShaderARB(m_textureTarget==GL_TEXTURE_RECTANGLE_ARB, m_iFlags, shaderFormat);
         m_pYUVShader->SetConvertFullColorRange(m_fullRange);
         CLog::Log(LOGNOTICE, "GL: Selecting Single Pass ARB YUV2RGB shader");
 
@@ -1115,6 +1122,8 @@ void CLinuxRendererGL::Render(DWORD flags, int renderBuffer)
     RenderSoftware(renderBuffer, m_currentField);
     VerifyGLState();
   }
+
+  AfterRenderHook(renderBuffer);
 }
 
 void CLinuxRendererGL::RenderSinglePass(int index, int field)
@@ -1124,7 +1133,6 @@ void CLinuxRendererGL::RenderSinglePass(int index, int field)
 
   if (m_reloadShaders)
   {
-    m_reloadShaders = 0;
     LoadShaders(field);
   }
 
@@ -1526,7 +1534,7 @@ void CLinuxRendererGL::RenderRGB(int index, int field)
 
 void CLinuxRendererGL::RenderSoftware(int index, int field)
 {
-  // used for textues uploaded from rgba or CVPixelBuffers.
+  // used for textures uploaded from rgba or CVPixelBuffers.
   YUVPLANES &planes = m_buffers[index].fields[field];
 
   glDisable(GL_DEPTH_TEST);
@@ -2498,7 +2506,7 @@ bool CLinuxRendererGL::Supports(ESCALINGMETHOD method)
     // if scaling is below level, avoid hq scaling
     float scaleX = fabs(((float)m_sourceWidth - m_destRect.Width())/m_sourceWidth)*100;
     float scaleY = fabs(((float)m_sourceHeight - m_destRect.Height())/m_sourceHeight)*100;
-    int minScale = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_HQSCALERS);
+    int minScale = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_HQSCALERS);
     if (scaleX < minScale && scaleY < minScale)
       return false;
 

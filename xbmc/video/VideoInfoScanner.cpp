@@ -22,6 +22,7 @@
 
 #include <utility>
 
+#include "ServiceBroker.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
@@ -79,8 +80,7 @@ namespace VIDEO
   }
 
   CVideoInfoScanner::~CVideoInfoScanner()
-  {
-  }
+  = default;
 
   void CVideoInfoScanner::Process()
   {
@@ -88,10 +88,10 @@ namespace VIDEO
 
     try
     {
-      if (m_showDialog && !CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOLIBRARY_BACKGROUNDUPDATE))
+      if (m_showDialog && !CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOLIBRARY_BACKGROUNDUPDATE))
       {
         CGUIDialogExtendedProgressBar* dialog =
-          (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
+          g_windowManager.GetWindow<CGUIDialogExtendedProgressBar>(WINDOW_DIALOG_EXT_PROGRESS);
         if (dialog)
            m_handle = dialog->GetHandle(g_localizeStrings.Get(314));
       }
@@ -125,7 +125,7 @@ namespace VIDEO
       m_itemCount = -1;
 
       // Database operations should not be canceled
-      // using Interupt() while scanning as it could
+      // using Interrupt() while scanning as it could
       // result in unexpected behaviour.
       m_bCanInterrupt = false;
 
@@ -228,7 +228,7 @@ namespace VIDEO
   void CVideoInfoScanner::Stop()
   {
     if (m_bCanInterrupt)
-      m_database.Interupt();
+      m_database.Interrupt();
 
     m_bStop = true;
   }
@@ -457,6 +457,10 @@ namespace VIDEO
       }
       if (ret == INFO_CANCELLED || ret == INFO_ERROR)
       {
+        CLog::Log(LOGWARNING,
+                  "VideoInfoScanner: Error %u occurred while retrieving"
+                  "information for %s.", ret,
+                  CURL::GetRedacted(pItem->GetPath()).c_str());
         FoundSomeInfo = false;
         break;
       }
@@ -552,13 +556,21 @@ namespace VIDEO
 
     CScraperUrl url;
     int retVal = 0;
-    if (pURL)
+    if (pURL && !pURL->m_url.empty())
       url = *pURL;
     else if ((retVal = FindVideo(pItem->GetMovieName(bDirNames), info2, url, pDlgProgress)) <= 0)
       return retVal < 0 ? INFO_CANCELLED : INFO_NOT_FOUND;
 
-    long lResult=-1;
-    if (GetDetails(pItem, url, info2, result == CNfoFile::COMBINED_NFO ? &m_nfoReader : NULL, pDlgProgress))
+    CLog::Log(LOGDEBUG,
+              "VideoInfoScanner: Fetching url '%s' using %s scraper (content: '%s')",
+              url.m_url[0].m_url.c_str(), info2->Name().c_str(),
+              TranslateContent(info2->Content()).c_str());
+
+    long lResult = -1;
+    if (GetDetails(pItem, url, info2,
+                   (result == CNfoFile::COMBINED_NFO
+                    || result == CNfoFile::PARTIAL_NFO) ? &m_nfoReader : NULL,
+                   pDlgProgress))
     {
       if ((lResult = AddVideo(pItem, info2->Content(), false, useLocal)) < 0)
         return INFO_ERROR;
@@ -606,12 +618,20 @@ namespace VIDEO
 
     CScraperUrl url;
     int retVal = 0;
-    if (pURL)
+    if (pURL && !pURL->m_url.empty())
       url = *pURL;
     else if ((retVal = FindVideo(pItem->GetMovieName(bDirNames), info2, url, pDlgProgress)) <= 0)
       return retVal < 0 ? INFO_CANCELLED : INFO_NOT_FOUND;
 
-    if (GetDetails(pItem, url, info2, result == CNfoFile::COMBINED_NFO ? &m_nfoReader : NULL, pDlgProgress))
+    CLog::Log(LOGDEBUG,
+              "VideoInfoScanner: Fetching url '%s' using %s scraper (content: '%s')",
+              url.m_url[0].m_url.c_str(), info2->Name().c_str(),
+              TranslateContent(info2->Content()).c_str());
+
+    if (GetDetails(pItem, url, info2,
+                   (result == CNfoFile::COMBINED_NFO
+                    || result == CNfoFile::PARTIAL_NFO) ? &m_nfoReader : NULL,
+                   pDlgProgress))
     {
       if (AddVideo(pItem, info2->Content(), bDirNames, useLocal) < 0)
         return INFO_ERROR;
@@ -655,12 +675,20 @@ namespace VIDEO
 
     CScraperUrl url;
     int retVal = 0;
-    if (pURL)
+    if (pURL && !pURL->m_url.empty())
       url = *pURL;
     else if ((retVal = FindVideo(pItem->GetMovieName(bDirNames), info2, url, pDlgProgress)) <= 0)
       return retVal < 0 ? INFO_CANCELLED : INFO_NOT_FOUND;
 
-    if (GetDetails(pItem, url, info2, result == CNfoFile::COMBINED_NFO ? &m_nfoReader : NULL, pDlgProgress))
+    CLog::Log(LOGDEBUG,
+              "VideoInfoScanner: Fetching url '%s' using %s scraper (content: '%s')",
+              url.m_url[0].m_url.c_str(), info2->Name().c_str(),
+              TranslateContent(info2->Content()).c_str());
+
+    if (GetDetails(pItem, url, info2,
+                   (result == CNfoFile::COMBINED_NFO
+                    || result == CNfoFile::PARTIAL_NFO) ? &m_nfoReader : NULL,
+                   pDlgProgress))
     {
       if (AddVideo(pItem, info2->Content(), bDirNames, useLocal) < 0)
         return INFO_ERROR;
@@ -829,7 +857,7 @@ namespace VIDEO
           if (StringUtils::EqualsNoCase(strPathY, strPathX))
             /*
             remove everything sorted below the video_ts.ifo file in the same path.
-            understandbly this wont stack correctly if there are other files in the the dvd folder.
+            understandably this wont stack correctly if there are other files in the the dvd folder.
             this should be unlikely and thus is being ignored for now but we can monitor the
             where the path changes and potentially remove the items above the video_ts.ifo file.
             */
@@ -1255,11 +1283,11 @@ namespace VIDEO
     }
 
     if (g_advancedSettings.m_bVideoLibraryImportWatchedState || libraryImport)
-      m_database.SetPlayCount(*pItem, movieDetails.m_playCount, movieDetails.m_lastPlayed);
+      m_database.SetPlayCount(*pItem, movieDetails.GetPlayCount(), movieDetails.m_lastPlayed);
 
     if ((g_advancedSettings.m_bVideoLibraryImportResumePoint || libraryImport) &&
-        movieDetails.m_resumePoint.IsSet())
-      m_database.AddBookMarkToFile(pItem->GetPath(), movieDetails.m_resumePoint, CBookmark::RESUME);
+        movieDetails.GetResumePoint().IsSet())
+      m_database.AddBookMarkToFile(pItem->GetPath(), movieDetails.GetResumePoint(), CBookmark::RESUME);
 
     m_database.Close();
 
@@ -1375,7 +1403,7 @@ namespace VIDEO
 
     // parent folder to apply the thumb to and to search for local actor thumbs
     std::string parentDir = URIUtils::GetBasePath(pItem->GetPath());
-    if (CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOLIBRARY_ACTORTHUMBS))
+    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOLIBRARY_ACTORTHUMBS))
       FetchActorThumbs(movieDetails.m_cast, actorArtPath.empty() ? parentDir : actorArtPath);
     if (bApplyToDir)
       ApplyThumbToFolder(parentDir, art["thumb"]);
@@ -1999,16 +2027,19 @@ namespace VIDEO
       switch(result)
       {
         case CNfoFile::COMBINED_NFO:
-          type = "Mixed";
+          type = "mixed";
           break;
         case CNfoFile::FULL_NFO:
-          type = "Full";
+          type = "full";
           break;
         case CNfoFile::URL_NFO:
           type = "URL";
           break;
         case CNfoFile::NO_NFO:
           type = "";
+          break;
+        case CNfoFile::PARTIAL_NFO:
+          type = "partial";
           break;
         default:
           type = "malformed";
@@ -2022,14 +2053,14 @@ namespace VIDEO
       }
       else if (result != CNfoFile::NO_NFO && result != CNfoFile::ERROR_NFO)
       {
-        scrUrl = m_nfoReader.ScraperUrl();
-        info = m_nfoReader.GetScraperInfo();
+        if (result != CNfoFile::PARTIAL_NFO)
+        {
+          scrUrl = m_nfoReader.ScraperUrl();
+          StringUtils::RemoveCRLF(scrUrl.m_url[0].m_url);
+          info = m_nfoReader.GetScraperInfo();
+        }
 
-        StringUtils::RemoveCRLF(scrUrl.m_url[0].m_url);
-        CLog::Log(LOGDEBUG, "VideoInfoScanner: Fetching url '%s' using %s scraper (content: '%s')",
-          scrUrl.m_url[0].m_url.c_str(), info->Name().c_str(), TranslateContent(info->Content()).c_str());
-
-        if (result == CNfoFile::COMBINED_NFO)
+        if (result != CNfoFile::URL_NFO)
           m_nfoReader.GetDetails(*pItem->GetVideoInfoTag());
       }
     }

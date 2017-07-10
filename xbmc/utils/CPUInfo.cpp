@@ -43,7 +43,7 @@
 #include <sys/resource.h>
 #endif
 
-#if defined(TARGET_LINUX) && defined(__ARM_NEON__) && !defined(TARGET_ANDROID)
+#if defined(TARGET_LINUX) && defined(HAS_NEON) && !defined(TARGET_ANDROID)
 #include <fcntl.h>
 #include <unistd.h>
 #include <elf.h>
@@ -56,7 +56,7 @@
 #endif
 
 #ifdef TARGET_WINDOWS
-#include "utils/CharsetConverter.h"
+#include "platform/win32/CharsetConverter.h"
 #include <algorithm>
 #include <intrin.h>
 #include <Pdh.h>
@@ -154,6 +154,8 @@ CCPUInfo::CCPUInfo(void)
   }
 
 #elif defined(TARGET_WINDOWS)
+  using KODI::PLATFORM::WINDOWS::FromW;
+
   HKEY hKeyCpuRoot;
 
   if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\CentralProcessor", 0, KEY_READ, &hKeyCpuRoot) == ERROR_SUCCESS)
@@ -176,7 +178,7 @@ CCPUInfo::CCPUInfo(void)
         if (RegQueryValueExW(hCpuKey, L"ProcessorNameString", nullptr, &valType, LPBYTE(buf), &bufSize) == ERROR_SUCCESS &&
             valType == REG_SZ)
         {
-          g_charsetConverter.wToUTF8(std::wstring(buf, bufSize / sizeof(wchar_t)), cpuCore.m_strModel);
+          cpuCore.m_strModel = FromW(buf, bufSize / sizeof(wchar_t));
           cpuCore.m_strModel = cpuCore.m_strModel.substr(0, cpuCore.m_strModel.find(char(0))); // remove extra null terminations
           StringUtils::RemoveDuplicatedSpacesAndTabs(cpuCore.m_strModel);
           StringUtils::Trim(cpuCore.m_strModel);
@@ -185,7 +187,7 @@ CCPUInfo::CCPUInfo(void)
         if (RegQueryValueExW(hCpuKey, L"VendorIdentifier", nullptr, &valType, LPBYTE(buf), &bufSize) == ERROR_SUCCESS &&
             valType == REG_SZ)
         {
-          g_charsetConverter.wToUTF8(std::wstring(buf, bufSize / sizeof(wchar_t)), cpuCore.m_strVendor);
+          cpuCore.m_strVendor = FromW(buf, bufSize / sizeof(wchar_t));
           cpuCore.m_strVendor = cpuCore.m_strVendor.substr(0, cpuCore.m_strVendor.find(char(0))); // remove extra null terminations
         }
         DWORD mhzVal;
@@ -955,7 +957,10 @@ bool CCPUInfo::HasNeon()
 #elif defined(TARGET_DARWIN_IOS)
   has_neon = 1;
 
-#elif defined(TARGET_LINUX) && defined(__ARM_NEON__)
+#elif defined(TARGET_LINUX) && defined(HAS_NEON)
+#if defined(__LP64__)
+  has_neon = 1;
+#else
   if (has_neon == -1)
   {
     has_neon = 0;
@@ -976,6 +981,7 @@ bool CCPUInfo::HasNeon()
       close(fd);
     }
   }
+#endif
 
 #endif
 

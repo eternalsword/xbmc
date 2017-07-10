@@ -44,18 +44,21 @@ class CMusicInfoTag : public IArchivable, public ISerializable, public ISortable
 public:
   CMusicInfoTag(void);
   CMusicInfoTag(const CMusicInfoTag& tag);
-  virtual ~CMusicInfoTag();
+  ~CMusicInfoTag() override;
   const CMusicInfoTag& operator =(const CMusicInfoTag& tag);
   bool operator !=(const CMusicInfoTag& tag) const;
   bool Loaded() const;
   const std::string& GetTitle() const;
   const std::string& GetURL() const;
   const std::vector<std::string>& GetArtist() const;
+  const std::string& GetArtistSort() const;
   const std::string GetArtistString() const;
+  const std::string& GetComposerSort() const;
   const std::string& GetAlbum() const;
   int GetAlbumId() const;
   const std::vector<std::string>& GetAlbumArtist() const;
   const std::string GetAlbumArtistString() const;
+  const std::string& GetAlbumArtistSort() const;
   const std::vector<std::string>& GetGenre() const;
   int GetTrackNumber() const;
   int GetDiscNumber() const;
@@ -71,10 +74,13 @@ public:
   const std::vector<std::string>& GetMusicBrainzArtistID() const;
   const std::vector<std::string>& GetMusicBrainzArtistHints() const;
   const std::string& GetMusicBrainzAlbumID() const;
+  const std::string& GetMusicBrainzReleaseGroupID() const;
   const std::vector<std::string>& GetMusicBrainzAlbumArtistID() const;
   const std::vector<std::string>& GetMusicBrainzAlbumArtistHints() const;
+  const std::string& GetMusicBrainzReleaseType() const;
   const std::string& GetComment() const;
   const std::string& GetMood() const;
+  const std::string& GetRecordLabel() const;
   const std::string& GetLyrics() const;
   const std::string& GetCueSheet() const;
   const CDateTime& GetLastPlayed() const;
@@ -94,11 +100,14 @@ public:
   void SetArtist(const std::string& strArtist);
   void SetArtist(const std::vector<std::string>& artists, bool FillDesc = false);
   void SetArtistDesc(const std::string& strArtistDesc);
+  void SetArtistSort(const std::string& strArtistsort);
+  void SetComposerSort(const std::string& strComposerSort);
   void SetAlbum(const std::string& strAlbum);
   void SetAlbumId(const int iAlbumId);
   void SetAlbumArtist(const std::string& strAlbumArtist);
   void SetAlbumArtist(const std::vector<std::string>& albumArtists, bool FillDesc = false);
   void SetAlbumArtistDesc(const std::string& strAlbumArtistDesc);
+  void SetAlbumArtistSort(const std::string& strAlbumArtistSort);
   void SetGenre(const std::string& strGenre);
   void SetGenre(const std::vector<std::string>& genres);
   void SetYear(int year);
@@ -118,8 +127,11 @@ public:
   void SetMusicBrainzAlbumID(const std::string& strAlbumID);
   void SetMusicBrainzAlbumArtistID(const std::vector<std::string>& musicBrainzAlbumArtistId);
   void SetMusicBrainzAlbumArtistHints(const std::vector<std::string>& musicBrainzAlbumArtistHints);
+  void SetMusicBrainzReleaseGroupID(const std::string& strReleaseGroupID);
+  void SetMusicBrainzReleaseType(const std::string& ReleaseType);
   void SetComment(const std::string& comment);
   void SetMood(const std::string& mood);
+  void SetRecordLabel(const std::string& publisher);
   void SetLyrics(const std::string& lyrics);
   void SetCueSheet(const std::string& cueSheet);
   void SetRating(float rating);
@@ -165,9 +177,9 @@ public:
   void SetContributors(const VECMUSICROLES& contributors);
   bool HasContributors() const { return !m_musicRoles.empty(); }
 
-  virtual void Archive(CArchive& ar);
-  virtual void Serialize(CVariant& ar) const;
-  virtual void ToSortable(SortItem& sortable, Field field) const;
+  void Archive(CArchive& ar) override;
+  void Serialize(CVariant& ar) const override;
+  void ToSortable(SortItem& sortable, Field field) const override;
 
   void Clear();
 
@@ -181,10 +193,13 @@ protected:
   std::string m_strURL;
   std::string m_strTitle;
   std::vector<std::string> m_artist;
+  std::string m_strArtistSort;
   std::string m_strArtistDesc;
+  std::string m_strComposerSort;
   std::string m_strAlbum;
   std::vector<std::string> m_albumArtist;
   std::string m_strAlbumArtistDesc;
+  std::string m_strAlbumArtistSort;
   std::vector<std::string> m_genre;
   std::string m_strMusicBrainzTrackID;
   std::vector<std::string> m_musicBrainzArtistID;
@@ -192,9 +207,12 @@ protected:
   std::string m_strMusicBrainzAlbumID;
   std::vector<std::string> m_musicBrainzAlbumArtistID;
   std::vector<std::string> m_musicBrainzAlbumArtistHints;
+  std::string m_strMusicBrainzReleaseGroupID;
+  std::string m_strMusicBrainzReleaseType;
   VECMUSICROLES m_musicRoles; //Artists contributing to the recording and role (from tags other than ARTIST or ALBUMARTIST)
   std::string m_strComment;
   std::string m_strMood;
+  std::string m_strRecordLabel;
   std::string m_strLyrics;
   std::string m_cuesheet;
   CDateTime m_lastPlayed;

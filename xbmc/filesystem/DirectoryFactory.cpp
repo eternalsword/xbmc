@@ -18,9 +18,6 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
 #include <stdlib.h>
 #include "network/Network.h"
 #include "system.h"
@@ -62,23 +59,16 @@
 #include "CDDADirectory.h"
 #endif
 #include "PluginDirectory.h"
-#ifdef HAS_FILESYSTEM
 #include "ISO9660Directory.h"
-#endif
 #ifdef HAS_UPNP
 #include "UPnPDirectory.h"
 #endif
-#ifdef HAS_PVRCLIENTS
 #include "PVRDirectory.h"
-#endif
 #if defined(TARGET_ANDROID)
 #include "APKDirectory.h"
 #endif
 #include "XbtDirectory.h"
 #include "ZipDirectory.h"
-#ifdef HAS_FILESYSTEM_RAR
-#include "RarDirectory.h"
-#endif
 #include "FileItem.h"
 #include "URL.h"
 #include "RSSDirectory.h"
@@ -98,6 +88,10 @@
 #include "AndroidAppDirectory.h"
 #endif
 #include "ResourceDirectory.h"
+#include "ServiceBroker.h"
+#include "addons/VFSEntry.h"
+
+using namespace ADDON;
 
 using namespace XFILE;
 
@@ -130,23 +124,13 @@ IDirectory* CDirectoryFactory::Create(const CURL& url)
 #if defined(HAS_FILESYSTEM_CDDA) && defined(HAS_DVD_DRIVE)
   if (url.IsProtocol("cdda")) return new CCDDADirectory();
 #endif
-#ifdef HAS_FILESYSTEM
   if (url.IsProtocol("iso9660")) return new CISO9660Directory();
-#endif
   if (url.IsProtocol("udf")) return new CUDFDirectory();
   if (url.IsProtocol("plugin")) return new CPluginDirectory();
 #if defined(TARGET_ANDROID)
   if (url.IsProtocol("apk")) return new CAPKDirectory();
 #endif
   if (url.IsProtocol("zip")) return new CZipDirectory();
-  if (url.IsProtocol("rar"))
-  {
-#ifdef HAS_FILESYSTEM_RAR
-    return new CRarDirectory();
-#else
-    CLog::Log(LOGWARNING, "%s - Compiled without non-free, rar support is disabled", __FUNCTION__);
-#endif
-  }
   if (url.IsProtocol("xbt")) return new CXbtDirectory();
   if (url.IsProtocol("multipath")) return new CMultiPathDirectory();
   if (url.IsProtocol("stack")) return new CStackDirectory();
@@ -182,21 +166,26 @@ IDirectory* CDirectoryFactory::Create(const CURL& url)
     if (url.IsProtocol("smb")) return new CSMBDirectory();
 #endif
 #endif
-#ifdef HAS_FILESYSTEM
-#endif
 #ifdef HAS_UPNP
     if (url.IsProtocol("upnp")) return new CUPnPDirectory();
 #endif
     if (url.IsProtocol("rss")) return new CRSSDirectory();
-#ifdef HAS_PVRCLIENTS
     if (url.IsProtocol("pvr")) return new CPVRDirectory();
-#endif
 #ifdef HAS_ZEROCONF
     if (url.IsProtocol("zeroconf")) return new CZeroconfDirectory();
 #endif
 #ifdef HAS_FILESYSTEM_NFS
     if (url.IsProtocol("nfs")) return new CNFSDirectory();
 #endif
+  }
+
+  if (!url.GetProtocol().empty() && CServiceBroker::IsBinaryAddonCacheUp())
+  {
+    for (const auto& vfsAddon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+    {
+      if (vfsAddon->HasDirectories() && vfsAddon->GetProtocols().find(url.GetProtocol()) != std::string::npos)
+        return new CVFSEntryIDirectoryWrapper(vfsAddon);
+    }
   }
 
   CLog::Log(LOGWARNING, "%s - %sunsupported protocol(%s) in %s", __FUNCTION__, networkAvailable ? "" : "Network down or ", url.GetProtocol().c_str(), url.GetRedacted().c_str() );

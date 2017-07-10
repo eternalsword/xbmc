@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,14 +19,22 @@
  */
 #pragma once
 
+/*!
+ \file
+ \ingroup joystick
+ */
+
+#include <set>
 #include <string>
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   /*!
    * \brief Name of a physical feature belonging to the joystick
    */
-  typedef std::string FeatureName;
+  using FeatureName = std::string;
 
   /*!
    * \brief Types of features used in the joystick library
@@ -37,6 +45,7 @@ namespace JOYSTICK
    *   2) analog stick
    *   3) accelerometer
    *   4) rumble motor
+   *   5) relative pointer
    *
    * [1] All three driver primitives (buttons, hats and axes) have a state that
    *     can be represented using a single scalar value. For this reason,
@@ -49,6 +58,21 @@ namespace JOYSTICK
     ANALOG_STICK,
     ACCELEROMETER,
     MOTOR,
+    RELPOINTER,
+  };
+
+  /*!
+   * \brief Categories of features used in the joystick library
+   */
+  enum class FEATURE_CATEGORY
+  {
+    UNKNOWN,
+    FACE,
+    SHOULDER,
+    TRIGGER,
+    ANALOG_STICK,
+    ACCELEROMETER,
+    HAPTICS,
   };
 
   /*!
@@ -66,7 +90,7 @@ namespace JOYSTICK
   /*!
    * \brief Typedef for analog stick directions
    */
-  typedef HAT_DIRECTION  ANALOG_STICK_DIRECTION;
+  using ANALOG_STICK_DIRECTION = HAT_DIRECTION;
 
   /*!
    * \brief States in which a hat can be
@@ -115,4 +139,28 @@ namespace JOYSTICK
     SEMIAXIS,    // the positive or negative half of an axis
     MOTOR,       // a rumble motor
   };
+  
+  /*!
+   * \ingroup joystick
+   * \brief Action entry in joystick.xml
+   */
+  struct KeymapAction
+  {
+    unsigned int actionId;
+    std::string actionString;
+    unsigned int holdTimeMs;
+    std::set<std::string> hotkeys;
+
+    bool operator<(const KeymapAction &rhs) const
+    {
+      return holdTimeMs < rhs.holdTimeMs;
+    }
+  };
+
+  /*!
+   * \ingroup joystick
+   * \brief Container that sorts action entries by their holdtime
+   */
+  using KeymapActions = std::set<KeymapAction>;
+}
 }

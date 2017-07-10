@@ -36,6 +36,9 @@ public:
   void Init();
   void Deinit();
   void GetAddons(VECADDONS& addons, const TYPE& type);
+  void GetDisabledAddons(VECADDONS& addons, const TYPE& type);
+  void GetInstalledAddons(VECADDONS& addons, const TYPE& type);
+  AddonPtr GetAddonInstance(const std::string& strId, TYPE type);
 
 protected:
   void Update();

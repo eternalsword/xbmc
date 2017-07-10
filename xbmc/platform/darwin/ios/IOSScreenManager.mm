@@ -18,9 +18,6 @@
  *
  */
 
-//hack around problem with xbmc's typedef int BOOL
-// and obj-c's typedef unsigned char BOOL
-#define BOOL XBMC_BOOL
 #include <sys/resource.h>
 #include <signal.h>
 #include "utils/log.h"
@@ -29,9 +26,9 @@
 #include "Application.h"
 #include "windowing/WindowingFactory.h"
 #include "settings/DisplaySettings.h"
-#include "cores/AudioEngine/AEFactory.h"
+#include "ServiceBroker.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
 #include "platform/darwin/DarwinUtils.h"
-#undef BOOL
 
 #import <Foundation/Foundation.h>
 #include <objc/runtime.h>
@@ -229,7 +226,7 @@ static CEvent screenChangeEvent;
 
   // re-enumerate audio devices in that case too
   // as we might gain passthrough capabilities via HDMI
-  CAEFactory::DeviceChange();
+  CServiceBroker::GetActiveAE().DeviceChange();
   return true;
 }
 //--------------------------------------------------------------

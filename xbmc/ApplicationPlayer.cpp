@@ -19,8 +19,10 @@
  */
 
 #include "ApplicationPlayer.h"
+#include "cores/DataCacheCore.h"
 #include "cores/IPlayer.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
+#include "guilib/GUIWindowManager.h"
 #include "Application.h"
 #include "PlayListPlayer.h"
 #include "settings/MediaSettings.h"
@@ -74,7 +76,7 @@ void CApplicationPlayer::ClosePlayerGapless(std::string &playername)
   {
     // XXX: we had to stop the previous playing item, it was done in VideoPlayer::OpenFile.
     // but in paplayer::OpenFile, it sometimes just fade in without call CloseFile.
-    // but if we do not stop it, we can not distingush callbacks from previous
+    // but if we do not stop it, we can not distinguish callbacks from previous
     // item and current item, it will confused us then we can not make correct delay
     // callback after the starting state.
     CloseFile(true);
@@ -176,6 +178,12 @@ bool CApplicationPlayer::HasVideo() const
   return (player && player->HasVideo());
 }
 
+bool CApplicationPlayer::HasGame() const
+{
+  std::shared_ptr<IPlayer> player = GetInternal();
+  return (player && player->HasGame());
+}
+
 int CApplicationPlayer::GetPreferredPlaylist() const
 {
   if (IsPlayingVideo())
@@ -217,6 +225,11 @@ bool CApplicationPlayer::IsPlayingAudio() const
 bool CApplicationPlayer::IsPlayingVideo() const
 {
   return (IsPlaying() && HasVideo());
+}
+
+bool CApplicationPlayer::IsPlayingGame() const
+{
+  return (IsPlaying() && HasGame());
 }
 
 bool CApplicationPlayer::IsPlayingRDS() const
@@ -696,27 +709,6 @@ int  CApplicationPlayer::SeekChapter(int iChapter)
     return 0;
 }
 
-void CApplicationPlayer::GetRenderFeatures(std::vector<int> &renderFeatures)
-{
-  std::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    player->OMXGetRenderFeatures(renderFeatures);
-}
-
-void CApplicationPlayer::GetDeinterlaceMethods(std::vector<int> &deinterlaceMethods)
-{
-  std::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    player->OMXGetDeinterlaceMethods(deinterlaceMethods);
-}
-
-void CApplicationPlayer::GetScalingMethods(std::vector<int> &scalingMethods)
-{
-  std::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    player->OMXGetScalingMethods(scalingMethods);
-}
-
 void CApplicationPlayer::SetPlaySpeed(float speed)
 {
   std::shared_ptr<IPlayer> player = GetInternal();
@@ -759,16 +751,13 @@ void CApplicationPlayer::FrameMove()
 {
   std::shared_ptr<IPlayer> player = GetInternal();
   if (player)
+  {
     player->FrameMove();
-}
 
-bool CApplicationPlayer::HasFrame()
-{
-  std::shared_ptr<IPlayer> player = GetInternal();
-  if (player)
-    return player->HasFrame();
-  else
-    return false;
+    if (CDataCacheCore::GetInstance().IsPlayerStateChanged())
+      // CApplicationMessenger would be overhead because we are already in gui thread
+      g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_STATE_CHANGED);
+  }
 }
 
 void CApplicationPlayer::Render(bool clear, uint32_t alpha, bool gui)

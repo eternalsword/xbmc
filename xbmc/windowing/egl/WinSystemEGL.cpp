@@ -22,6 +22,7 @@
 #ifdef HAS_EGL
 
 #include "WinSystemEGL.h"
+#include "ServiceBroker.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GraphicContext.h"
 #include "settings/DisplaySettings.h"
@@ -31,6 +32,7 @@
 #include "settings/DisplaySettings.h"
 #include "guilib/DispResource.h"
 #include "threads/SingleLock.h"
+
 #ifdef HAS_IMXVPU
 // This has to go into another header file
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecIMX.h"
@@ -264,7 +266,7 @@ bool CWinSystemEGL::DestroyWindowSystem()
   return true;
 }
 
-bool CWinSystemEGL::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
+bool CWinSystemEGL::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res)
 {
   RESOLUTION_INFO current_resolution;
   current_resolution.iWidth = current_resolution.iHeight = 0;
@@ -287,7 +289,7 @@ bool CWinSystemEGL::CreateNewWindow(const std::string& name, bool fullScreen, RE
     return true;
   }
 
-  int delay = CSettings::GetInstance().GetInt("videoscreen.delayrefreshchange");
+  int delay = CServiceBroker::GetSettings().GetInt("videoscreen.delayrefreshchange");
   if (delay > 0)
   {
     m_delayDispReset = true;
@@ -353,7 +355,7 @@ bool CWinSystemEGL::ResizeWindow(int newWidth, int newHeight, int newLeft, int n
 
 bool CWinSystemEGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  CreateNewWindow("", fullScreen, res, NULL);
+  CreateNewWindow("", fullScreen, res);
   CRenderSystemGLES::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate);
   return true;
 }
@@ -554,5 +556,11 @@ bool CWinSystemEGL::ClampToGUIDisplayLimits(int &width, int &height)
   height = height > m_nHeight ? m_nHeight : height;
   return true;
 }
+
+std::unique_ptr<CVideoSync> CWinSystemEGL::GetVideoSync(void *clock)
+{
+  return nullptr;
+}
+
 
 #endif

@@ -68,9 +68,11 @@ static const translateField fields[] = {
   { "moods",             FieldMoods,                   CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 175 },
   { "styles",            FieldStyles,                  CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 176 },
   { "type",              FieldAlbumType,               CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 564 },
+  { "compilation",       FieldCompilation,             CDatabaseQueryRule::BOOLEAN_FIELD,  NULL,                                 false, 204 },
   { "label",             FieldMusicLabel,              CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 21899 },
   { "title",             FieldTitle,                   CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 true,  556 },
   { "sorttitle",         FieldSortTitle,               CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 171 },
+  { "originaltitle",     FieldOriginalTitle,           CDatabaseQueryRule::TEXT_FIELD,     NULL,                                 false, 20376 },
   { "year",              FieldYear,                    CDatabaseQueryRule::NUMERIC_FIELD,  StringValidation::IsPositiveInteger,  true,  562 },
   { "time",              FieldTime,                    CDatabaseQueryRule::SECONDS_FIELD,  StringValidation::IsTime,             false, 180 },
   { "playcount",         FieldPlaycount,               CDatabaseQueryRule::NUMERIC_FIELD,  StringValidation::IsPositiveInteger,  false, 567 },
@@ -150,9 +152,7 @@ static const size_t NUM_GROUPS = sizeof(groups) / sizeof(group);
 
 #define RULE_VALUE_SEPARATOR  " / "
 
-CSmartPlaylistRule::CSmartPlaylistRule()
-{
-}
+CSmartPlaylistRule::CSmartPlaylistRule() = default;
 
 int CSmartPlaylistRule::TranslateField(const char *field) const
 {
@@ -288,6 +288,7 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
     fields.push_back(FieldArtist);
     fields.push_back(FieldAlbumArtist);
     fields.push_back(FieldTitle);
+    fields.push_back(FieldOriginalTitle);
     fields.push_back(FieldYear);
     fields.push_back(FieldTime);
     fields.push_back(FieldTrackNumber);
@@ -326,11 +327,13 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
     fields.push_back(FieldThemes);
     fields.push_back(FieldMoods);
     fields.push_back(FieldStyles);
+    fields.push_back(FieldCompilation);
     fields.push_back(FieldAlbumType);
     fields.push_back(FieldMusicLabel);
     fields.push_back(FieldRating);
     fields.push_back(FieldUserRating);
     fields.push_back(FieldPlaycount);
+    fields.push_back(FieldLastPlayed);
     fields.push_back(FieldPath);
   }
   else if (type == "artists")
@@ -351,6 +354,7 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
   else if (type == "tvshows")
   {
     fields.push_back(FieldTitle);
+    fields.push_back(FieldOriginalTitle);
     fields.push_back(FieldPlot);
     fields.push_back(FieldTvShowStatus);
     fields.push_back(FieldVotes);
@@ -375,6 +379,7 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
   {
     fields.push_back(FieldTitle);
     fields.push_back(FieldTvShowTitle);
+    fields.push_back(FieldOriginalTitle);
     fields.push_back(FieldPlot);
     fields.push_back(FieldVotes);
     fields.push_back(FieldRating);
@@ -402,6 +407,7 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
   else if (type == "movies")
   {
     fields.push_back(FieldTitle);
+    fields.push_back(FieldOriginalTitle);
     fields.push_back(FieldPlot);
     fields.push_back(FieldPlotOutline);
     fields.push_back(FieldTagline);
@@ -464,7 +470,7 @@ std::vector<Field> CSmartPlaylistRule::GetFields(const std::string &type)
   }
   fields.push_back(FieldPlaylist);
   fields.push_back(FieldVirtualFolder);
-  
+
   return fields;
 }
 
@@ -516,6 +522,7 @@ std::vector<SortBy> CSmartPlaylistRule::GetOrders(const std::string &type)
     orders.push_back(SortByRating);
     orders.push_back(SortByUserRating);
     orders.push_back(SortByPlaycount);
+    orders.push_back(SortByLastPlayed);
   }
   else if (type == "artists")
   {
@@ -595,7 +602,7 @@ std::vector<SortBy> CSmartPlaylistRule::GetOrders(const std::string &type)
     orders.push_back(SortByDateAdded);
   }
   orders.push_back(SortByRandom);
-	
+
   return orders;
 }
 
@@ -728,6 +735,11 @@ std::string CSmartPlaylistRule::GetBooleanQuery(const std::string &negate, const
                           ")"
                        ")";
   }
+  if (strType == "albums")
+  {
+    if (m_field == FieldCompilation)
+      return negate + GetField(m_field, strType);
+  }
   return "";
 }
 
@@ -797,6 +809,8 @@ std::string CSmartPlaylistRule::FormatWhereClause(const std::string &negate, con
       query = negate + " EXISTS (SELECT 1 FROM album_artist, artist WHERE album_artist.idAlbum = " + GetField(FieldId, strType) + " AND album_artist.idArtist = artist.idArtist AND artist.strArtist" + parameter + ")";
     else if (m_field == FieldPath)
       query = negate + " EXISTS (SELECT 1 FROM song JOIN path on song.idpath = path.idpath WHERE song.idAlbum = " + GetField(FieldId, strType) + " AND path.strPath" + parameter + ")";
+    else if (m_field == FieldLastPlayed && (m_operator == OPERATOR_LESS_THAN || m_operator == OPERATOR_BEFORE || m_operator == OPERATOR_NOT_IN_THE_LAST))
+      query = GetField(m_field, strType) + " is NULL or " + GetField(m_field, strType) + parameter;
   }
   else if (strType == "artists")
   {
@@ -941,7 +955,7 @@ std::string CSmartPlaylistRule::GetField(int field, const std::string &type) con
 std::string CSmartPlaylistRuleCombination::GetWhereClause(const CDatabase &db, const std::string& strType, std::set<std::string> &referencedPlaylists) const
 {
   std::string rule;
-  
+
   // translate the combinations into SQL
   for (CDatabaseQueryRuleCombinations::const_iterator it = m_combinations.begin(); it != m_combinations.end(); ++it)
   {
@@ -1256,7 +1270,10 @@ bool CSmartPlaylist::LoadFromJson(const std::string &json)
   if (json.empty())
     return false;
 
-  CVariant obj = CJSONVariantParser::Parse((const unsigned char *)json.c_str(), json.size());
+  CVariant obj;
+  if (!CJSONVariantParser::Parse(json, obj))
+    return false;
+
   return Load(obj);
 }
 
@@ -1353,8 +1370,7 @@ bool CSmartPlaylist::SaveAsJson(std::string &json, bool full /* = true */) const
   if (!Save(xsp, full))
     return false;
 
-  json = CJSONVariantWriter::Write(xsp, true);
-  return json.size() > 0;
+  return CJSONVariantWriter::Write(xsp, json, true) && !json.empty();
 }
 
 void CSmartPlaylist::Reset()

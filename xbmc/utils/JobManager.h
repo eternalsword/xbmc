@@ -32,9 +32,9 @@ class CJobWorker : public CThread
 {
 public:
   CJobWorker(CJobManager *manager);
-  virtual ~CJobWorker();
+  ~CJobWorker() override;
 
-  void Process();
+  void Process() override;
 private:
   CJobManager  *m_jobManager;
 };
@@ -92,7 +92,7 @@ public:
    Cancels any in-process jobs, and destroys the job queue.
    \sa CJob
    */
-  virtual ~CJobQueue();
+  ~CJobQueue() override;
 
   /*!
    \brief Add a job to the queue
@@ -138,7 +138,7 @@ public:
 
    \sa CJobManager, IJobCallback and  CJob
    */
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
 protected:
   /*!
@@ -242,9 +242,9 @@ public:
    \brief Add a function f to this job manager for asynchronously execution.
    */
   template<typename F>
-  void Submit(F&& f)
+  void Submit(F&& f, CJob::PRIORITY priority = CJob::PRIORITY_LOW)
   {
-    AddJob(new CLambdaJob<F>(std::forward<F>(f)), nullptr);
+    AddJob(new CLambdaJob<F>(std::forward<F>(f)), nullptr, priority);
   }
 
   /*!
@@ -329,7 +329,7 @@ protected:
   bool  OnJobProgress(unsigned int progress, unsigned int total, const CJob *job) const;
 
 private:
-  // private construction, and no assignements; use the provided singleton methods
+  // private construction, and no assignments; use the provided singleton methods
   CJobManager();
   CJobManager(const CJobManager&);
   CJobManager const& operator=(CJobManager const&);
@@ -350,7 +350,7 @@ private:
   typedef std::vector<CWorkItem>   Processing;
   typedef std::vector<CJobWorker*> Workers;
 
-  JobQueue   m_jobQueue[CJob::PRIORITY_HIGH+1];
+  JobQueue   m_jobQueue[CJob::PRIORITY_DEDICATED + 1];
   bool       m_pauseJobs;
   Processing m_processing;
   Workers    m_workers;

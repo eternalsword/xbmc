@@ -19,7 +19,7 @@
  */
 
 #include "DVDDemuxUtils.h"
-#include "DVDClock.h"
+#include "TimingConstants.h"
 #include "DVDDemuxCC.h"
 #include "cores/VideoPlayer/DVDCodecs/Overlay/contrib/cc_decoder708.h"
 
@@ -408,7 +408,7 @@ DemuxPacket* CDVDDemuxCC::Decode()
         pPacket->iSize = len;
         memcpy(pPacket->pData, data, pPacket->iSize);
 
-        pPacket->iStreamId = i;
+        pPacket->iStreamId = service;
         pPacket->pts = m_streamdata[i].pts;
         pPacket->duration = 0;
         m_streamdata[i].hasData = false;

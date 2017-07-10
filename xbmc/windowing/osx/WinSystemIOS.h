@@ -44,7 +44,7 @@ public:
 
   virtual bool InitWindowSystem();
   virtual bool DestroyWindowSystem();
-  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
+  virtual bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res);
   virtual bool DestroyWindow();
   virtual bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
   virtual bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
@@ -72,6 +72,8 @@ public:
   virtual int GetNumScreens();    
   virtual int GetCurrentScreen();
   
+  virtual std::unique_ptr<CVideoSync> GetVideoSync(void *clock) override;
+
   bool InitDisplayLink(CVideoSyncIos *syncImpl);
   void DeinitDisplayLink(void);
   void OnAppFocusChange(bool focus);

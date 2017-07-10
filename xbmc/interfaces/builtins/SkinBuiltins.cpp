@@ -20,6 +20,7 @@
 
 #include "SkinBuiltins.h"
 
+#include "ServiceBroker.h"
 #include "addons/Addon.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "Application.h"
@@ -72,7 +73,7 @@ static int ToggleSetting(const std::vector<std::string>& params)
 {
   int setting = CSkinSettings::GetInstance().TranslateBool(params[0]);
   CSkinSettings::GetInstance().SetBool(setting, !CSkinSettings::GetInstance().GetBool(setting));
-  CSettings::GetInstance().Save();
+  CServiceBroker::GetSettings().Save();
 
   return 0;
 }
@@ -88,7 +89,7 @@ static int SetAddon(const std::vector<std::string>& params)
   std::vector<ADDON::TYPE> types;
   for (unsigned int i = 1 ; i < params.size() ; i++)
   {
-    ADDON::TYPE type = TranslateType(params[i]);
+    ADDON::TYPE type = CAddonInfo::TranslateType(params[i]);
     if (type != ADDON_UNKNOWN)
       types.push_back(type);
   }
@@ -96,7 +97,7 @@ static int SetAddon(const std::vector<std::string>& params)
   if (!types.empty() && CGUIWindowAddonBrowser::SelectAddonID(types, result, true) == 1)
   {
     CSkinSettings::GetInstance().SetString(string, result);
-    CSettings::GetInstance().Save();
+    CServiceBroker::GetSettings().Save();
   }
 
   return 0;
@@ -110,7 +111,7 @@ static int SelectBool(const std::vector<std::string>& params)
 {
   std::vector<std::pair<std::string, std::string>> settings;
 
-  CGUIDialogSelect* pDlgSelect = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
+  CGUIDialogSelect* pDlgSelect = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
   pDlgSelect->Reset();
   pDlgSelect->SetHeading(CVariant{g_localizeStrings.Get(atoi(params[0].c_str()))});
 
@@ -140,7 +141,7 @@ static int SelectBool(const std::vector<std::string>& params)
       else
         CSkinSettings::GetInstance().SetBool(setting, false);
     }
-    CSettings::GetInstance().Save();
+    CServiceBroker::GetSettings().Save();
   }
 
   return 0;
@@ -157,13 +158,13 @@ static int SetBool(const std::vector<std::string>& params)
   {
     int string = CSkinSettings::GetInstance().TranslateBool(params[0]);
     CSkinSettings::GetInstance().SetBool(string, StringUtils::EqualsNoCase(params[1], "true"));
-    CSettings::GetInstance().Save();
+    CServiceBroker::GetSettings().Save();
     return 0;
   }
   // default is to set it to true
   int setting = CSkinSettings::GetInstance().TranslateBool(params[0]);
   CSkinSettings::GetInstance().SetBool(setting, true);
-  CSettings::GetInstance().Save();
+  CServiceBroker::GetSettings().Save();
 
   return 0;
 }
@@ -211,7 +212,7 @@ static int SetPath(const std::vector<std::string>& params)
   if (CGUIDialogFileBrowser::ShowAndGetDirectory(localShares, g_localizeStrings.Get(657), value))
     CSkinSettings::GetInstance().SetString(string, value);
 
-  CSettings::GetInstance().Save();
+  CServiceBroker::GetSettings().Save();
 
   return 0;
 }
@@ -236,7 +237,7 @@ static int SetFile(const std::vector<std::string>& params)
   std::string strMask = (params.size() > 1) ? params[1] : "";
   StringUtils::ToLower(strMask);
   ADDON::TYPE type;
-  if ((type = TranslateType(strMask)) != ADDON_UNKNOWN)
+  if ((type = CAddonInfo::TranslateType(strMask)) != ADDON_UNKNOWN)
   {
     CURL url;
     url.SetProtocol("addons");
@@ -250,7 +251,7 @@ static int SetFile(const std::vector<std::string>& params)
     if (type == ADDON_SCRIPT)
       strMask = ".py";
     std::string replace;
-    if (CGUIDialogFileBrowser::ShowAndGetFile(url.Get(), strMask, TranslateType(type, true), replace, true, true, true))
+    if (CGUIDialogFileBrowser::ShowAndGetFile(url.Get(), strMask, CAddonInfo::TranslateType(type, true), replace, true, true, true))
     {
       if (StringUtils::StartsWithNoCase(replace, "addons://"))
         CSkinSettings::GetInstance().SetString(string, URIUtils::GetFileName(replace));
@@ -323,7 +324,7 @@ static int SetString(const std::vector<std::string>& params)
   {
     string = CSkinSettings::GetInstance().TranslateString(params[0]);
     CSkinSettings::GetInstance().SetString(string, params[1]);
-    CSettings::GetInstance().Save();
+    CServiceBroker::GetSettings().Save();
     return 0;
   }
   else
@@ -349,11 +350,11 @@ static int SetTheme(const std::vector<std::string>& params)
   int iTheme = -1;
 
   // find current theme
-  if (!StringUtils::EqualsNoCase(CSettings::GetInstance().GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME), "SKINDEFAULT"))
+  if (!StringUtils::EqualsNoCase(CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME), "SKINDEFAULT"))
   {
     for (size_t i=0;i<vecTheme.size();++i)
     {
-      std::string strTmpTheme(CSettings::GetInstance().GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME));
+      std::string strTmpTheme(CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME));
       URIUtils::RemoveExtension(strTmpTheme);
       if (StringUtils::EqualsNoCase(vecTheme[i], strTmpTheme))
       {
@@ -377,12 +378,12 @@ static int SetTheme(const std::vector<std::string>& params)
   if (iTheme != -1 && iTheme < (int)vecTheme.size())
     strSkinTheme = vecTheme[iTheme];
 
-  CSettings::GetInstance().SetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME, strSkinTheme);
+  CServiceBroker::GetSettings().SetString(CSettings::SETTING_LOOKANDFEEL_SKINTHEME, strSkinTheme);
   // also set the default color theme
   std::string colorTheme(URIUtils::ReplaceExtension(strSkinTheme, ".xml"));
   if (StringUtils::EqualsNoCase(colorTheme, "Textures.xml"))
     colorTheme = "defaults.xml";
-  CSettings::GetInstance().SetString(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS, colorTheme);
+  CServiceBroker::GetSettings().SetString(CSettings::SETTING_LOOKANDFEEL_SKINCOLORS, colorTheme);
   g_application.ReloadSkin();
 
   return 0;
@@ -395,7 +396,7 @@ static int SetTheme(const std::vector<std::string>& params)
 static int SkinReset(const std::vector<std::string>& params)
 {
   CSkinSettings::GetInstance().Reset(params[0]);
-  CSettings::GetInstance().Save();
+  CServiceBroker::GetSettings().Save();
 
   return 0;
 }
@@ -406,7 +407,7 @@ static int SkinReset(const std::vector<std::string>& params)
 static int SkinResetAll(const std::vector<std::string>& params)
 {
   CSkinSettings::GetInstance().Reset();
-  CSettings::GetInstance().Save();
+  CServiceBroker::GetSettings().Save();
 
   return 0;
 }

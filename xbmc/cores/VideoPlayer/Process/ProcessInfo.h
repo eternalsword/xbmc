@@ -20,6 +20,7 @@
 #pragma once
 
 #include "cores/IPlayer.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFormats.h"
 #include "threads/CriticalSection.h"
 #include <list>
 #include <string>
@@ -32,12 +33,12 @@ public:
 
   // player video info
   void ResetVideoCodecInfo();
-  void SetVideoDecoderName(std::string name, bool isHw);
+  void SetVideoDecoderName(const std::string &name, bool isHw);
   std::string GetVideoDecoderName();
   bool IsVideoHwDecoder();
-  void SetVideoDeintMethod(std::string method);
+  void SetVideoDeintMethod(const std::string &method);
   std::string GetVideoDeintMethod();
-  void SetVideoPixelFormat(std::string pixFormat);
+  void SetVideoPixelFormat(const std::string &pixFormat);
   std::string GetVideoPixelFormat();
   void SetVideoDimensions(int width, int height);
   void GetVideoDimensions(int &width, int &height);
@@ -54,9 +55,9 @@ public:
 
   // player audio info
   void ResetAudioCodecInfo();
-  void SetAudioDecoderName(std::string name);
+  void SetAudioDecoderName(const std::string &name);
   std::string GetAudioDecoderName();
-  void SetAudioChannels(std::string channels);
+  void SetAudioChannels(const std::string &channels);
   std::string GetAudioChannels();
   void SetAudioSampleRate(int sampleRate);
   int GetAudioSampleRate();
@@ -67,6 +68,13 @@ public:
   // render info
   void SetRenderClockSync(bool enabled);
   bool IsRenderClockSync();
+  void UpdateRenderInfo(CRenderInfo &info);
+  void UpdateRenderBuffers(int queued, int discard, int free);
+  void GetRenderBuffers(int &queued, int &discard, int &free);
+
+  // player states
+  void SetStateSeeking(bool active);
+  bool IsSeeking();
 
 protected:
   CProcessInfo();
@@ -94,4 +102,12 @@ protected:
   // render info
   CCriticalSection m_renderSection;
   bool m_isClockSync;
+  CRenderInfo m_renderInfo;
+  int m_renderBufQueued = 0;
+  int m_renderBufFree = 0;
+  int m_renderBufDiscard = 0;
+
+  // player states
+  CCriticalSection m_stateSection;
+  bool m_stateSeeking;
 };

@@ -39,9 +39,7 @@ CAEChannelInfo::CAEChannelInfo(const AEStdChLayout rhs)
   *this = rhs;
 }
 
-CAEChannelInfo::~CAEChannelInfo()
-{
-}
+CAEChannelInfo::~CAEChannelInfo() = default;
 
 void CAEChannelInfo::ResolveChannels(const CAEChannelInfo& rhs)
 {
@@ -252,7 +250,7 @@ CAEChannelInfo::operator std::string() const
   for (unsigned int i = 0; i < m_channelCount - 1; ++i)
   {
     s.append(GetChName(m_channels[i]));
-    s.append(",");
+    s.append(", ");
   }
   s.append(GetChName(m_channels[m_channelCount-1]));
 

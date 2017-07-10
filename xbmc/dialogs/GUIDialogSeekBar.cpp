@@ -18,6 +18,8 @@
  *
  */
 
+#include <math.h>
+
 #include "GUIDialogSeekBar.h"
 #include "Application.h"
 #include "GUIInfoManager.h"
@@ -32,9 +34,7 @@ CGUIDialogSeekBar::CGUIDialogSeekBar(void)
   m_loadType = LOAD_ON_GUI_INIT;    // the application class handles our resources
 }
 
-CGUIDialogSeekBar::~CGUIDialogSeekBar(void)
-{
-}
+CGUIDialogSeekBar::~CGUIDialogSeekBar(void) = default;
 
 bool CGUIDialogSeekBar::OnMessage(CGUIMessage& message)
 {
@@ -53,6 +53,8 @@ bool CGUIDialogSeekBar::OnMessage(CGUIMessage& message)
     if (message.GetSenderId() == GetID() && message.GetControlId() == POPUP_SEEK_PROGRESS)
       return CGUIDialog::OnMessage(message);
     break;
+  case GUI_MSG_REFRESH_TIMER:
+    return CGUIDialog::OnMessage(message);
   }
   return false; // don't process anything other than what we need!
 }
@@ -65,17 +67,12 @@ void CGUIDialogSeekBar::FrameMove()
     return;
   }
 
-  // update controls
-  if (!CSeekHandler::GetInstance().InProgress() && g_infoManager.GetTotalPlayTime())
-  { // position the bar at our current time
-    CONTROL_SELECT_ITEM(POPUP_SEEK_PROGRESS, (unsigned int)(static_cast<float>(g_infoManager.GetPlayTime()) / g_infoManager.GetTotalPlayTime() * 0.1f));
-    SET_CONTROL_LABEL(POPUP_SEEK_LABEL, g_infoManager.GetCurrentPlayTime());
-  }
-  else
-  {
-    CONTROL_SELECT_ITEM(POPUP_SEEK_PROGRESS, (unsigned int)g_infoManager.GetSeekPercent());
-    SET_CONTROL_LABEL(POPUP_SEEK_LABEL, g_infoManager.GetCurrentSeekTime());
-  }
+  unsigned int percent((!CSeekHandler::GetInstance().InProgress() && g_infoManager.GetTotalPlayTime())
+    ? lrintf(g_application.GetPercentage())
+    : (unsigned int)g_infoManager.GetSeekPercent());
+
+  if (percent != m_lastPercent)
+    CONTROL_SELECT_ITEM(POPUP_SEEK_PROGRESS, m_lastPercent = percent);
 
   CGUIDialog::FrameMove();
 }

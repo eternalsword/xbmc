@@ -19,7 +19,9 @@
  */
 
 #include "FileItem.h"
-#include "pvr/windows/GUIWindowPVRBase.h"
+#include "ServiceBroker.h"
+#include "pvr/PVRGUIActions.h"
+#include "pvr/PVRManager.h"
 
 #include "GUIDialogPVRRecordingInfo.h"
 
@@ -67,7 +69,7 @@ bool CGUIDialogPVRRecordingInfo::OnClickButtonPlay(CGUIMessage &message)
     Close();
 
     if (m_recordItem)
-      CGUIWindowPVRBase::PlayRecording(m_recordItem.get(), false /* don't play minimized */, true /* check resume */);
+      CServiceBroker::GetPVRManager().GUIActions()->PlayRecording(m_recordItem, true /* check resume */);
 
     bReturn = true;
   }
@@ -90,3 +92,9 @@ CFileItemPtr CGUIDialogPVRRecordingInfo::GetCurrentListItem(int offset)
 {
   return m_recordItem;
 }
+
+void CGUIDialogPVRRecordingInfo::ShowFor(const CFileItemPtr& item)
+{
+  CServiceBroker::GetPVRManager().GUIActions()->ShowRecordingInfo(item);
+}
+

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,6 +23,8 @@
 
 #include <memory>
 
+namespace KODI
+{
 namespace JOYSTICK
 {
   class CDriverPrimitive;
@@ -30,9 +32,10 @@ namespace JOYSTICK
   class IButtonMap;
 
   class CJoystickFeature;
-  typedef std::shared_ptr<CJoystickFeature> FeaturePtr;
+  using FeaturePtr = std::shared_ptr<CJoystickFeature>;
 
   /*!
+   * \ingroup joystick
    * \brief Base class for joystick features
    *
    * See list of feature types in JoystickTypes.h.
@@ -41,7 +44,7 @@ namespace JOYSTICK
   {
   public:
     CJoystickFeature(const FeatureName& name, IInputHandler* handler, IButtonMap* buttonMap);
-    virtual ~CJoystickFeature(void) { }
+    virtual ~CJoystickFeature() = default;
 
     /*!
      * \brief A digital motion has occured
@@ -97,7 +100,7 @@ namespace JOYSTICK
   {
   public:
     CScalarFeature(const FeatureName& name, IInputHandler* handler, IButtonMap* buttonMap);
-    virtual ~CScalarFeature(void) { }
+    virtual ~CScalarFeature() = default;
 
     // implementation of CJoystickFeature
     virtual bool OnDigitalMotion(const CDriverPrimitive& source, bool bPressed) override;
@@ -105,17 +108,25 @@ namespace JOYSTICK
     virtual void ProcessMotions(void) override;
 
   private:
-    void OnDigitalMotion(bool bPressed);
-    void OnAnalogMotion(float magnitude);
+    bool OnDigitalMotion(bool bPressed);
+    bool OnAnalogMotion(float magnitude);
 
-    const INPUT_TYPE m_inputType;
+    void ProcessDigitalMotion();
+    void ProcessAnalogMotion();
+
+    // State variables
+    INPUT_TYPE       m_inputType = INPUT_TYPE::UNKNOWN;
     bool             m_bDigitalState;
-    bool             m_bDigitalHandled;
-    unsigned int     m_holdStartTimeMs;
-    float            m_analogState;
+    unsigned int     m_motionStartTimeMs;
+
+    // Analog state variables
+    float            m_analogState; // The current magnitude
+    float            m_bActivated; // Set to true when first activated (magnitude > 0.0)
+    bool             m_bDiscrete; // Set to false when a non-discrete axis is detected
   };
 
   /*!
+   * \ingroup joystick
    * \brief Axis of a feature (analog stick, accelerometer, etc)
    *
    * Axes are composed of two driver primitives, one for the positive semiaxis
@@ -183,7 +194,7 @@ namespace JOYSTICK
   {
   public:
     CAnalogStick(const FeatureName& name, IInputHandler* handler, IButtonMap* buttonMap);
-    virtual ~CAnalogStick(void) { }
+    virtual ~CAnalogStick() = default;
 
     // implementation of CJoystickFeature
     virtual bool OnDigitalMotion(const CDriverPrimitive& source, bool bPressed) override;
@@ -204,7 +215,7 @@ namespace JOYSTICK
   {
   public:
     CAccelerometer(const FeatureName& name, IInputHandler* handler, IButtonMap* buttonMap);
-    virtual ~CAccelerometer(void) { }
+    virtual ~CAccelerometer() = default;
 
     // implementation of CJoystickFeature
     virtual bool OnDigitalMotion(const CDriverPrimitive& source, bool bPressed) override;
@@ -220,4 +231,5 @@ namespace JOYSTICK
     float m_yAxisState;
     float m_zAxisState;
   };
+}
 }

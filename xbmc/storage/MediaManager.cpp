@@ -20,6 +20,7 @@
 
 #include "system.h"
 #include "MediaManager.h"
+#include "ServiceBroker.h"
 #include "guilib/LocalizeStrings.h"
 #include "URL.h"
 #include "utils/URIUtils.h"
@@ -216,12 +217,15 @@ void CMediaManager::GetNetworkLocations(VECSOURCES &locations, bool autolocation
 #endif// HAS_FILESYSTEM_NFS
 
 #ifdef HAS_UPNP
-    std::string strDevices = g_localizeStrings.Get(33040); //"% Devices"
-    share.strPath = "upnp://";
-    share.strName = StringUtils::Format(strDevices.c_str(), "UPnP"); //"UPnP Devices"
-    locations.push_back(share);
+    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_UPNP))
+    {
+      std::string strDevices = g_localizeStrings.Get(33040); //"% Devices"
+      share.strPath = "upnp://";
+      share.strName = StringUtils::Format(strDevices.c_str(), "UPnP"); //"UPnP Devices"
+      locations.push_back(share);
+    }
 #endif
-    
+
 #ifdef HAS_ZEROCONF
     share.strPath = "zeroconf://";
     share.strName = g_localizeStrings.Get(20262);
@@ -679,8 +683,8 @@ std::vector<std::string> CMediaManager::GetDiskUsage()
 void CMediaManager::OnStorageAdded(const std::string &label, const std::string &path)
 {
 #ifdef HAS_DVD_DRIVE
-  if (CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) != AUTOCD_NONE || CSettings::GetInstance().GetBool(CSettings::SETTING_DVDS_AUTORUN))
-    if (CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) == AUTOCD_RIP)
+  if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) != AUTOCD_NONE || CServiceBroker::GetSettings().GetBool(CSettings::SETTING_DVDS_AUTORUN))
+    if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_AUDIOCDS_AUTOACTION) == AUTOCD_RIP)
       CJobManager::GetInstance().AddJob(new CAutorunMediaJob(label, path), this, CJob::PRIORITY_LOW);
     else
       CJobManager::GetInstance().AddJob(new CAutorunMediaJob(label, path), this, CJob::PRIORITY_HIGH);

@@ -42,7 +42,7 @@ public:
   CLog();
   ~CLog(void);
   static void Close();
-  static void Log(int loglevel, PRINTF_FORMAT_STRING const char *format, ...) PARAM2_PRINTF_FORMAT;
+  static void Log(int loglevel, PRINTF_FORMAT_STRING const char *format, ...);
   static void LogFunction(int loglevel, IN_OPT_STRING const char* functionName, PRINTF_FORMAT_STRING const char* format, ...) PARAM3_PRINTF_FORMAT;
 #define LogF(loglevel,format,...) LogFunction((loglevel),__FUNCTION__,(format),##__VA_ARGS__)
   static void MemDump(char *pData, int length);
@@ -58,7 +58,7 @@ protected:
   {
   public:
     CLogGlobals(void) : m_repeatCount(0), m_repeatLogLevel(-1), m_logLevel(LOG_LEVEL_DEBUG), m_extraLogLevels(0) {}
-    ~CLogGlobals() {}
+    ~CLogGlobals() = default;
     PlatformInterfaceForCLog m_platform;
     int         m_repeatCount;
     int         m_repeatLogLevel;
@@ -78,8 +78,8 @@ namespace XbmcUtils
   class LogImplementation : public XbmcCommons::ILogger
   {
   public:
-    virtual ~LogImplementation() {}
-    inline virtual void log(int logLevel, IN_STRING const char* message) { CLog::Log(logLevel, "%s", message); }
+    ~LogImplementation() override = default;
+    inline void log(int logLevel, IN_STRING const char* message) override { CLog::Log(logLevel, "%s", message); }
   };
 }
 

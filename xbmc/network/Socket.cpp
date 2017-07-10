@@ -73,7 +73,6 @@ bool CPosixUDPSocket::Bind(bool localOnly, int port, int range)
           m_addr.saddr.saddr6.sin6_port = htons(m_iPort);
           if (bind(testSocket, (struct sockaddr*)&m_addr.saddr, m_addr.size) >= 0)
           {
-            closesocket(testSocket);
             m_ipv6Socket = true;
             break;
           }
@@ -84,6 +83,8 @@ bool CPosixUDPSocket::Bind(bool localOnly, int port, int range)
           close(m_iSock);
           m_iSock = INVALID_SOCKET;
         }
+
+        closesocket(testSocket);
       }
     }
   }

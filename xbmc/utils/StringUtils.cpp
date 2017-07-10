@@ -30,11 +30,12 @@
 
 #include <guid.h>
 
+#if defined(TARGET_ANDROID)
+#include <androidjni/JNIThreading.h>
+#endif
+
 #include "StringUtils.h"
 #include "CharsetConverter.h"
-#if defined(TARGET_ANDROID)
-#include "platform/android/jni/JNIThreading.h"
-#endif
 #include "utils/fstrcmp.h"
 #include "Util.h"
 #include <functional>
@@ -217,15 +218,6 @@ static const wchar_t unicode_uppers[] = {
   (wchar_t)0xFF32, (wchar_t)0xFF33, (wchar_t)0xFF34, (wchar_t)0xFF35, (wchar_t)0xFF36, (wchar_t)0xFF37, (wchar_t)0xFF38, (wchar_t)0xFF39, (wchar_t)0xFF3A
 };
 
-std::string StringUtils::Format(const char *fmt, ...)
-{
-  va_list args;
-  va_start(args, fmt);
-  std::string str = FormatV(fmt, args);
-  va_end(args);
-
-  return str;
-}
 
 std::string StringUtils::FormatV(const char *fmt, va_list args)
 {
@@ -269,16 +261,6 @@ std::string StringUtils::FormatV(const char *fmt, va_list args)
   }
 
   return ""; // unreachable
-}
-
-std::wstring StringUtils::Format(const wchar_t *fmt, ...)
-{
-  va_list args;
-  va_start(args, fmt);
-  std::wstring str = FormatV(fmt, args);
-  va_end(args);
-  
-  return str;
 }
 
 std::wstring StringUtils::FormatV(const wchar_t *fmt, va_list args)
@@ -693,17 +675,6 @@ bool StringUtils::EndsWithNoCase(const std::string &str1, const char *s2)
   return true;
 }
 
-std::string StringUtils::Join(const std::vector<std::string> &strings, const std::string& delimiter)
-{
-  std::string result;
-  for(std::vector<std::string>::const_iterator it = strings.begin(); it != strings.end(); ++it )
-    result += (*it) + delimiter;
-  
-  if (!result.empty())
-    result.erase(result.size() - delimiter.size());
-  return result;
-}
-
 std::vector<std::string> StringUtils::Split(const std::string& input, const std::string& delimiter, unsigned int iMaxStrings /* = 0 */)
 {
   std::vector<std::string> results;
@@ -752,6 +723,25 @@ std::vector<std::string> StringUtils::Split(const std::string& input, const char
     results.push_back(input.substr(textPos, nextDelim - textPos));
     textPos = nextDelim + 1;
   } while (nextDelim != std::string::npos);
+
+  return results;
+}
+
+std::vector<std::string> StringUtils::Split(const std::string& input, const std::vector<std::string> &delimiters)
+{
+  std::vector<std::string> results;
+  if (input.empty())
+    return results;
+
+  if (delimiters.empty())
+  {
+    results.push_back(input);
+    return results;
+  }
+  std::string str = input;
+  for (size_t di = 1; di < delimiters.size(); di++)
+    StringUtils::Replace(str, delimiters[di], delimiters[0]);
+  results = Split(str, delimiters[0]);
 
   return results;
 }
@@ -925,6 +915,8 @@ long StringUtils::TimeStringToSeconds(const std::string &timeString)
 
 std::string StringUtils::SecondsToTimeString(long lSeconds, TIME_FORMAT format)
 {
+  bool isNegative = lSeconds < 0;
+  lSeconds = std::abs(lSeconds);
   int hh = lSeconds / 3600;
   lSeconds = lSeconds % 3600;
   int mm = lSeconds / 60;
@@ -941,6 +933,8 @@ std::string StringUtils::SecondsToTimeString(long lSeconds, TIME_FORMAT format)
     strHMS += StringUtils::Format(strHMS.empty() ? "%2.2i" : ":%2.2i", mm);
   if (format & TIME_FORMAT_SS)
     strHMS += StringUtils::Format(strHMS.empty() ? "%2.2i" : ":%2.2i", ss);
+  if (isNegative)
+    strHMS = "-" + strHMS;
   return strHMS;
 }
 
@@ -1295,18 +1289,18 @@ uint64_t StringUtils::ToUint64(std::string str, uint64_t fallback) noexcept
 
 std::string StringUtils::FormatFileSize(uint64_t bytes)
 {
-  const std::array<std::string, 6> units{"B", "kB", "MB", "GB", "TB", "PB"};
+  const std::array<std::string, 6> units{{"B", "kB", "MB", "GB", "TB", "PB"}};
   if (bytes < 1000)
-    return Format("%lluB", bytes);
+    return Format("%" PRIu64 "B", bytes);
 
-  int i = 0;
+  size_t i = 0;
   double value = static_cast<double>(bytes);
-  while (i < units.size() - 1 && value >= 999.5)
+  while (i + 1 < units.size() && value >= 999.5)
   {
     ++i;
     value /= 1024.0;
   }
-  int decimals = value < 9.995 ? 2 : (value < 99.95 ? 1 : 0);
-  auto frmt = "%.0" + Format("%d", decimals) + "f%s";
+  unsigned int decimals = value < 9.995 ? 2 : (value < 99.95 ? 1 : 0);
+  auto frmt = "%.0" + Format("%u", decimals) + "f%s";
   return Format(frmt.c_str(), value, units[i].c_str());
 }

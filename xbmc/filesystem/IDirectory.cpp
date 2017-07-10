@@ -33,8 +33,7 @@ IDirectory::IDirectory(void)
   m_flags = DIR_FLAG_DEFAULTS;
 }
 
-IDirectory::~IDirectory(void)
-{}
+IDirectory::~IDirectory(void) = default;
 
 /*!
  \brief Test if file have an allowed extension, as specified with SetMask()
@@ -69,6 +68,16 @@ bool IDirectory::IsAllowed(const CURL& url) const
   if (URIUtils::HasExtension(url, ".dat"))
   {
     std::string fileName = URIUtils::GetFileName(url);
+    std::string folder = URIUtils::GetDirectory(fileName);
+    URIUtils::RemoveSlashAtEnd(folder);
+    folder = URIUtils::GetFileName(folder);
+    if (folder.size() <= 3) // cannot be a vcd variant
+      return true;
+
+    if (!StringUtils::CompareNoCase(folder, "vcd") &&
+        !StringUtils::CompareNoCase(folder, "MPEGAV") &&
+        !StringUtils::CompareNoCase(folder, "CDDA"))
+      return true;
 
     // Allow filenames of the form AVSEQ##(#).DAT, ITEM###(#).DAT
     // and MUSIC##(#).DAT
@@ -115,7 +124,7 @@ bool IDirectory::ProcessRequirements()
   if (type == "keyboard")
   {
     std::string input;
-    if (CGUIKeyboardFactory::ShowAndGetInput(input, m_requirements["heading"], false))
+    if (CGUIKeyboardFactory::ShowAndGetInput(input, m_requirements["heading"], false, m_requirements["hidden"].asBoolean()))
     {
       m_requirements["input"] = input;
       return true;
@@ -138,7 +147,7 @@ bool IDirectory::ProcessRequirements()
   return false;
 }
 
-bool IDirectory::GetKeyboardInput(const CVariant &heading, std::string &input)
+bool IDirectory::GetKeyboardInput(const CVariant &heading, std::string &input, bool hiddenInput)
 {
   if (!m_requirements["input"].asString().empty())
   {
@@ -148,6 +157,7 @@ bool IDirectory::GetKeyboardInput(const CVariant &heading, std::string &input)
   m_requirements.clear();
   m_requirements["type"] = "keyboard";
   m_requirements["heading"] = heading;
+  m_requirements["hidden"] = hiddenInput;
   return false;
 }
 

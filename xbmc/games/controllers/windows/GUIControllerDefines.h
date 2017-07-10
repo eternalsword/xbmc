@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -36,6 +36,7 @@
 #define CONTROL_CLOSE_BUTTON                18
 #define CONTROL_RESET_BUTTON                19
 #define CONTROL_GET_MORE                    20
+#define CONTROL_FIX_SKIPPING                21
 #define CONTROL_GAME_CONTROLLER             31
 
 #define MAX_CONTROLLER_COUNT  100 // large enough

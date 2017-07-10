@@ -31,16 +31,16 @@ class CBusyWaiter : public CThread
 public:
   CBusyWaiter(IRunnable *runnable) : CThread(runnable, "waiting"), m_done(new CEvent()) {  }
   
-  bool Wait()
+  bool Wait(unsigned int displaytime, bool allowCancel)
   {
     std::shared_ptr<CEvent> e_done(m_done);
 
     Create();
-    return CGUIDialogBusy::WaitOnEvent(*e_done);
+    return CGUIDialogBusy::WaitOnEvent(*e_done, displaytime, allowCancel);
   }
 
   // 'this' is actually deleted from the thread where it's on the stack
-  virtual void Process()
+  void Process() override
   {
     std::shared_ptr<CEvent> e_done(m_done);
 
@@ -50,12 +50,12 @@ public:
 
 };
 
-bool CGUIDialogBusy::Wait(IRunnable *runnable)
+bool CGUIDialogBusy::Wait(IRunnable *runnable, unsigned int displaytime /* = 100 */, bool allowCancel /* = true */)
 {
   if (!runnable)
     return false;
   CBusyWaiter waiter(runnable);
-  return waiter.Wait();
+  return waiter.Wait(displaytime, allowCancel);
 }
 
 bool CGUIDialogBusy::WaitOnEvent(CEvent &event, unsigned int displaytime /* = 100 */, bool allowCancel /* = true */)
@@ -64,7 +64,7 @@ bool CGUIDialogBusy::WaitOnEvent(CEvent &event, unsigned int displaytime /* = 10
   if (!event.WaitMSec(displaytime))
   {
     // throw up the progress
-    CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+    CGUIDialogBusy* dialog = g_windowManager.GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
     if (dialog)
     {
       dialog->Open();
@@ -91,18 +91,16 @@ CGUIDialogBusy::CGUIDialogBusy(void)
 {
   m_loadType = LOAD_ON_GUI_INIT;
   m_bCanceled = false;
-  m_progress = 0;
+  m_progress = -1;
 }
 
-CGUIDialogBusy::~CGUIDialogBusy(void)
-{
-}
+CGUIDialogBusy::~CGUIDialogBusy(void) = default;
 
 void CGUIDialogBusy::Open_Internal(const std::string &param /* = "" */)
 {
   m_bCanceled = false;
   m_bLastVisible = true;
-  m_progress = 0;
+  m_progress = -1;
 
   CGUIDialog::Open_Internal(false, param);
 }
@@ -121,7 +119,7 @@ void CGUIDialogBusy::DoProcess(unsigned int currentTime, CDirtyRegionList &dirty
   {
     CGUIProgressControl *progress = (CGUIProgressControl *)control;
     progress->SetPercentage(m_progress);
-    progress->SetVisible(m_progress > 0);
+    progress->SetVisible(m_progress > -1);
   }
 
   CGUIDialog::DoProcess(currentTime, dirtyregions);

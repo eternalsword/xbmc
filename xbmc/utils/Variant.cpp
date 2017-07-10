@@ -129,7 +129,14 @@ double str2double(const std::wstring &str, double fallback /* = 0.0 */)
   return fallback;
 }
 
+CVariant::CVariant()
+  : CVariant(VariantTypeNull)
+{
+}
+
 CVariant CVariant::ConstNullVariant = CVariant::VariantTypeConstNull;
+CVariant::VariantArray CVariant::EMPTY_ARRAY;
+CVariant::VariantMap CVariant::EMPTY_MAP;
 
 CVariant::CVariant(VariantType type)
 {
@@ -302,18 +309,39 @@ CVariant::~CVariant()
 
 void CVariant::cleanup()
 {
-  if (m_type == VariantTypeString)
+  switch (m_type)
+  {
+  case VariantTypeString:
     delete m_data.string;
-  else if (m_type == VariantTypeWideString)
+    m_data.string = nullptr;
+    break;
+
+  case VariantTypeWideString:
     delete m_data.wstring;
-  else if (m_type == VariantTypeArray)
+    m_data.wstring = nullptr;
+    break;
+
+  case VariantTypeArray:
     delete m_data.array;
-  else if (m_type == VariantTypeObject)
+    m_data.array = nullptr;
+    break;
+
+  case VariantTypeObject:
     delete m_data.map;
+    m_data.map = nullptr;
+    break;
+  default:
+    break;
+  }
   m_type = VariantTypeNull;
 }
 
 bool CVariant::isInteger() const
+{
+  return isSignedInteger() || isUnsignedInteger();
+}
+
+bool CVariant::isSignedInteger() const
 {
   return m_type == VariantTypeInteger;
 }
@@ -728,7 +756,7 @@ CVariant::iterator_array CVariant::begin_array()
   if (m_type == VariantTypeArray)
     return m_data.array->begin();
   else
-    return iterator_array();
+    return EMPTY_ARRAY.begin();
 }
 
 CVariant::const_iterator_array CVariant::begin_array() const
@@ -736,7 +764,7 @@ CVariant::const_iterator_array CVariant::begin_array() const
   if (m_type == VariantTypeArray)
     return m_data.array->begin();
   else
-    return const_iterator_array();
+    return EMPTY_ARRAY.begin();
 }
 
 CVariant::iterator_array CVariant::end_array()
@@ -744,7 +772,7 @@ CVariant::iterator_array CVariant::end_array()
   if (m_type == VariantTypeArray)
     return m_data.array->end();
   else
-    return iterator_array();
+    return EMPTY_ARRAY.end();
 }
 
 CVariant::const_iterator_array CVariant::end_array() const
@@ -752,7 +780,7 @@ CVariant::const_iterator_array CVariant::end_array() const
   if (m_type == VariantTypeArray)
     return m_data.array->end();
   else
-    return const_iterator_array();
+    return EMPTY_ARRAY.end();
 }
 
 CVariant::iterator_map CVariant::begin_map()
@@ -760,7 +788,7 @@ CVariant::iterator_map CVariant::begin_map()
   if (m_type == VariantTypeObject)
     return m_data.map->begin();
   else
-    return iterator_map();
+    return EMPTY_MAP.begin();
 }
 
 CVariant::const_iterator_map CVariant::begin_map() const
@@ -768,7 +796,7 @@ CVariant::const_iterator_map CVariant::begin_map() const
   if (m_type == VariantTypeObject)
     return m_data.map->begin();
   else
-    return const_iterator_map();
+    return EMPTY_MAP.begin();
 }
 
 CVariant::iterator_map CVariant::end_map()
@@ -776,7 +804,7 @@ CVariant::iterator_map CVariant::end_map()
   if (m_type == VariantTypeObject)
     return m_data.map->end();
   else
-    return iterator_map();
+    return EMPTY_MAP.end();
 }
 
 CVariant::const_iterator_map CVariant::end_map() const
@@ -784,7 +812,7 @@ CVariant::const_iterator_map CVariant::end_map() const
   if (m_type == VariantTypeObject)
     return m_data.map->end();
   else
-    return const_iterator_map();
+    return EMPTY_MAP.end();
 }
 
 unsigned int CVariant::size() const

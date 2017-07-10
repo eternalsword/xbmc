@@ -27,7 +27,7 @@ CDataCacheCore::CDataCacheCore()
   m_hasAVInfoChanges = false;
 }
 
-CDataCacheCore& GetInstance()
+CDataCacheCore& CDataCacheCore::GetInstance()
 {
   return CServiceBroker::GetDataCacheCore();
 }
@@ -219,4 +219,30 @@ bool CDataCacheCore::IsRenderClockSync()
   CSingleLock lock(m_renderSection);
 
   return m_renderInfo.m_isClockSync;
+}
+
+// player states
+void CDataCacheCore::SetStateSeeking(bool active)
+{
+  CSingleLock lock(m_stateSection);
+
+  m_stateInfo.m_stateSeeking = active;
+  m_playerStateChanged = true;
+}
+
+bool CDataCacheCore::CDataCacheCore::IsSeeking()
+{
+  CSingleLock lock(m_stateSection);
+
+  return m_stateInfo.m_stateSeeking;
+}
+
+bool CDataCacheCore::IsPlayerStateChanged()
+{
+  CSingleLock lock(m_stateSection);
+
+  bool ret(m_playerStateChanged);
+  m_playerStateChanged = false;
+
+  return ret;
 }

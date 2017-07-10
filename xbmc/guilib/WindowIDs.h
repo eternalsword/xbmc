@@ -36,6 +36,7 @@
 #define WINDOW_SETTINGS_SERVICE           10018
 
 #define WINDOW_SETTINGS_MYPVR             10021
+#define WINDOW_SETTINGS_MYGAMES           10022
 
 #define WINDOW_VIDEO_NAV                  10025
 #define WINDOW_VIDEO_PLAYLIST             10028
@@ -121,9 +122,10 @@
 #define WINDOW_DIALOG_PVR_CHANNEL_SCAN    (WINDOW_DIALOG_PVR_ID_START+6)
 #define WINDOW_DIALOG_PVR_UPDATE_PROGRESS (WINDOW_DIALOG_PVR_ID_START+7)
 #define WINDOW_DIALOG_PVR_OSD_CHANNELS    (WINDOW_DIALOG_PVR_ID_START+8)
-#define WINDOW_DIALOG_PVR_OSD_GUIDE       (WINDOW_DIALOG_PVR_ID_START+9)
+#define WINDOW_DIALOG_PVR_CHANNEL_GUIDE   (WINDOW_DIALOG_PVR_ID_START+9)
 #define WINDOW_DIALOG_PVR_RADIO_RDS_INFO  (WINDOW_DIALOG_PVR_ID_START+10)
-#define WINDOW_DIALOG_PVR_ID_END          WINDOW_DIALOG_PVR_RADIO_RDS_INFO
+#define WINDOW_DIALOG_PVR_RECORDING_SETTING (WINDOW_DIALOG_PVR_ID_START+11)
+#define WINDOW_DIALOG_PVR_ID_END          WINDOW_DIALOG_PVR_RECORDING_SETTING
 
 #define WINDOW_PVR_ID_START               10700
 #define WINDOW_TV_CHANNELS                (WINDOW_PVR_ID_START)
@@ -144,6 +146,9 @@
 #define WINDOW_FULLSCREEN_RADIO           10801 // virtual window for PVR radio specific keymaps with fallback to WINDOW_VISUALISATION
 
 #define WINDOW_DIALOG_GAME_CONTROLLERS    10820
+#define WINDOW_GAMES                      10821
+#define WINDOW_DIALOG_GAME_OSD            10822
+#define WINDOW_DIALOG_GAME_VIDEO_SETTINGS 10823
 
 //#define WINDOW_VIRTUAL_KEYBOARD           11000
 // WINDOW_ID's from 11100 to 11199 reserved for Skins
@@ -161,6 +166,8 @@
 
 #define WINDOW_VIDEO_MENU                 12902
 #define WINDOW_VIDEO_TIME_SEEK            12905 // virtual window for time seeking during fullscreen video
+
+#define WINDOW_FULLSCREEN_GAME            12906
 
 #define WINDOW_SPLASH                     12997 // splash window
 #define WINDOW_START                      12998 // first window to load

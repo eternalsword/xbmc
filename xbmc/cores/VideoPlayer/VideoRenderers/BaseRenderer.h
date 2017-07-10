@@ -26,6 +26,7 @@
 #include "guilib/Resolution.h"
 #include "guilib/Geometry.h"
 #include "RenderFormats.h"
+#include "VideoShaders/ShaderFormats.h"
 #include "cores/IPlayer.h"
 
 #define MAX_PLANES 3
@@ -67,7 +68,7 @@ enum RenderMethods
   RENDER_OVERLAYS        = 99   // to retain compatibility
 };
 
-struct DVDVideoPicture;
+struct VideoPicture;
 class CRenderCapture;
 
 class CBaseRenderer
@@ -77,12 +78,12 @@ public:
   virtual ~CBaseRenderer();
 
   // Player functions
-  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_formatl, unsigned int orientation) = 0;
+  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void* hwPic, unsigned int orientation) = 0;
   virtual bool IsConfigured() = 0;
   virtual int GetImage(YV12Image *image, int source = -1, bool readonly = false) = 0;
   virtual void ReleaseImage(int source, bool preserve = false) = 0;
-  virtual void AddVideoPictureHW(DVDVideoPicture &picture, int index) {};
-  virtual bool IsPictureHW(DVDVideoPicture &picture) { return false; };
+  virtual void AddVideoPictureHW(VideoPicture &picture, int index) {};
+  virtual bool IsPictureHW(VideoPicture &picture) { return false; };
   virtual void FlipPage(int source) = 0;
   virtual void PreInit() = 0;
   virtual void UnInit() = 0;
@@ -90,7 +91,7 @@ public:
   virtual void Flush() {};
   virtual void SetBufferSize(int numBuffers) { }
   virtual void ReleaseBuffer(int idx) { }
-  virtual bool NeedBufferForRef(int idx) { return false; }
+  virtual bool NeedBuffer(int idx) { return false; }
   virtual bool IsGuiLayer() { return true; }
   // Render info, can be called before configure
   virtual CRenderInfo GetRenderInfo() { return CRenderInfo(); }
@@ -98,6 +99,7 @@ public:
   virtual void RenderUpdate(bool clear, unsigned int flags = 0, unsigned int alpha = 255) = 0;
   virtual bool RenderCapture(CRenderCapture* capture) = 0;
   virtual bool HandlesRenderFormat(ERenderFormat format) { return format == m_format; };
+  virtual bool ConfigChanged(void *hwPic) { return false; };
 
   // Feature support
   virtual bool SupportsMultiPassRendering() = 0;
@@ -116,7 +118,7 @@ public:
   void GetVideoRect(CRect &source, CRect &dest, CRect &view);
   float GetAspectRatio() const;
 
-  static void SettingOptionsRenderMethodsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 protected:
   void CalcNormalRenderRect(float offsetX, float offsetY, float width, float height,
@@ -124,6 +126,7 @@ protected:
   void CalculateFrameAspectRatio(unsigned int desired_width, unsigned int desired_height);
   void ManageRenderArea();
   virtual void ReorderDrawPoints();//might be overwritten (by egl e.x.)
+  virtual EShaderFormat GetShaderFormat(ERenderFormat renderFormat);
   void saveRotatedCoords();//saves the current state of m_rotatedDestCoords
   void syncDestRectToRotatedPoints();//sync any changes of m_destRect to m_rotatedDestCoords
   void restoreRotatedCoords();//restore the current state of m_rotatedDestCoords from saveRotatedCoords
@@ -134,7 +137,7 @@ protected:
   float m_sourceFrameRatio;
   float m_fps;
 
-  unsigned int m_renderOrientation; // orientation of the video in degress counter clockwise
+  unsigned int m_renderOrientation; // orientation of the video in degrees counter clockwise
   unsigned int m_oldRenderOrientation; // orientation of the previous frame
   // for drawing the texture with glVertex4f (holds all 4 corner points of the destination rect
   // with correct orientation based on m_renderOrientation
@@ -149,5 +152,5 @@ protected:
 
   // rendering flags
   unsigned m_iFlags;
-  ERenderFormat m_format;
+  ERenderFormat m_format = RENDER_FMT_NONE;
 };

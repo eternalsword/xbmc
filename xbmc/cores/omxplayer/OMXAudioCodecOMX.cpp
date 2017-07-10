@@ -25,7 +25,8 @@
 #include "utils/log.h"
 
 #include "cores/AudioEngine/Utils/AEUtil.h"
-#include "cores/AudioEngine/AEFactory.h"
+#include "ServiceBroker.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
 #include "settings/Settings.h"
 #include "linux/RBP.h"
 
@@ -65,7 +66,7 @@ bool COMXAudioCodecOMX::Open(CDVDStreamInfo &hints)
 {
   AVCodec* pCodec = NULL;
 
-  if (hints.codec == AV_CODEC_ID_DTS && g_RBP.RasberryPiVersion() > 1)
+  if (hints.codec == AV_CODEC_ID_DTS && g_RBP.RaspberryPiVersion() > 1)
     pCodec = avcodec_find_decoder_by_name("dcadec");
 
   if (!pCodec)
@@ -97,9 +98,9 @@ bool COMXAudioCodecOMX::Open(CDVDStreamInfo &hints)
   m_pCodecContext->bits_per_coded_sample = hints.bitspersample;
   if (hints.codec == AV_CODEC_ID_TRUEHD)
   {
-    if (CAEFactory::HasStereoAudioChannelCount())
+    if (CServiceBroker::GetActiveAE().HasStereoAudioChannelCount())
       m_pCodecContext->request_channel_layout = AV_CH_LAYOUT_STEREO;
-    else if (!CAEFactory::HasHDAudioChannelCount())
+    else if (!CServiceBroker::GetActiveAE().HasHDAudioChannelCount())
       m_pCodecContext->request_channel_layout = AV_CH_LAYOUT_5POINT1;
   }
   if (m_pCodecContext->request_channel_layout)
@@ -152,6 +153,11 @@ int COMXAudioCodecOMX::Decode(BYTE* pData, int iSize, double dts, double pts)
   if (!m_pCodecContext) return -1;
 
   AVPacket avpkt;
+  if (!m_iBufferOutputUsed)
+  {
+    m_dts = dts;
+    m_pts = pts;
+  }
   if (m_bGotFrame)
     return 0;
   av_init_packet(&avpkt);
@@ -182,11 +188,6 @@ int COMXAudioCodecOMX::Decode(BYTE* pData, int iSize, double dts, double pts)
   }
 
   m_bGotFrame = true;
-  if (!m_iBufferOutputUsed)
-  {
-    m_dts = dts;
-    m_pts = pts;
-  }
   return iBytesUsed;
 }
 

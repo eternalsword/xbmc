@@ -21,6 +21,7 @@
 #ifdef HAS_DX
 
 #include "WinRenderer.h"
+#include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
 #include "cores/FFmpeg.h"
 #include "dialogs/GUIDialogKaiToast.h"
@@ -65,7 +66,7 @@ CWinRenderer::CWinRenderer()
 
   m_colorShader = nullptr;
   m_scalerShader = nullptr;
-  m_extended_format = 0;
+  m_dxva_format = DXGI_FORMAT_UNKNOWN;
 
   m_iRequestedMethod = RENDER_METHOD_AUTO;
 
@@ -121,6 +122,18 @@ bool CWinRenderer::HandlesRenderFormat(ERenderFormat format)
   return false;
 }
 
+bool CWinRenderer::ConfigChanged(void *hwPic)
+{
+  if (m_format == RENDER_FMT_DXVA)
+  {
+    DXVA::CRenderPicture *dxvaPic = static_cast<DXVA::CRenderPicture*>(hwPic);
+    if (dxvaPic->format != m_dxva_format)
+      return true;
+  }
+
+  return false;
+}
+
 void CWinRenderer::ManageTextures()
 {
   if( m_NumYV12Buffers < m_neededBuffers )
@@ -149,7 +162,7 @@ void CWinRenderer::SelectRenderMethod()
   {
     CLog::Log(LOGNOTICE, "D3D: rendering method forced to DXVA processor");
     m_renderMethod = RENDER_DXVA;
-    if (!m_processor || !m_processor->Open(m_sourceWidth, m_sourceHeight, m_iFlags, m_format, m_extended_format))
+    if (!m_processor || !m_processor->Open(m_sourceWidth, m_sourceHeight, m_iFlags, m_format, m_dxva_format))
     {
       CLog::Log(LOGNOTICE, "D3D: unable to open DXVA processor");
       if (m_processor)  
@@ -164,7 +177,7 @@ void CWinRenderer::SelectRenderMethod()
     switch(m_iRequestedMethod)
     {
       case RENDER_METHOD_DXVA:
-        if (!m_processor || !m_processor->Open(m_sourceWidth, m_sourceHeight, m_iFlags, m_format, m_extended_format))
+        if (!m_processor || !m_processor->Open(m_sourceWidth, m_sourceHeight, m_iFlags, m_format, m_dxva_format))
         {
           CLog::Log(LOGNOTICE, "D3D: unable to open DXVA processor");
           if (m_processor)
@@ -208,7 +221,7 @@ void CWinRenderer::SelectRenderMethod()
   m_frameIdx = 0;
 }
 
-bool CWinRenderer::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format, unsigned int orientation)
+bool CWinRenderer::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void *hwPic, unsigned int orientation)
 {
   m_sourceWidth       = width;
   m_sourceHeight      = height;
@@ -219,10 +232,13 @@ bool CWinRenderer::Configure(unsigned int width, unsigned int height, unsigned i
   // reinitialize the filters/shaders
   m_bFilterInitialized = false;
 
+  DXVA::CRenderPicture *dxvaPic = static_cast<DXVA::CRenderPicture*>(hwPic);
+
   m_fps = fps;
   m_iFlags = flags;
   m_format = format;
-  m_extended_format = extended_format;
+  if (format == RENDER_FMT_DXVA)
+    m_dxva_format = dxvaPic->format;
 
   // calculate the input frame aspect ratio
   CalculateFrameAspectRatio(d_width, d_height);
@@ -243,7 +259,7 @@ int CWinRenderer::NextYV12Texture()
     return -1;
 }
 
-bool CWinRenderer::IsPictureHW(DVDVideoPicture &picture)
+bool CWinRenderer::IsPictureHW(VideoPicture &picture)
 {
   if (m_renderMethod == RENDER_DXVA
     || picture.format == RENDER_FMT_DXVA)
@@ -253,7 +269,7 @@ bool CWinRenderer::IsPictureHW(DVDVideoPicture &picture)
   return false;
 }
 
-void CWinRenderer::AddVideoPictureHW(DVDVideoPicture &picture, int index)
+void CWinRenderer::AddVideoPictureHW(VideoPicture &picture, int index)
 {
   if (m_renderMethod == RENDER_DXVA)
   {
@@ -261,6 +277,7 @@ void CWinRenderer::AddVideoPictureHW(DVDVideoPicture &picture, int index)
     SAFE_RELEASE(buf->pic);
     buf->pic = m_processor->Convert(picture);
     buf->frameIdx = m_frameIdx;
+    buf->pictureFlags = picture.iFlags;
     m_frameIdx += 2;
   }
   else if (picture.format == RENDER_FMT_DXVA)
@@ -349,9 +366,9 @@ void CWinRenderer::FlipPage(int source)
   if( source >= 0 && source < m_NumYV12Buffers )
     m_iYV12RenderBuffer = source;
   else
-    m_iYV12RenderBuffer = NextYV12Texture();;
+    m_iYV12RenderBuffer = NextYV12Texture();
 
-  if (m_VideoBuffers[m_iYV12RenderBuffer] != nullptr)
+  if (m_iYV12RenderBuffer >= 0 && m_VideoBuffers[m_iYV12RenderBuffer] != nullptr)
     m_VideoBuffers[m_iYV12RenderBuffer]->StartRender();
 
   return;
@@ -366,7 +383,7 @@ void CWinRenderer::PreInit()
   m_formats.clear();
   m_formats.push_back(RENDER_FMT_YUV420P);
 
-  m_iRequestedMethod = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
+  m_iRequestedMethod = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
 
   if (g_advancedSettings.m_DXVAForceProcessorRenderer
   ||  m_iRequestedMethod == RENDER_METHOD_DXVA)
@@ -600,7 +617,8 @@ void CWinRenderer::UpdatePSVideoFilter()
   }
 
   m_colorShader = new CYUV2RGBShader();
-  if (!m_colorShader->Create(m_sourceWidth, m_sourceHeight, m_format))
+  EShaderFormat shaderFormat = GetShaderFormat(m_format);
+  if (!m_colorShader->Create(m_sourceWidth, m_sourceHeight, shaderFormat))
   {
     if (m_bUseHQScaler)
     {
@@ -713,7 +731,7 @@ void CWinRenderer::RenderSW()
     CLog::Log(LOGERROR, __FUNCTION__" - failed to lock swtarget texture into memory");
 
   uint8_t *dst[] = { (uint8_t*)destlr.pData, 0, 0, 0 };
-  int dstStride[] = { destlr.RowPitch, 0, 0, 0 };
+  int dstStride[] = { static_cast<int>(destlr.RowPitch), 0, 0, 0 };
 
   sws_scale(m_sw_scale_ctx, src, srcStride, 0, m_sourceHeight, dst, dstStride);
 
@@ -884,8 +902,8 @@ void CWinRenderer::RenderHW(DWORD flags)
                        static_cast<float>(m_IntermediateTarget.GetHeight()));
   if (m_capture)
   {
-    target.x2 = m_capture->GetWidth();
-    target.y2 = m_capture->GetHeight();
+    target.x2 = static_cast<float>(m_capture->GetWidth());
+    target.y2 = static_cast<float>(m_capture->GetHeight());
   }
   CWIN32Util::CropSource(src, dst, target, m_renderOrientation);
 
@@ -912,13 +930,19 @@ void CWinRenderer::RenderHW(DWORD flags)
     bool stereoHack = g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_HORIZONTAL
                    || g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_VERTICAL;
 
+    CGUIShaderDX* pGUIShader = g_Windowing.GetGUIShader();
+    XMMATRIX w, v, p;
     if (stereoHack)
     {
+      pGUIShader->GetWVP(w, v, p);
       CRect bbSize = g_Windowing.GetBackBufferRect();
 
       g_Windowing.GetViewPort(oldViewPort);
       g_Windowing.SetViewPort(bbSize);
-      g_Windowing.SetCameraPosition(CPoint(bbSize.Width() / 2.f, bbSize.Height() / 2.f), bbSize.Width(), bbSize.Height(), 0.f);
+      g_Windowing.SetCameraPosition(CPoint(bbSize.Width() / 2.f, bbSize.Height() / 2.f),
+                                    static_cast<int>(bbSize.Width()),
+                                    static_cast<int>(bbSize.Height()),
+                                    0.f);
     }
 
     // render frame
@@ -926,7 +950,10 @@ void CWinRenderer::RenderHW(DWORD flags)
     CD3DTexture::DrawQuad(dst, 0xFFFFFF, &m_IntermediateTarget, &tu, SHADER_METHOD_RENDER_TEXTURE_NOBLEND);
 
     if (stereoHack)
+    {
       g_Windowing.SetViewPort(oldViewPort);
+      pGUIShader->SetWVP(w, v, p);
+    }
   }
 }
 
@@ -1056,7 +1083,7 @@ bool CWinRenderer::Supports(ESCALINGMETHOD method)
         // if scaling is below level, avoid hq scaling
         float scaleX = fabs(((float)m_sourceWidth - m_destRect.Width())/m_sourceWidth)*100;
         float scaleY = fabs(((float)m_sourceHeight - m_destRect.Height())/m_sourceHeight)*100;
-        int minScale = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_HQSCALERS);
+        int minScale = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_HQSCALERS);
         if (scaleX < minScale && scaleY < minScale)
           return false;
         return true;
@@ -1087,7 +1114,11 @@ CRenderInfo CWinRenderer::GetRenderInfo()
   info.formats = m_formats;
   info.max_buffer_size = NUM_BUFFERS;
   if (m_renderMethod == RENDER_DXVA && m_processor)
+  {
     info.optimal_buffer_size = m_processor->Size();
+    if (m_format != RENDER_FMT_DXVA)
+      info.m_deintMethods.push_back(VS_INTERLACEMETHOD_DXVA_AUTO);
+  }
   else
     info.optimal_buffer_size = 4;
   return info;
@@ -1099,7 +1130,7 @@ void CWinRenderer::ReleaseBuffer(int idx)
     SAFE_RELEASE(reinterpret_cast<DXVABuffer*>(m_VideoBuffers[idx])->pic);
 }
 
-bool CWinRenderer::NeedBufferForRef(int idx)
+bool CWinRenderer::NeedBuffer(int idx)
 {
   // check if processor wants to keep past frames
   if (m_renderMethod == RENDER_DXVA && m_processor)
@@ -1107,7 +1138,8 @@ bool CWinRenderer::NeedBufferForRef(int idx)
     DXVABuffer** buffers = reinterpret_cast<DXVABuffer**>(m_VideoBuffers);
 
     int numPast = m_processor->PastRefs();
-    if (buffers[idx] && buffers[idx]->pic)
+    if (buffers[idx] && buffers[idx]->pic &&
+        (buffers[idx]->pictureFlags & DVP_FLAG_INTERLACED))
     {
       if (buffers[idx]->frameIdx + numPast*2 >= buffers[m_iYV12RenderBuffer]->frameIdx)
         return true;
@@ -1299,11 +1331,12 @@ bool YUVBuffer::IsReadyToRender()
   return !m_locked;
 }
 
-bool YUVBuffer::CopyFromPicture(DVDVideoPicture &picture)
+bool YUVBuffer::CopyFromPicture(VideoPicture &picture)
 {
   if (picture.format == RENDER_FMT_DXVA)
   {
-    return CopyFromDXVA(reinterpret_cast<ID3D11VideoDecoderOutputView*>(picture.dxva->view));
+    DXVA::CRenderPicture *hwpic = static_cast<DXVA::CRenderPicture*>(picture.hwPic);
+    return CopyFromDXVA(reinterpret_cast<ID3D11VideoDecoderOutputView*>(hwpic->view));
   }
   return false;
 }

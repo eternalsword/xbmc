@@ -43,9 +43,7 @@ CTextureCacheJob::CTextureCacheJob(const std::string &url, const std::string &ol
 {
 }
 
-CTextureCacheJob::~CTextureCacheJob()
-{
-}
+CTextureCacheJob::~CTextureCacheJob() = default;
 
 bool CTextureCacheJob::operator==(const CJob* job) const
 {
@@ -231,6 +229,10 @@ bool CTextureCacheJob::UpdateableURL(const std::string &url) const
 
 std::string CTextureCacheJob::GetImageHash(const std::string &url)
 {
+  // silently ignore - we cannot state these
+  if (URIUtils::IsProtocol(url,"addons") || URIUtils::IsProtocol(url,"plugin"))
+    return "";
+
   struct __stat64 st;
   if (XFILE::CFile::Stat(url, &st) == 0)
   {

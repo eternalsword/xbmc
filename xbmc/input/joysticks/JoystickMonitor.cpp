@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2016 Team Kodi
+ *      Copyright (C) 2015-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,14 +21,16 @@
 #include "JoystickMonitor.h"
 #include "Application.h"
 #include "input/InputManager.h"
+#include "ServiceBroker.h"
 
+using namespace KODI;
 using namespace JOYSTICK;
 
 bool CJoystickMonitor::OnButtonMotion(unsigned int buttonIndex, bool bPressed)
 {
   if (bPressed)
   {
-    CInputManager::GetInstance().SetMouseActive(false);
+    CServiceBroker::GetInputManager().SetMouseActive(false);
     return ResetTimers();
   }
 
@@ -39,18 +41,18 @@ bool CJoystickMonitor::OnHatMotion(unsigned int hatIndex, HAT_STATE state)
 {
   if (state != HAT_STATE::UNPRESSED)
   {
-    CInputManager::GetInstance().SetMouseActive(false);
+    CServiceBroker::GetInputManager().SetMouseActive(false);
     return ResetTimers();
   }
 
   return false;
 }
 
-bool CJoystickMonitor::OnAxisMotion(unsigned int axisIndex, float position)
+bool CJoystickMonitor::OnAxisMotion(unsigned int axisIndex, float position, int center, unsigned int range)
 {
   if (position)
   {
-    CInputManager::GetInstance().SetMouseActive(false);
+    CServiceBroker::GetInputManager().SetMouseActive(false);
     return ResetTimers();
   }
 

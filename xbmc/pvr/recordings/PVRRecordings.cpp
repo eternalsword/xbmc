@@ -22,13 +22,9 @@
 
 #include <utility>
 
-#include "epg/EpgContainer.h"
-#include "epg/EpgInfoTag.h"
+#include "ServiceBroker.h"
 #include "FileItem.h"
-#include "pvr/addons/PVRClients.h"
-#include "pvr/recordings/PVRRecordingsPath.h"
-#include "pvr/PVRManager.h"
-#include "pvr/PVREvent.h"
+#include "filesystem/Directory.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "URL.h"
@@ -36,6 +32,13 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "video/VideoDatabase.h"
+
+#include "pvr/PVRManager.h"
+#include "pvr/PVREvent.h"
+#include "pvr/addons/PVRClients.h"
+#include "pvr/epg/EpgContainer.h"
+#include "pvr/epg/EpgInfoTag.h"
+#include "pvr/recordings/PVRRecordingsPath.h"
 
 using namespace PVR;
 
@@ -61,8 +64,8 @@ void CPVRRecordings::UpdateFromClients(void)
 {
   CSingleLock lock(m_critSection);
   Clear();
-  g_PVRClients->GetRecordings(this, false);
-  g_PVRClients->GetRecordings(this, true);
+  CServiceBroker::GetPVRManager().Clients()->GetRecordings(this, false);
+  CServiceBroker::GetPVRManager().Clients()->GetRecordings(this, true);
 }
 
 std::string CPVRRecordings::TrimSlashes(const std::string &strOrig) const
@@ -104,7 +107,7 @@ void CPVRRecordings::GetSubDirectories(const CPVRRecordingsPath &recParentPath, 
     if (current->IsRadio() != bRadio)
       continue;
 
-    const std::string strCurrent = recParentPath.GetSubDirectoryPath(current->m_strDirectory);
+    const std::string strCurrent(recParentPath.GetUnescapedSubDirectoryPath(current->m_strDirectory));
     if (strCurrent.empty())
       continue;
 
@@ -121,7 +124,7 @@ void CPVRRecordings::GetSubDirectories(const CPVRRecordingsPath &recParentPath, 
       pFileItem.reset(new CFileItem(strCurrent, true));
       pFileItem->SetPath(strFilePath);
       pFileItem->SetLabel(strCurrent);
-      pFileItem->SetLabelPreformated(true);
+      pFileItem->SetLabelPreformatted(true);
       pFileItem->m_dateTime = current->RecordingTimeAsLocalTime();
 
       // Assume all folders are watched, we'll change the overlay later
@@ -135,13 +138,13 @@ void CPVRRecordings::GetSubDirectories(const CPVRRecordingsPath &recParentPath, 
         pFileItem->m_dateTime = current->RecordingTimeAsLocalTime();
     }
 
-    if (current->m_playCount == 0)
+    if (current->GetPlayCount() == 0)
       unwatchedFolders.insert(pFileItem);
   }
 
-  // Remove the watched overlay from folders containing unwatched entries
+  // Change the watched overlay to unwatched for folders containing unwatched entries
   for (auto item : unwatchedFolders)
-    item->SetOverlayImage(CGUIListItem::ICON_OVERLAY_WATCHED, true);
+    item->SetOverlayImage(CGUIListItem::ICON_OVERLAY_UNWATCHED, false);
 }
 
 int CPVRRecordings::Load(void)
@@ -164,11 +167,11 @@ void CPVRRecordings::Update(void)
 
   lock.Enter();
   m_bIsUpdating = false;
-  g_PVRManager.SetChanged();
   lock.Leave();
 
-  g_PVRManager.NotifyObservers(ObservableMessageRecordings);
-  g_PVRManager.PublishEvent(RecordingsInvalidated);
+  CServiceBroker::GetPVRManager().SetChanged();
+  CServiceBroker::GetPVRManager().NotifyObservers(ObservableMessageRecordings);
+  CServiceBroker::GetPVRManager().PublishEvent(RecordingsInvalidated);
 }
 
 int CPVRRecordings::GetNumTVRecordings() const
@@ -254,7 +257,7 @@ bool CPVRRecordings::RenameRecording(CFileItem &item, std::string &strNewName)
 
 bool CPVRRecordings::DeleteAllRecordingsFromTrash()
 {
-  return g_PVRClients->DeleteAllRecordingsFromTrash() == PVR_ERROR_NO_ERROR;
+  return CServiceBroker::GetPVRManager().Clients()->DeleteAllRecordingsFromTrash() == PVR_ERROR_NO_ERROR;
 }
 
 bool CPVRRecordings::SetRecordingsPlayCount(const CFileItemPtr &item, int count)
@@ -288,7 +291,7 @@ bool CPVRRecordings::GetDirectory(const std::string& strPath, CFileItemList &ite
   }
   else
   {
-    bGrouped = CSettings::GetInstance().GetBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS);
+    bGrouped = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRRECORD_GROUPRECORDINGS);
   }
 
   CPVRRecordingsPath recPath(url.GetWithoutOptions());
@@ -296,11 +299,11 @@ bool CPVRRecordings::GetDirectory(const std::string& strPath, CFileItemList &ite
   {
     // Get the directory structure if in non-flatten mode
     // Deleted view is always flatten. So only for an active view
-    std::string strDirectory(recPath.GetDirectoryPath());
+    std::string strDirectory(recPath.GetUnescapedDirectoryPath());
     if (!recPath.IsDeleted() && bGrouped)
       GetSubDirectories(recPath, &items);
 
-    // get all files of the currrent directory or recursively all files starting at the current directory if in flatten mode
+    // get all files of the current directory or recursively all files starting at the current directory if in flatten mode
     for (const auto recording : m_recordings)
     {
       CPVRRecordingPtr current = recording.second;
@@ -334,18 +337,10 @@ bool CPVRRecordings::GetDirectory(const std::string& strPath, CFileItemList &ite
       // Use the channel icon as a fallback when a thumbnail is not available
       pFileItem->SetArtFallback("thumb", "icon");
 
-      pFileItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_UNWATCHED, pFileItem->GetPVRRecordingInfoTag()->m_playCount > 0);
+      pFileItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_UNWATCHED, pFileItem->GetPVRRecordingInfoTag()->GetPlayCount() > 0);
 
       items.Add(pFileItem);
     }
-  }
-
-  if (items.IsEmpty())
-  {
-    // Note: Do not change the ".." label. It has very special meaning/logic.
-    //       CFileItem::IsParentFolder() and and other code depends on this.
-    const CFileItemPtr item(new CFileItem(".."));
-    items.Add(item);
   }
 
   return recPath.IsValid();
@@ -367,7 +362,7 @@ void CPVRRecordings::GetAll(CFileItemList &items, bool bDeleted)
     pFileItem->SetLabel2(current->RecordingTimeAsLocalTime().GetAsLocalizedDateTime(true, false));
     pFileItem->m_dateTime = current->RecordingTimeAsLocalTime();
     pFileItem->SetPath(current->m_strFileNameAndPath);
-    pFileItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_UNWATCHED, pFileItem->GetPVRRecordingInfoTag()->m_playCount > 0);
+    pFileItem->SetOverlayImage(CGUIListItem::ICON_OVERLAY_UNWATCHED, pFileItem->GetPVRRecordingInfoTag()->GetPlayCount() > 0);
 
     items.Add(pFileItem);
   }
@@ -460,7 +455,7 @@ void CPVRRecordings::UpdateFromClient(const CPVRRecordingPtr &tag)
       const CPVRChannelPtr channel(newTag->Channel());
       if (channel)
       {
-        const EPG::CEpgInfoTagPtr epgTag = EPG::CEpgContainer::GetInstance().GetTagById(channel, newTag->BroadcastUid());
+        const CPVREpgInfoTagPtr epgTag = CServiceBroker::GetPVRManager().EpgContainer().GetTagById(channel, newTag->BroadcastUid());
         if (epgTag)
           epgTag->SetRecording(newTag);
       }
@@ -474,7 +469,7 @@ void CPVRRecordings::UpdateFromClient(const CPVRRecordingPtr &tag)
   }
 }
 
-CPVRRecordingPtr CPVRRecordings::GetRecordingForEpgTag(const EPG::CEpgInfoTagPtr &epgTag) const
+CPVRRecordingPtr CPVRRecordings::GetRecordingForEpgTag(const CPVREpgInfoTagPtr &epgTag) const
 {
   CSingleLock lock(m_critSection);
 
@@ -502,7 +497,7 @@ CPVRRecordingPtr CPVRRecordings::GetRecordingForEpgTag(const EPG::CEpgInfoTagPtr
           recording.second->ClientID() == epgTag->ChannelTag()->ClientID() &&
           recording.second->ChannelUid() == epgTag->ChannelTag()->UniqueID() &&
           recording.second->RecordingTimeAsUTC() <= epgTag->StartAsUTC() &&
-          (recording.second->RecordingTimeAsUTC() + recording.second->m_duration) >= epgTag->EndAsUTC())
+          recording.second->EndTimeAsUTC() >= epgTag->EndAsUTC())
         return recording.second;
     }
   }
@@ -555,10 +550,10 @@ bool CPVRRecordings::ChangeRecordingsPlayCount(const CFileItemPtr &item, int cou
           recording->SetPlayCount(count);
 
         // Clear resume bookmark
-        if (recording->m_playCount > 0)
+        if (recording->GetPlayCount() > 0)
         {
           m_database.ClearBookMarksOfFile(pItem->GetPath(), CBookmark::RESUME);
-          recording->SetLastPlayedPosition(0);
+          recording->SetResumePoint(CBookmark());
         }
 
         if (count == INCREMENT_PLAY_COUNT)
@@ -567,7 +562,17 @@ bool CPVRRecordings::ChangeRecordingsPlayCount(const CFileItemPtr &item, int cou
           m_database.SetPlayCount(*pItem, count);
       }
     }
+
+    CServiceBroker::GetPVRManager().PublishEvent(RecordingsInvalidated);
   }
 
   return bResult;
+}
+
+bool CPVRRecordings::MarkWatched(const CFileItemPtr &item, bool bWatched)
+{
+  if (bWatched)
+    return IncrementRecordingsPlayCount(item);
+  else
+    return SetRecordingsPlayCount(item, 0);
 }

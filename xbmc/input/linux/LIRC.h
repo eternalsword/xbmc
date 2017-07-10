@@ -32,7 +32,7 @@ class CRemoteControl :  CThread
 {
 public:
   CRemoteControl();
-  virtual ~CRemoteControl();
+  ~CRemoteControl() override;
   void Initialize();
   void Disconnect();
   void Reset();
@@ -49,14 +49,16 @@ public:
   void AddSendCommand(const std::string& command);
 
 protected:
-  virtual void Process();
+  void Process() override;
 
   bool Connect(struct sockaddr_un addr, bool logMessages);
 
 private:
   int     m_fd;
+#ifdef HAVE_INOTIFY
   int     m_inotify_fd;
   int     m_inotify_wd;
+#endif
   FILE*   m_file;
   unsigned int m_holdTime;
   int32_t m_button;

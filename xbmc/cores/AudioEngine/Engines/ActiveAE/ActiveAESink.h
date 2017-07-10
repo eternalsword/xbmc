@@ -63,6 +63,8 @@ public:
     VOLUME,
     FLUSH,
     TIMEOUT,
+    SETSILENCETIMEOUT,
+    SETNOISETYPE,
   };
   enum InSignal
   {
@@ -104,7 +106,7 @@ public:
   CSinkDataProtocol m_dataPort;
 
 protected:
-  void Process();
+  void Process() override;
   void StateMachine(int signal, Protocol *port, Message *msg);
   void PrintSinks();
   void GetDeviceFriendlyName(std::string &device);
@@ -123,6 +125,7 @@ protected:
   int m_state;
   bool m_bStateMachineSelfTrigger;
   int m_extTimeout;
+  int m_silenceTimeOut;
   bool m_extError;
   unsigned int m_extSilenceTimeout;
   bool m_extAppFocused;
@@ -148,6 +151,7 @@ protected:
   int m_sinkLatency;
   CAEBitstreamPacker *m_packer;
   bool m_needIecPack;
+  bool m_streamNoise;
 };
 
 }

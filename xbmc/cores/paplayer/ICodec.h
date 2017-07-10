@@ -43,7 +43,7 @@ public:
     m_bitsPerSample = 0;
     m_bitsPerCodedSample = 0;
   };
-  virtual ~ICodec() {};
+  virtual ~ICodec() = default;
 
   // Virtual functions that all codecs should implement.  Note that these may need
   // enhancing and or refactoring at a later date.  It works currently well for MP3 and
@@ -55,11 +55,6 @@ public:
   // 2.  Load the file (or at least attempt to load it)
   // 3.  Fill in the m_TotalTime, m_SampleRate, m_BitsPerSample and m_Channels parameters.
   virtual bool Init(const CFileItem &file, unsigned int filecache)=0;
-
-  // DeInit()
-  // Should just cleanup anything as necessary.  No need to free buffers here if they
-  // are allocated and destroyed in the destructor.
-  virtual void DeInit()=0;
 
   virtual bool CanSeek() {return true;}
 
@@ -81,10 +76,6 @@ public:
   // Should return true if the codec can be initialized
   // eg. check if a dll needed for the codec exists
   virtual bool CanInit()=0;
-
-  // SkipNext()
-  // Skip to next track/item inside the current media (if supported).
-  virtual bool SkipNext(){return false;}
 
   // set the total time - useful when info comes from a preset tag
   virtual void SetTotalTime(int64_t totaltime) {}

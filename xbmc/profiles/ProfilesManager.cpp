@@ -29,6 +29,7 @@
 #include "FileItem.h"
 #include "GUIInfoManager.h"
 #include "PasswordManager.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "addons/Skin.h"
 #include "dialogs/GUIDialogOK.h"
@@ -39,7 +40,6 @@
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "input/ButtonTranslator.h"
 #include "input/InputManager.h"
 #include "settings/Settings.h"
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
@@ -79,8 +79,7 @@ CProfilesManager::CProfilesManager()
     m_nextProfileId(0)
 { }
 
-CProfilesManager::~CProfilesManager()
-{ }
+CProfilesManager::~CProfilesManager() = default;
 
 CProfilesManager& CProfilesManager::GetInstance()
 {
@@ -91,11 +90,11 @@ CProfilesManager& CProfilesManager::GetInstance()
 void CProfilesManager::OnSettingsLoaded()
 {
   // check them all
-  std::string strDir = CSettings::GetInstance().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
+  std::string strDir = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
   if (strDir == "set default" || strDir.empty())
   {
     strDir = "special://profile/playlists/";
-    CSettings::GetInstance().SetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH, strDir.c_str());
+    CServiceBroker::GetSettings().SetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH, strDir.c_str());
   }
 
   CDirectory::Create(strDir);
@@ -249,25 +248,25 @@ bool CProfilesManager::LoadProfile(size_t index)
     g_SkinInfo->SaveSettings();
 
   // unload any old settings
-  CSettings::GetInstance().Unload();
+  CServiceBroker::GetSettings().Unload();
 
   SetCurrentProfileId(index);
   m_profileLoadedForLogin = false;
 
   // load the new settings
-  if (!CSettings::GetInstance().Load())
+  if (!CServiceBroker::GetSettings().Load())
   {
     CLog::Log(LOGFATAL, "CProfilesManager: unable to load settings for profile \"%s\"", m_profiles.at(index).getName().c_str());
     return false;
   }
-  CSettings::GetInstance().SetLoaded();
+  CServiceBroker::GetSettings().SetLoaded();
 
   CreateProfileFolders();
 
   CDatabaseManager::GetInstance().Initialize();
-  CButtonTranslator::GetInstance().Load(true);
+  CServiceBroker::GetInputManager().LoadKeymaps();
 
-  CInputManager::GetInstance().SetMouseEnabled(CSettings::GetInstance().GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
+  CServiceBroker::GetInputManager().SetMouseEnabled(CServiceBroker::GetSettings().GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE));
 
   g_infoManager.ResetCache();
   g_infoManager.ResetLibraryBools();
@@ -277,8 +276,8 @@ bool CProfilesManager::LoadProfile(size_t index)
     CXBMCTinyXML doc;
     if (doc.LoadFile(URIUtils::AddFileToFolder(GetUserDataFolder(), "guisettings.xml")))
     {
-      CSettings::GetInstance().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_MAXRETRIES);
-      CSettings::GetInstance().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_STARTUPLOCK);
+      CServiceBroker::GetSettings().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_MAXRETRIES);
+      CServiceBroker::GetSettings().LoadSetting(doc.RootElement(), CSettings::SETTING_MASTERLOCK_STARTUPLOCK);
     }
   }
 
@@ -306,7 +305,7 @@ bool CProfilesManager::DeleteProfile(size_t index)
   if (profile == NULL)
     return false;
 
-  CGUIDialogYesNo* dlgYesNo = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
+  CGUIDialogYesNo* dlgYesNo = g_windowManager.GetWindow<CGUIDialogYesNo>(WINDOW_DIALOG_YES_NO);
   if (dlgYesNo == NULL)
     return false;
 
@@ -332,7 +331,7 @@ bool CProfilesManager::DeleteProfile(size_t index)
   if (index == m_currentProfile)
   {
     LoadProfile(0);
-    CSettings::GetInstance().Save();
+    CServiceBroker::GetSettings().Save();
   }
 
   CFileItemPtr item = CFileItemPtr(new CFileItem(URIUtils::AddFileToFolder(GetUserDataFolder(), strDirectory)));
@@ -354,6 +353,7 @@ void CProfilesManager::CreateProfileFolders()
   CDirectory::Create(GetThumbnailsFolder());
   CDirectory::Create(GetVideoThumbFolder());
   CDirectory::Create(GetBookmarksThumbFolder());
+  CDirectory::Create(GetSavestatesFolder());
   for (size_t hex = 0; hex < 16; hex++)
     CDirectory::Create(URIUtils::AddFileToFolder(GetThumbnailsFolder(), StringUtils::Format("%lx", hex)));
 
@@ -377,7 +377,7 @@ const CProfile& CProfilesManager::GetCurrentProfile() const
   if (m_currentProfile < m_profiles.size())
     return m_profiles[m_currentProfile];
 
-  CLog::Log(LOGERROR, "CProfilesManager: current profile index (%u) is outside of the valid range (%" PRIdS ")", m_currentProfile, m_profiles.size());
+  CLog::Log(LOGERROR, "CProfilesManager: current profile index ({0}) is outside of the valid range ({1})", m_currentProfile, m_profiles.size());
   return EmptyProfile;
 }
 
@@ -503,6 +503,14 @@ std::string CProfilesManager::GetLibraryFolder() const
     return URIUtils::AddFileToFolder(GetProfileUserDataFolder(), "library");
 
   return URIUtils::AddFileToFolder(GetUserDataFolder(), "library");
+}
+
+std::string CProfilesManager::GetSavestatesFolder() const
+{
+  if (GetCurrentProfile().hasDatabases())
+    return URIUtils::AddFileToFolder(GetProfileUserDataFolder(), "Savestates");
+
+  return URIUtils::AddFileToFolder(GetUserDataFolder(), "Savestates");
 }
 
 std::string CProfilesManager::GetSettingsFile() const

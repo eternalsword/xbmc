@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016 Team Kodi
+ *      Copyright (C) 2016-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -31,7 +31,7 @@ namespace PERIPHERALS
   class IEventScannerCallback
   {
   public:
-    virtual ~IEventScannerCallback(void) { }
+    virtual ~IEventScannerCallback(void) = default;
 
     virtual void ProcessEvents(void) = 0;
   };
@@ -52,23 +52,23 @@ namespace PERIPHERALS
   public:
     CEventScanner(IEventScannerCallback* callback);
 
-    virtual ~CEventScanner(void) { }
+    ~CEventScanner(void) override = default;
 
     void Start(void);
     void Stop(void);
 
-    EventRateHandle SetRate(float rateHz);
+    EventRateHandle SetRate(double rateHz);
 
     // implementation of IEventRateCallback
-    virtual void Release(CEventRateHandle* handle) override;
+    void Release(CEventRateHandle* handle) override;
 
   protected:
     // implementation of CThread
-    virtual void Process(void) override;
+    void Process(void) override;
 
   private:
-    float GetRateHz(void) const;
-    float GetScanIntervalMs(void) const { return 1000.0f / GetRateHz(); }
+    double GetRateHz(void) const;
+    double GetScanIntervalMs(void) const { return 1000.0 / GetRateHz(); }
 
     IEventScannerCallback* const m_callback;
     std::vector<EventRateHandle> m_handles;

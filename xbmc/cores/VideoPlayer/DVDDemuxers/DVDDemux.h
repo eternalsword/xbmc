@@ -22,18 +22,21 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include "system.h"
 
 struct DemuxPacket;
+struct DemuxCryptoSession;
+
 class CDVDInputStream;
+
+namespace ADDON {
+  class IAddonProvider;
+}
 
 #ifndef __GNUC__
 #pragma warning(push)
 #pragma warning(disable:4244)
-#endif
-
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
 #endif
 
 extern "C" {
@@ -93,7 +96,6 @@ public:
     changes = 0;
     flags = FLAG_NONE;
     realtime = false;
-    bandwidth = 0;
   }
 
   virtual ~CDemuxStream()
@@ -113,7 +115,6 @@ public:
   StreamType type;
   int source;
   bool realtime;
-  unsigned int bandwidth;
 
   int iDuration; // in mseconds
   void* pPrivate; // private pointer for the demuxer
@@ -139,6 +140,9 @@ public:
   , FLAG_HEARING_IMPAIRED = 0x0080
   , FLAG_VISUAL_IMPAIRED  = 0x0100
   } flags;
+
+  std::shared_ptr<DemuxCryptoSession> cryptoSession;
+  std::shared_ptr<ADDON::IAddonProvider> externalInterfaces;
 };
 
 class CDemuxStreamVideo : public CDemuxStream
@@ -157,19 +161,21 @@ public:
     type = STREAM_VIDEO;
     iOrientation = 0;
     iBitsPerPixel = 0;
+    iBitRate = 0;
   }
 
-  virtual ~CDemuxStreamVideo() {}
+  virtual ~CDemuxStreamVideo() = default;
   int iFpsScale; // scale of 1000 and a rate of 29970 will result in 29.97 fps
   int iFpsRate;
   int iHeight; // height of the stream reported by the demuxer
   int iWidth; // width of the stream reported by the demuxer
-  float fAspect; // display aspect of stream
+  double fAspect; // display aspect of stream
   bool bVFR;  // variable framerate
   bool bPTSInvalid; // pts cannot be trusted (avi's).
   bool bForcedAspect; // aspect is forced from container
-  int iOrientation; // orientation of the video in degress counter clockwise
+  int iOrientation; // orientation of the video in degrees counter clockwise
   int iBitsPerPixel;
+  int iBitRate;
   std::string stereo_mode; // expected stereo mode
 };
 
@@ -187,7 +193,7 @@ public:
     type = STREAM_AUDIO;
   }
 
-  virtual ~CDemuxStreamAudio() {}
+  virtual ~CDemuxStreamAudio() = default;
 
   std::string GetStreamType();
 
@@ -231,7 +237,7 @@ class CDVDDemux
 public:
 
   CDVDDemux() : m_demuxerId(NewGuid()) {}
-  virtual ~CDVDDemux() {}
+  virtual ~CDVDDemux() = default;
 
 
   /*
@@ -259,7 +265,7 @@ public:
   /*
    * Seek, time in msec calculated from stream start
    */
-  virtual bool SeekTime(int time, bool backwords = false, double* startpts = NULL) = 0;
+  virtual bool SeekTime(double time, bool backwards = false, double* startpts = NULL) = 0;
 
   /*
    * Seek to a specified chapter.

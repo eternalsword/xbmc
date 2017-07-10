@@ -26,6 +26,7 @@
 #include "settings/lib/ISettingsHandler.h"
 #include "settings/lib/ISubSettings.h"
 #include "settings/AudioDSPSettings.h"
+#include "settings/GameSettings.h"
 #include "settings/VideoSettings.h"
 #include "threads/CriticalSection.h"
 
@@ -45,11 +46,11 @@ class CMediaSettings : public ISettingCallback, public ISettingsHandler, public 
 public:
   static CMediaSettings& GetInstance();
 
-  virtual bool Load(const TiXmlNode *settings) override;
-  virtual bool Save(TiXmlNode *settings) const override;
+  bool Load(const TiXmlNode *settings) override;
+  bool Save(TiXmlNode *settings) const override;
 
-  virtual void OnSettingAction(const CSetting *setting) override;
-  virtual void OnSettingsLoaded() override;
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingsLoaded() override;
 
   const CVideoSettings& GetDefaultVideoSettings() const { return m_defaultVideoSettings; }
   CVideoSettings& GetDefaultVideoSettings() { return m_defaultVideoSettings; }
@@ -61,7 +62,12 @@ public:
   const CAudioSettings& GetCurrentAudioSettings() const { return m_currentAudioSettings; }
   CAudioSettings& GetCurrentAudioSettings() { return m_currentAudioSettings; }
 
-  /*! \brief Retreive the watched mode for the given content type
+  const CGameSettings& GetDefaultGameSettings() const { return m_defaultGameSettings; }
+  CGameSettings& GetDefaultGameSettings() { return m_defaultGameSettings; }
+  const CGameSettings& GetCurrentGameSettings() const { return m_currentGameSettings; }
+  CGameSettings& GetCurrentGameSettings() { return m_currentGameSettings; }
+
+  /*! \brief Retrieve the watched mode for the given content type
    \param content Current content type
    \return the current watch mode for this content type, WATCH_MODE_ALL if the content type is unknown.
    \sa SetWatchMode
@@ -101,7 +107,7 @@ protected:
   CMediaSettings();
   CMediaSettings(const CMediaSettings&);
   CMediaSettings& operator=(CMediaSettings const&);
-  virtual ~CMediaSettings();
+  ~CMediaSettings() override;
 
   static std::string GetWatchedContent(const std::string &content);
 
@@ -111,6 +117,9 @@ private:
 
   CAudioSettings m_defaultAudioSettings;
   CAudioSettings m_currentAudioSettings;
+
+  CGameSettings m_defaultGameSettings;
+  CGameSettings m_currentGameSettings;
 
   typedef std::map<std::string, WatchedMode> WatchedModes;
   WatchedModes m_watchedModes;

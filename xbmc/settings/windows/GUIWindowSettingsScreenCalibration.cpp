@@ -23,6 +23,7 @@
 #include "guilib/GUIMoverControl.h"
 #include "guilib/GUIResizeControl.h"
 #include "Application.h"
+#include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "guilib/GUIWindowManager.h"
@@ -55,8 +56,7 @@ CGUIWindowSettingsScreenCalibration::CGUIWindowSettingsScreenCalibration(void)
   m_needsScaling = false;         // we handle all the scaling
 }
 
-CGUIWindowSettingsScreenCalibration::~CGUIWindowSettingsScreenCalibration(void)
-{}
+CGUIWindowSettingsScreenCalibration::~CGUIWindowSettingsScreenCalibration(void) = default;
 
 
 bool CGUIWindowSettingsScreenCalibration::OnAction(const CAction &action)
@@ -72,7 +72,7 @@ bool CGUIWindowSettingsScreenCalibration::OnAction(const CAction &action)
 
   case ACTION_CALIBRATE_RESET:
     {
-      CGUIDialogYesNo* pDialog = (CGUIDialogYesNo*)g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO);
+      CGUIDialogYesNo* pDialog = g_windowManager.GetWindow<CGUIDialogYesNo>(WINDOW_DIALOG_YES_NO);
       pDialog->SetHeading(CVariant{20325});
       std::string strText = StringUtils::Format(g_localizeStrings.Get(20326).c_str(), g_graphicsContext.GetResInfo(m_Res[m_iCurRes]).strMode.c_str());
       pDialog->SetLine(0, CVariant{std::move(strText)});
@@ -137,7 +137,7 @@ bool CGUIWindowSettingsScreenCalibration::OnMessage(CGUIMessage& message)
   case GUI_MSG_WINDOW_DEINIT:
     {
       CDisplaySettings::GetInstance().UpdateCalibrations();
-      CSettings::GetInstance().Save();
+      CServiceBroker::GetSettings().Save();
       g_graphicsContext.SetCalibrating(false);
       // reset our screen resolution to what it was initially
       g_graphicsContext.SetVideoResolution(CDisplaySettings::GetInstance().GetCurrentResolution());

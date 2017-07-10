@@ -18,11 +18,9 @@
  *
  */
 
-#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
-  #include "config.h"
-#endif
 #include "DVDDemuxUtils.h"
-#include "DVDClock.h"
+#include "TimingConstants.h"
+#include "DemuxCrypto.h"
 #include "utils/log.h"
 #include "system.h"
 
@@ -92,4 +90,12 @@ DemuxPacket* CDVDDemuxUtils::AllocateDemuxPacket(int iDataSize)
     pPacket = NULL;
   }
   return pPacket;
+}
+
+DemuxPacket* CDVDDemuxUtils::AllocateDemuxPacket(unsigned int iDataSize, unsigned int encryptedSubsampleCount)
+{
+  DemuxPacket *ret(AllocateDemuxPacket(iDataSize));
+  if (ret && encryptedSubsampleCount > 0)
+    ret->cryptoInfo = std::shared_ptr<DemuxCryptoInfo>(new DemuxCryptoInfo(encryptedSubsampleCount));
+  return ret;
 }

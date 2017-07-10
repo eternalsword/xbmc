@@ -96,7 +96,7 @@ class CWeatherJob : public CJob
 public:
   CWeatherJob(int location);
 
-  virtual bool DoWork();
+  bool DoWork() override;
 
   const CWeatherInfo &GetInfo() const;
 private:
@@ -107,9 +107,9 @@ private:
 
   void SetFromProperties();
 
-  /*! \brief Formats a celcius temperature into a string based on the users locale
+  /*! \brief Formats a celsius temperature into a string based on the users locale
    \param text the string to format
-   \param temp the temperature (in degrees celcius).
+   \param temp the temperature (in degrees celsius).
    */
   static void FormatTemperature(std::string &text, double temp);
 
@@ -144,7 +144,7 @@ class CWeather : public CInfoLoader,
 {
 public:
   CWeather(void);
-  virtual ~CWeather(void);
+  ~CWeather(void) override;
   static bool GetSearchResults(const std::string &strSearch, std::string &strResult);
 
   std::string GetLocation(int iLocation);
@@ -156,13 +156,13 @@ public:
   void SetArea(int iLocation);
   int GetArea() const;
 protected:
-  virtual CJob *GetJob() const override;
-  virtual std::string TranslateInfo(int info) const override;
-  virtual std::string BusyInfo(int info) const override;
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
+  CJob *GetJob() const override;
+  std::string TranslateInfo(int info) const override;
+  std::string BusyInfo(int info) const override;
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
-  virtual void OnSettingChanged(const CSetting *setting) override;
-  virtual void OnSettingAction(const CSetting *setting) override;
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
 
 private:
 

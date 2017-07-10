@@ -42,7 +42,11 @@ typedef enum
   ObservableMessageTimersReset,
   ObservableMessageRecordings,
   ObservableMessagePeripheralsChanged,
-  ObservableMessageChannelGroupsLoaded
+  ObservableMessageChannelGroupsLoaded,
+  ObservableMessageManagerStopped,
+  ObservableMessagePortsChanged,
+  ObservableMessageSettingsChanged,
+  ObservableMessageButtonMapsChanged,
 } ObservableMessage;
 
 class Observer

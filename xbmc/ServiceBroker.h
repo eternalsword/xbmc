@@ -22,7 +22,11 @@
 
 namespace ADDON {
 class CAddonMgr;
+class CBinaryAddonManager;
 class CBinaryAddonCache;
+class CVFSAddonCache;
+class CServiceAddonManager;
+class CRepositoryUpdater;
 }
 
 namespace ActiveAE {
@@ -39,19 +43,54 @@ namespace PVR
   class CPVRManager;
 }
 
+namespace PLAYLIST
+{
+  class CPlayListPlayer;
+}
+
 class CContextMenuManager;
 class XBPython;
 class CDataCacheCore;
+class CSettings;
+class IAE;
+class CFavouritesService;
+class CInputManager;
+
+namespace KODI
+{
+namespace GAME
+{
+  class CControllerManager;
+  class CGameServices;
+}
+}
+
+namespace PERIPHERALS
+{
+  class CPeripherals;
+}
 
 class CServiceBroker
 {
 public:
   static ADDON::CAddonMgr &GetAddonMgr();
+  static ADDON::CBinaryAddonManager &GetBinaryAddonManager();
   static ADDON::CBinaryAddonCache &GetBinaryAddonCache();
+  static ADDON::CVFSAddonCache &GetVFSAddonCache();
   static ANNOUNCEMENT::CAnnouncementManager &GetAnnouncementManager();
   static XBPython &GetXBPython();
   static PVR::CPVRManager &GetPVRManager();
-  static ActiveAE::CActiveAEDSP& GetADSP();
+  static IAE& GetActiveAE();
   static CContextMenuManager& GetContextMenuManager();
   static CDataCacheCore& GetDataCacheCore();
+  static PLAYLIST::CPlayListPlayer& GetPlaylistPlayer();
+  static CSettings& GetSettings();
+  static KODI::GAME::CControllerManager& GetGameControllerManager();
+  static KODI::GAME::CGameServices& GetGameServices();
+  static PERIPHERALS::CPeripherals& GetPeripherals();
+  static CFavouritesService& GetFavouritesService();
+  static ADDON::CServiceAddonManager& GetServiceAddons();
+  static ADDON::CRepositoryUpdater& GetRepositoryUpdater();
+  static CInputManager& GetInputManager();
+  static bool IsBinaryAddonCacheUp();
 };

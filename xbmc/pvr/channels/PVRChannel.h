@@ -25,6 +25,8 @@
 #include "utils/ISortable.h"
 #include "utils/Observer.h"
 
+#include "pvr/PVRTypes.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -32,25 +34,9 @@
 class CVariant;
 class CFileItemList;
 
-namespace EPG
-{
-  class CEpg;
-  typedef std::shared_ptr<CEpg> CEpgPtr;
-  class CEpgInfoTag;
-  typedef std::shared_ptr<CEpgInfoTag> CEpgInfoTagPtr;
-
-}
-
 namespace PVR
 {
-  class CPVRDatabase;
   class CPVRChannelGroupInternal;
-
-  class CPVRRecording;
-  typedef std::shared_ptr<CPVRRecording> CPVRRecordingPtr;
-
-  class CPVRChannel;
-  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
 
   typedef struct
   {
@@ -59,10 +45,12 @@ namespace PVR
   } pvr_channel_num;
 
   /** PVR Channel class */
-  class CPVRChannel : public Observable, public ISerializable, public ISortable
+  class CPVRChannel : public Observable,
+                      public ISerializable,
+                      public ISortable,
+                      public std::enable_shared_from_this<CPVRChannel>
   {
     friend class CPVRDatabase;
-    friend class CPVRChannelGroupInternal;
 
   public:
     /*! @brief Create a new channel */
@@ -70,14 +58,14 @@ namespace PVR
     CPVRChannel(const PVR_CHANNEL &channel, unsigned int iClientId);
 
   private:
-    CPVRChannel(const CPVRChannel &tag); // intentionally not implemented.
-    CPVRChannel &operator=(const CPVRChannel &channel); // intentionally not implemented.
+    CPVRChannel(const CPVRChannel &tag) = delete;
+    CPVRChannel &operator=(const CPVRChannel &channel) = delete;
 
   public:
     bool operator ==(const CPVRChannel &right) const;
     bool operator !=(const CPVRChannel &right) const;
 
-    virtual void Serialize(CVariant& value) const;
+    void Serialize(CVariant& value) const override;
 
     /*! @name XBMC related channel methods
      */
@@ -98,7 +86,7 @@ namespace PVR
 
     /*!
      * @brief Persists the changes in the database.
-     * @return True if the changes were saved succesfully, false otherwise.
+     * @return True if the changes were saved successfully, false otherwise.
      */
     bool Persist();
 
@@ -243,6 +231,21 @@ namespace PVR
     bool SetLastWatched(time_t iLastWatched);
 
     /*!
+     * @brief Sets the 'was playing on last app quit' flag for a channel.
+     * @param bSet True to set the flag, false to reset the flag
+     * @return True if the operation was successful, false otherwise
+     */
+    bool SetWasPlayingOnLastQuit(bool bSet);
+
+    /*!
+     * @brief Sets the 'was playing on last app quit' flag for a channel.
+     * @param bSet True to set the flag, false to reset the flag
+     * @param bWasPlaying on return contains the previous value of the flag
+     * @return True if the operation was successful, false otherwise
+     */
+    bool SetWasPlayingOnLastQuit(bool bSet, bool& bWasPlaying);
+
+    /*!
      * @brief True if this channel has no file or stream name
      * @return True if this channel has no file or stream name
      */
@@ -336,7 +339,7 @@ namespace PVR
      */
     std::string Path(void) const;
 
-    virtual void ToSortable(SortItem& sortable, Field field) const;
+    void ToSortable(SortItem& sortable, Field field) const override;
 
     /*!
      * @brief Update the path this channel got added to the internal group
@@ -391,10 +394,17 @@ namespace PVR
     void SetEpgID(int iEpgId);
 
     /*!
+     * @brief Create the EPG for this channel, if it does not yet exist
+     * @param bForce to create a new EPG, even if it already exists.
+     * @return true if a new epg was created, false otherwise.
+     */
+    bool CreateEPG(bool bForce);
+
+    /*!
      * @brief Get the EPG table for this channel.
      * @return The EPG for this channel.
      */
-    EPG::CEpgPtr GetEPG(void) const;
+    CPVREpgPtr GetEPG(void) const;
 
     /*!
      * @brief Get the EPG table for this channel.
@@ -417,7 +427,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel now.
      */
-    EPG::CEpgInfoTagPtr GetEPGNow() const;
+    CPVREpgInfoTagPtr GetEPGNow() const;
 
     /*!
      * @brief Get the EPG tag that is active on this channel next.
@@ -427,7 +437,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel next.
      */
-    EPG::CEpgInfoTagPtr GetEPGNext() const;
+    CPVREpgInfoTagPtr GetEPGNext() const;
 
     /*!
      * @return Don't use an EPG for this channel if set to false.
@@ -466,6 +476,9 @@ namespace PVR
     void SetCachedSubChannelNumber(unsigned int iSubChannelNumber);
 
     bool CanRecord(void) const;
+
+    static std::string GetEncryptionName(int iCaid);
+
     //@}
   private:
     /*!

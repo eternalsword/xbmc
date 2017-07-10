@@ -49,7 +49,7 @@ extern "C" FILE *fopen_utf8(const char *_Filename, const char *_Mode);
 #endif
 
 //  Entry point of a dll (DllMain)
-typedef BOOL (APIENTRY *EntryFunc)(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
+typedef int (APIENTRY *EntryFunc)(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved);
 
 
 #ifdef TARGET_POSIX
@@ -806,7 +806,7 @@ void DllLoader::UnloadSymbols()
   RtlInitAnsiString(&name, GetName());
   InitializeObjectAttributes(&attributes, &name, OBJ_CASE_INSENSITIVE, NULL);
 
-  // Try to unload the sybols from vs.net debugger
+  // Try to unload the symbols from vs.net debugger
   DbgUnLoadImageSymbols(&name, (ULONG)hModule, 0xFFFFFFFF);
 
   LPVOID pBaseAddress=GetXbdmBaseAddress();

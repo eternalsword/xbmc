@@ -20,8 +20,7 @@
 
 #include "RendererVDPAU.h"
 
-#ifdef HAVE_LIBVDPAU
-
+#include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/VDPAU.h"
 #include "settings/Settings.h"
 #include "settings/AdvancedSettings.h"
@@ -29,10 +28,7 @@
 #include "utils/GLUtils.h"
 #include "windowing/WindowingFactory.h"
 
-CRendererVDPAU::CRendererVDPAU()
-{
-
-}
+CRendererVDPAU::CRendererVDPAU() = default;
 
 CRendererVDPAU::~CRendererVDPAU()
 {
@@ -42,9 +38,31 @@ CRendererVDPAU::~CRendererVDPAU()
   }
 }
 
-void CRendererVDPAU::AddVideoPictureHW(DVDVideoPicture &picture, int index)
+bool CRendererVDPAU::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height,
+                               float fps, unsigned flags, ERenderFormat format, void *hwPic, unsigned int orientation)
 {
-  VDPAU::CVdpauRenderPicture *vdpau = picture.vdpau;
+  VDPAU::CVdpauRenderPicture *vdpau = static_cast<VDPAU::CVdpauRenderPicture*>(hwPic);
+  if (vdpau->isYuv)
+    m_isYuv = true;
+  else
+    m_isYuv = false;
+
+  return CLinuxRendererGL::Configure(width, height, d_width, d_height,
+                                     fps, flags, format, hwPic, orientation);
+}
+
+bool CRendererVDPAU::ConfigChanged(void *hwPic)
+{
+  VDPAU::CVdpauRenderPicture *vdpau = static_cast<VDPAU::CVdpauRenderPicture*>(hwPic);
+  if (vdpau->isYuv && !m_isYuv)
+    return true;
+
+  return false;
+}
+
+void CRendererVDPAU::AddVideoPictureHW(VideoPicture &picture, int index)
+{
+  VDPAU::CVdpauRenderPicture *vdpau = static_cast<VDPAU::CVdpauRenderPicture*>(picture.hwPic);
   YUVBUFFER &buf = m_buffers[index];
   VDPAU::CVdpauRenderPicture *pic = vdpau->Acquire();
   if (buf.hwDec)
@@ -74,7 +92,7 @@ bool CRendererVDPAU::Supports(ERENDERFEATURE feature)
   if(feature == RENDERFEATURE_BRIGHTNESS ||
      feature == RENDERFEATURE_CONTRAST)
   {
-    if ((m_renderMethod & RENDER_VDPAU) && !CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE))
+    if ((m_renderMethod & RENDER_VDPAU) && !CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_LIMITEDRANGE))
       return true;
 
     return (m_renderMethod & RENDER_GLSL)
@@ -100,7 +118,7 @@ bool CRendererVDPAU::Supports(ERENDERFEATURE feature)
 
 bool CRendererVDPAU::Supports(ESCALINGMETHOD method)
 {
-  if (m_format == RENDER_FMT_VDPAU_420)
+  if (m_isYuv)
     return CLinuxRendererGL::Supports(method);
 
   //nearest neighbor doesn't work on YUY2 and UYVY
@@ -123,7 +141,7 @@ bool CRendererVDPAU::Supports(ESCALINGMETHOD method)
     // if scaling is below level, avoid hq scaling
     float scaleX = fabs(((float)m_sourceWidth - m_destRect.Width())/m_sourceWidth)*100;
     float scaleY = fabs(((float)m_sourceHeight - m_destRect.Height())/m_sourceHeight)*100;
-    int minScale = CSettings::GetInstance().GetInt("videoplayer.hqscalers");
+    int minScale = CServiceBroker::GetSettings().GetInt("videoplayer.hqscalers");
     if (scaleX < minScale && scaleY < minScale)
       return false;
 
@@ -138,9 +156,19 @@ bool CRendererVDPAU::Supports(ESCALINGMETHOD method)
   return false;
 }
 
+EShaderFormat CRendererVDPAU::GetShaderFormat(ERenderFormat renderFormat)
+{
+  EShaderFormat ret = SHADER_NONE;
+
+  if (m_isYuv)
+    ret = SHADER_NV12_RRG;
+
+  return ret;
+}
+
 bool CRendererVDPAU::LoadShadersHook()
 {
-  if (m_format == RENDER_FMT_VDPAU)
+  if (!m_isYuv)
   {
     CLog::Log(LOGNOTICE, "GL: Using VDPAU render method");
     m_renderMethod = RENDER_VDPAU;
@@ -154,7 +182,7 @@ bool CRendererVDPAU::RenderHook(int idx)
 {
   UpdateVideoFilter();
 
-  if (m_format == RENDER_FMT_VDPAU_420)
+  if (m_isYuv)
   {
     switch(m_renderQuality)
     {
@@ -194,9 +222,9 @@ bool CRendererVDPAU::RenderHook(int idx)
 
 bool CRendererVDPAU::CreateTexture(int index)
 {
-  if (m_format == RENDER_FMT_VDPAU)
+  if (!m_isYuv)
     return CreateVDPAUTexture(index);
-  else if (m_format == RENDER_FMT_VDPAU_420)
+  else if (m_isYuv)
     return CreateVDPAUTexture420(index);
   else
     return false;
@@ -204,17 +232,17 @@ bool CRendererVDPAU::CreateTexture(int index)
 
 void CRendererVDPAU::DeleteTexture(int index)
 {
-  if (m_format == RENDER_FMT_VDPAU)
+  if (!m_isYuv)
     DeleteVDPAUTexture(index);
-  else if (m_format == RENDER_FMT_VDPAU_420)
+  else if (m_isYuv)
     DeleteVDPAUTexture420(index);
 }
 
 bool CRendererVDPAU::UploadTexture(int index)
 {
-  if (m_format == RENDER_FMT_VDPAU)
+  if (!m_isYuv)
     return UploadVDPAUTexture(index);
-  else if (m_format == RENDER_FMT_VDPAU_420)
+  else if (m_isYuv)
     return UploadVDPAUTexture420(index);
   else
     return false;
@@ -408,4 +436,3 @@ bool CRendererVDPAU::UploadVDPAUTexture420(int index)
   return true;
 }
 
-#endif

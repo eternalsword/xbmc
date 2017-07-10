@@ -24,13 +24,15 @@
 #include <memory>
 
 #include "Application.h"
-#include "cores/AudioEngine/AEFactory.h"
+#include "ServiceBroker.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
 #include "dialogs/GUIDialogBusy.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "interfaces/AnnouncementManager.h"
 #include "interfaces/builtins/Builtins.h"
+#include "network/Network.h"
 #include "pvr/PVRManager.h"
 #include "settings/lib/Setting.h"
 #include "settings/Settings.h"
@@ -47,7 +49,6 @@
 #include "linux/FallbackPowerSyscall.h"
 #if defined(HAS_DBUS)
 #include "linux/ConsoleUPowerSyscall.h"
-#include "linux/ConsoleDeviceKitPowerSyscall.h"
 #include "linux/LogindUPowerSyscall.h"
 #include "linux/UPowerSyscall.h"
 #endif // HAS_DBUS
@@ -84,14 +85,12 @@ void CPowerManager::Initialize()
   std::unique_ptr<IPowerSyscall> currPowerManager;
   int bestCount = -1;
   int currCount = -1;
-  
+
   std::list< std::pair< std::function<bool()>,
                         std::function<IPowerSyscall*()> > > powerManagers =
   {
     std::make_pair(CConsoleUPowerSyscall::HasConsoleKitAndUPower,
                    [] { return new CConsoleUPowerSyscall(); }),
-    std::make_pair(CConsoleDeviceKitPowerSyscall::HasDeviceConsoleKit,
-                   [] { return new CConsoleDeviceKitPowerSyscall(); }),
     std::make_pair(CLogindUPowerSyscall::HasLogind,
                    [] { return new CLogindUPowerSyscall(); }),
     std::make_pair(CUPowerSyscall::HasUPower,
@@ -127,7 +126,7 @@ void CPowerManager::Initialize()
 
 void CPowerManager::SetDefaults()
 {
-  int defaultShutdown = CSettings::GetInstance().GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE);
+  int defaultShutdown = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE);
 
   switch (defaultShutdown)
   {
@@ -166,14 +165,14 @@ void CPowerManager::SetDefaults()
     break;
   }
 
-  ((CSettingInt*)CSettings::GetInstance().GetSetting(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE))->SetDefault(defaultShutdown);
+  std::static_pointer_cast<CSettingInt>(CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_POWERMANAGEMENT_SHUTDOWNSTATE))->SetDefault(defaultShutdown);
 }
 
 bool CPowerManager::Powerdown()
 {
   if (CanPowerdown() && m_instance->Powerdown())
   {
-    CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+    CGUIDialogBusy* dialog = g_windowManager.GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
     if (dialog)
       dialog->Open();
 
@@ -201,7 +200,7 @@ bool CPowerManager::Reboot()
   {
     CAnnouncementManager::GetInstance().Announce(System, "xbmc", "OnRestart");
 
-    CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+    CGUIDialogBusy* dialog = g_windowManager.GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
     if (dialog)
       dialog->Open();
   }
@@ -243,7 +242,7 @@ void CPowerManager::OnSleep()
 {
   CAnnouncementManager::GetInstance().Announce(System, "xbmc", "OnSleep");
 
-  CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+  CGUIDialogBusy* dialog = g_windowManager.GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
   if (dialog)
     dialog->Open();
 
@@ -255,26 +254,27 @@ void CPowerManager::OnSleep()
   CBuiltins::GetInstance().Execute("LIRC.Stop");
 #endif
 
-  PVR::CPVRManager::GetInstance().SetWakeupCommand();
-  PVR::CPVRManager::GetInstance().OnSleep();
+  CServiceBroker::GetPVRManager().OnSleep();
   g_application.SaveFileState(true);
   g_application.StopPlaying();
   g_application.StopShutdownTimer();
   g_application.StopScreenSaverTimer();
   g_application.CloseNetworkShares();
-  CAEFactory::Suspend();
+  CServiceBroker::GetActiveAE().Suspend();
 }
 
 void CPowerManager::OnWake()
 {
   CLog::Log(LOGNOTICE, "%s: Running resume jobs", __FUNCTION__);
 
+  g_application.getNetwork().WaitForNet();
+
   // reset out timers
   g_application.ResetShutdownTimers();
 
-  CGUIDialogBusy* dialog = (CGUIDialogBusy*)g_windowManager.GetWindow(WINDOW_DIALOG_BUSY);
+  CGUIDialogBusy* dialog = g_windowManager.GetWindow<CGUIDialogBusy>(WINDOW_DIALOG_BUSY);
   if (dialog)
-    dialog->Close();
+    dialog->Close(true); // force close. no closing animation, sound etc at this early stage
 
 #if defined(HAS_SDL) || defined(TARGET_WINDOWS)
   if (g_Windowing.IsFullScreen())
@@ -293,11 +293,11 @@ void CPowerManager::OnWake()
   CBuiltins::GetInstance().Execute("LIRC.Start");
 #endif
 
-  CAEFactory::Resume();
+  CServiceBroker::GetActiveAE().Resume();
   g_application.UpdateLibraries();
   g_weatherManager.Refresh();
 
-  PVR::CPVRManager::GetInstance().OnWake();
+  CServiceBroker::GetPVRManager().OnWake();
   CAnnouncementManager::GetInstance().Announce(System, "xbmc", "OnWake");
 }
 
@@ -310,7 +310,7 @@ void CPowerManager::OnLowBattery()
   CAnnouncementManager::GetInstance().Announce(System, "xbmc", "OnLowBattery");
 }
 
-void CPowerManager::SettingOptionsShutdownStatesFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CPowerManager::SettingOptionsShutdownStatesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
 {
   if (g_powerManager.CanPowerdown())
     list.push_back(make_pair(g_localizeStrings.Get(13005), POWERSTATE_SHUTDOWN));

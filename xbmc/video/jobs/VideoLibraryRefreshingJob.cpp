@@ -29,6 +29,7 @@
 #include "dialogs/GUIDialogYesNo.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "media/MediaType.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -46,8 +47,7 @@ CVideoLibraryRefreshingJob::CVideoLibraryRefreshingJob(CFileItemPtr item, bool f
     m_searchTitle(searchTitle)
 { }
 
-CVideoLibraryRefreshingJob::~CVideoLibraryRefreshingJob()
-{ }
+CVideoLibraryRefreshingJob::~CVideoLibraryRefreshingJob() = default;
 
 bool CVideoLibraryRefreshingJob::operator==(const CJob* job) const
 {
@@ -102,8 +102,8 @@ bool CVideoLibraryRefreshingJob::Work(CVideoDatabase &db)
 
 
       // if we are performing a forced refresh ask the user to choose between using a valid NFO and a valid scraper
-      if (needsRefresh && IsModal() && !scraper->IsNoop() &&
-         (nfoResult == CNfoFile::URL_NFO || nfoResult == CNfoFile::COMBINED_NFO || nfoResult == CNfoFile::FULL_NFO))
+      if (needsRefresh && IsModal() && !scraper->IsNoop()
+          && nfoResult != CNfoFile::ERROR_NFO)
       {
         int heading = 20159;
         if (scraper->Content() == CONTENT_MOVIES)
@@ -157,7 +157,7 @@ bool CVideoLibraryRefreshingJob::Work(CVideoDatabase &db)
           else
           {
             // ask the user what to do
-            CGUIDialogSelect* selectDialog = static_cast<CGUIDialogSelect*>(g_windowManager.GetWindow(WINDOW_DIALOG_SELECT));
+            CGUIDialogSelect* selectDialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
             selectDialog->Reset();
             selectDialog->SetHeading(scraper->Content() == CONTENT_TVSHOWS ? 20356 : 196);
             for (const auto& itemResult : itemResultList)
@@ -292,7 +292,10 @@ bool CVideoLibraryRefreshingJob::Work(CVideoDatabase &db)
     }
 
     // finally download the information for the item
-    if (!scanner.RetrieveVideoInfo(items, scanSettings.parent_name, scraper->Content(), !ignoreNfo, &scraperUrl, m_refreshAll, GetProgressDialog()))
+    if (!scanner.RetrieveVideoInfo(items, scanSettings.parent_name,
+                                   scraper->Content(), !ignoreNfo,
+                                   scraperUrl.m_url.empty() ? NULL : &scraperUrl,
+                                   m_refreshAll, GetProgressDialog()))
     {
       // something went wrong
       MarkFinished();

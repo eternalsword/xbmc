@@ -1,15 +1,15 @@
 include ../../Makefile.include
 PLATFORM=$(NATIVEPLATFORM)
-DEPS= ../../Makefile.include.in Makefile
+DEPS= ../../Makefile.include Makefile
 
 APPNAME=cmake
-VERSION=3.3.2
+VERSION=3.6.2
 SOURCE=$(APPNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 
-SETENV=CC=$(CC_FOR_BUILD) CXX=$(CXX_FOR_BUILD) LD=$(LD_FOR_BUILD) CFLAGS=$(NATIVE_CFLAGS) \
+SETENV=CC="$(CC_FOR_BUILD)" CXX="$(CXX_FOR_BUILD)" LD=$(LD_FOR_BUILD) CFLAGS=$(NATIVE_CFLAGS) \
 	CXXFLAGS=$(NATIVE_CXXFLAGS) LDFLAGS=$(NATIVE_LDFLAGS)
 
 ifeq ($(NATIVE_OS), osx)
@@ -17,6 +17,9 @@ ifeq ($(NATIVE_OS), osx)
 endif
 
 CONFIGURE=./bootstrap --prefix=$(NATIVEPREFIX) --system-curl
+ifeq ($(USE_CCACHE), yes)
+	CONFIGURE+=--enable-ccache
+endif
 
 APP=$(PLATFORM)/bin/$(APPNAME)
 
@@ -30,7 +33,6 @@ $(TARBALLS_LOCATION)/$(ARCHIVE):
 $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	-rm -rf $(PLATFORM)/*; mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
-	cd $(PLATFORM); patch -p1 < ../darwin_enable_tbd_support.patch
 	cd $(PLATFORM); $(SETENV) $(CONFIGURE)
 
 $(APP): $(PLATFORM)

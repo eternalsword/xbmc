@@ -24,9 +24,6 @@
 #include <EGL/eglext.h>
 
 #include "DVDVideoCodec.h"
-#include "DVDVideoCodecFFmpeg.h"
-#include "DVDVideoCodec.h"
-#include "DVDVideoCodecFFmpeg.h"
 #include "settings/VideoSettings.h"
 #include "threads/CriticalSection.h"
 #include "threads/SharedSection.h"
@@ -44,6 +41,7 @@
 extern "C" {
 #include "libavutil/avutil.h"
 #include "libavcodec/vaapi.h"
+#include "libavfilter/avfilter.h"
 }
 
 using namespace Actor;
@@ -125,7 +123,6 @@ struct CVaapiConfig
   VADisplay dpy;
   VAProfile profile;
   VAConfigAttrib attrib;
-  Display *x11dsp;
   CProcessInfo *processInfo;
 };
 
@@ -135,7 +132,7 @@ struct CVaapiConfig
  */
 struct CVaapiDecodedPicture
 {
-  DVDVideoPicture DVDPic;
+  VideoPicture DVDPic;
   VASurfaceID videoSurface;
   int index;
 };
@@ -145,7 +142,7 @@ struct CVaapiDecodedPicture
  */
 struct CVaapiProcessedPicture
 {
-  DVDVideoPicture DVDPic;
+  VideoPicture DVDPic;
   VASurfaceID videoSurface;
   AVFrame *frame;
   int id;
@@ -180,7 +177,7 @@ struct CVaapiGLSurface
 /**
  * Ready to render textures
  * Sent from COutput back to CDecoder
- * Objects are referenced by DVDVideoPicture and are sent
+ * Objects are referenced by VideoPicture and are sent
  * to renderer
  */
 class CVaapiRenderPicture
@@ -189,10 +186,10 @@ class CVaapiRenderPicture
   friend class COutput;
 public:
   CVaapiRenderPicture(CCriticalSection &section)
-    : texWidth(0), texHeight(0), texture(None), textureY(None), textureVU(None), valid(false), vaapi(NULL), avFrame(NULL),
-      usefence(false), refCount(0), renderPicSection(section) { fence = None; }
+    : texWidth(0), texHeight(0), texture(0), textureY(0), textureVU(0), valid(false), vaapi(NULL), avFrame(NULL),
+      usefence(false), refCount(0), renderPicSection(section) { fence = 0; }
   void Sync();
-  DVDVideoPicture DVDPic;
+  VideoPicture DVDPic;
   int texWidth, texHeight;
   CRect crop;
   GLuint texture;
@@ -280,7 +277,7 @@ struct SDiMethods
 /**
  * COutput is embedded in CDecoder and embeds vpp
  * The class has its own OpenGl context which is shared with render thread
- * COuput generated ready to render textures and passes them back to
+ * COutput generated ready to render textures and passes them back to
  * CDecoder
  */
 class CPostproc;
@@ -334,7 +331,9 @@ protected:
   EGLDisplay m_eglDisplay;
   EGLSurface m_eglSurface;
   EGLContext m_eglContext;
+#ifdef HAVE_X11
   Display *m_Display;
+#endif
   CVaapiDecodedPicture m_currentPicture;
   GLenum m_textureTarget;
   CPostproc *m_pp;
@@ -378,7 +377,6 @@ public:
   static bool EnsureContext(CVAAPIContext **ctx, CDecoder *decoder);
   void Release(CDecoder *decoder);
   VADisplay GetDisplay();
-  Display* GetX11Display();
   bool SupportsProfile(VAProfile profile);
   VAConfigAttrib GetAttrib(VAProfile profile);
   VAConfigID CreateConfig(VAProfile profile, VAConfigAttrib attrib);
@@ -386,14 +384,15 @@ public:
 private:
   CVAAPIContext();
   void Close();
+  void SetVaDisplayForSystem();
   bool CreateContext();
   void DestroyContext();
   void QueryCaps();
   bool CheckSuccess(VAStatus status);
   bool IsValidDecoder(CDecoder *decoder);
+  void SetValidDRMVaDisplayFromRenderNode();
   static CVAAPIContext *m_context;
   static CCriticalSection m_section;
-  static Display *m_X11dpy;
   VADisplay m_display;
   int m_refCount;
   int m_attributeCount;
@@ -401,13 +400,17 @@ private:
   int m_profileCount;
   VAProfile *m_profiles;
   std::vector<CDecoder*> m_decoders;
+  int m_renderNodeFD{-1};
+#ifdef HAVE_X11
+  static Display *m_X11dpy;
+#endif
 };
 
 /**
  *  VAAPI main class
  */
 class CDecoder
- : public CDVDVideoCodecFFmpeg::IHardwareDecoder
+ : public IHardwareDecoder
 {
    friend class CVaapiRenderPicture;
 
@@ -416,21 +419,24 @@ public:
   CDecoder(CProcessInfo& processInfo);
   virtual ~CDecoder();
 
-  virtual bool Open      (AVCodecContext* avctx, AVCodecContext* mainctx, const enum AVPixelFormat, unsigned int surfaces = 0);
-  virtual int  Decode    (AVCodecContext* avctx, AVFrame* frame);
-  virtual bool GetPicture(AVCodecContext* avctx, AVFrame* frame, DVDVideoPicture* picture);
-  virtual void Reset();
+  virtual bool Open (AVCodecContext* avctx, AVCodecContext* mainctx, const enum AVPixelFormat, unsigned int surfaces = 0) override;
+  virtual CDVDVideoCodec::VCReturn Decode (AVCodecContext* avctx, AVFrame* frame);
+  virtual bool GetPicture(AVCodecContext* avctx, VideoPicture* picture) override;
+  virtual void Reset() override;
   virtual void Close();
-  virtual long Release();
-  virtual bool CanSkipDeint();
-  virtual unsigned GetAllowedReferences() { return 4; }
+  virtual long Release() override;
+  virtual bool CanSkipDeint() override;
+  virtual unsigned GetAllowedReferences() override { return 4; }
 
-  virtual int  Check(AVCodecContext* avctx);
-  virtual const std::string Name() { return "vaapi"; }
-  virtual void SetCodecControl(int flags);
+  virtual CDVDVideoCodec::VCReturn Check(AVCodecContext* avctx) override;
+  virtual const std::string Name() override { return "vaapi"; }
+  virtual void SetCodecControl(int flags) override;
 
   void FFReleaseBuffer(uint8_t *data);
   static int FFGetBuffer(AVCodecContext *avctx, AVFrame *pic, int flags);
+
+  static void CheckCaps(EGLDisplay eglDisplay);
+  static bool IsCapGeneral() { return m_capGeneral; }
 
 protected:
   void SetWidthHeight(int width, int height);
@@ -467,6 +473,9 @@ protected:
 
   int m_codecControl;
   CProcessInfo& m_processInfo;
+
+  static bool m_capGeneral;
+  static bool m_capHevc;
 };
 
 //-----------------------------------------------------------------------------
@@ -479,7 +488,7 @@ protected:
 class CPostproc
 {
 public:
-  virtual ~CPostproc() {};
+  virtual ~CPostproc() = default;
   virtual bool PreInit(CVaapiConfig &config, SDiMethods *methods = NULL) = 0;
   virtual bool Init(EINTERLACEMETHOD method) = 0;
   virtual bool AddPicture(CVaapiDecodedPicture &inPic) = 0;
@@ -571,7 +580,7 @@ protected:
   AVFrame *m_pFilterFrameIn;
   AVFrame *m_pFilterFrameOut;
   EINTERLACEMETHOD m_diMethod;
-  DVDVideoPicture m_DVDPic;
+  VideoPicture m_DVDPic;
   double m_frametime;
   double m_lastOutPts;
 };

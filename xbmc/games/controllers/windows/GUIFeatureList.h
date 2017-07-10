@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2016 Team Kodi
+ *      Copyright (C) 2014-2017 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -29,12 +29,14 @@ class CGUIImage;
 class CGUILabelControl;
 class CGUIWindow;
 
+namespace KODI
+{
 namespace GAME
 {
   class CGUIFeatureList : public IFeatureList
   {
   public:
-    CGUIFeatureList(CGUIWindow* window);
+    CGUIFeatureList(CGUIWindow* window, const std::string& windowParam);
     virtual ~CGUIFeatureList(void);
 
     // implementation of IFeatureList
@@ -69,4 +71,5 @@ namespace GAME
     ControllerPtr           m_controller;
     IConfigurationWizard*   m_wizard;
   };
+}
 }

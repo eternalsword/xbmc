@@ -22,8 +22,9 @@
 #include "AddonManager.h"
 #include "Repository.h"
 #include "RepositoryUpdater.h"
+#include "ServiceBroker.h"
 #include "GUIDialogAddonInfo.h"
-#include "GUIDialogAddonSettings.h"
+#include "settings/GUIDialogAddonSettings.h"
 
 
 namespace CONTEXTMENU
@@ -43,7 +44,7 @@ bool CAddonSettings::Execute(const CFileItemPtr& item) const
 {
   AddonPtr addon;
   return CAddonMgr::GetInstance().GetAddon(item->GetAddonInfo()->ID(), addon, ADDON_UNKNOWN, false)
-         && CGUIDialogAddonSettings::ShowAndGetInput(addon);
+         && CGUIDialogAddonSettings::ShowForAddon(addon);
 }
 
 bool CCheckForUpdates::IsVisible(const CFileItem& item) const
@@ -56,9 +57,34 @@ bool CCheckForUpdates::Execute(const CFileItemPtr& item) const
   AddonPtr addon;
   if (item->HasAddonInfo() && CAddonMgr::GetInstance().GetAddon(item->GetAddonInfo()->ID(), addon, ADDON_REPOSITORY))
   {
-    CRepositoryUpdater::GetInstance().CheckForUpdates(std::static_pointer_cast<CRepository>(addon), true);
+    CServiceBroker::GetRepositoryUpdater().CheckForUpdates(std::static_pointer_cast<CRepository>(addon), true);
     return true;
   }
   return false;
+}
+
+
+bool CEnableAddon::IsVisible(const CFileItem& item) const
+{
+  return item.HasAddonInfo() &&
+      CAddonMgr::GetInstance().IsAddonDisabled(item.GetAddonInfo()->ID()) &&
+      CAddonMgr::GetInstance().CanAddonBeEnabled(item.GetAddonInfo()->ID());
+}
+
+bool CEnableAddon::Execute(const CFileItemPtr& item) const
+{
+  return CAddonMgr::GetInstance().EnableAddon(item->GetAddonInfo()->ID());
+}
+
+bool CDisableAddon::IsVisible(const CFileItem& item) const
+{
+  return item.HasAddonInfo() &&
+      !CAddonMgr::GetInstance().IsAddonDisabled(item.GetAddonInfo()->ID()) &&
+      CAddonMgr::GetInstance().CanAddonBeDisabled(item.GetAddonInfo()->ID());
+}
+
+bool CDisableAddon::Execute(const CFileItemPtr& item) const
+{
+  return CAddonMgr::GetInstance().DisableAddon(item->GetAddonInfo()->ID());
 }
 }
