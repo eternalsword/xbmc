@@ -33,18 +33,18 @@ namespace XBMCAddon
     //! @todo need a means to check for a valid construction
     //!  either by throwing an exception or by an "isValid" check
     PlayList::PlayList(int playList) : 
-      iPlayList(playList), pPlayList(NULL)
+      refs(1), iPlayList(playList), pPlayList(NULL)
     {
       // we do not create our own playlist, just using the ones from playlistplayer
       if (iPlayList != PLAYLIST_MUSIC &&
           iPlayList != PLAYLIST_VIDEO)
         throw PlayListException("PlayList does not exist");
 
-      pPlayList = &CServiceBroker::GetPlaylistPlayer().GetPlaylist(playList);
+      pPlayList = &g_playlistPlayer.GetPlaylist(playList);
       iPlayList = playList;
     }
 
-    PlayList::~PlayList() = default;
+    PlayList::~PlayList()  { }
 
     void PlayList::add(const String& url, XBMCAddon::xbmcgui::ListItem* listitem, int index)
     {
@@ -89,7 +89,7 @@ namespace XBMCAddon
             return false;
 
           // clear current playlist
-          CServiceBroker::GetPlaylistPlayer().ClearPlaylist(this->iPlayList);
+          g_playlistPlayer.ClearPlaylist(this->iPlayList);
 
           // add each item of the playlist to the playlistplayer
           for (int i=0; i < (int)pPlayList->size(); ++i)
@@ -136,7 +136,7 @@ namespace XBMCAddon
 
     int PlayList::getposition()
     {
-      return CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
+      return g_playlistPlayer.GetCurrentSong();
     }
 
     XBMCAddon::xbmcgui::ListItem* PlayList::operator [](long i)

@@ -33,7 +33,9 @@ LibraryLoader::LibraryLoader(const std::string& libraryFile):
   m_iRefCount = 1;
 }
 
-LibraryLoader::~LibraryLoader() = default;
+LibraryLoader::~LibraryLoader()
+{
+}
 
 const char *LibraryLoader::GetName() const
 {

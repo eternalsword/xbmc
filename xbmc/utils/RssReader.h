@@ -32,7 +32,7 @@ class CRssReader : public CThread
 {
 public:
   CRssReader();
-  ~CRssReader() override;
+  virtual ~CRssReader();
 
   void Create(IRssObserver* aObserver, const std::vector<std::string>& aUrl, const std::vector<int>& times, int spacesBetweenFeeds, bool rtl);
   bool Parse(const std::string& data, int iFeed, const std::string& charset);
@@ -46,12 +46,12 @@ public:
   float m_savedScrollPixelPos;
 
 private:
-  void Process() override;
+  void Process();
   bool Parse(int iFeed);
   void GetNewsItems(TiXmlElement* channelXmlNode, int iFeed);
   void AddString(std::wstring aString, int aColour, int iFeed);
   void UpdateFeed();
-  void OnExit() override;
+  virtual void OnExit();
   int GetQueueSize();
 
   IRssObserver* m_pObserver;

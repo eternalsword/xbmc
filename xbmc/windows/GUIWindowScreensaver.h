@@ -21,23 +21,34 @@
  */
 
 #include "guilib/GUIWindow.h"
+#ifdef HAS_SCREENSAVER
+#include "addons/ScreenSaver.h"
+#endif
 
-namespace ADDON { class CScreenSaver; }
+#include "threads/CriticalSection.h"
+
+#define SCREENSAVER_FADE   1
+#define SCREENSAVER_BLACK  2
+#define SCREENSAVER_XBS    3
 
 class CGUIWindowScreensaver : public CGUIWindow
 {
 public:
   CGUIWindowScreensaver(void);
+  virtual ~CGUIWindowScreensaver(void);
 
-  bool OnMessage(CGUIMessage& message) override;
-  bool OnAction(const CAction &action) override { return false; } // We're just a screen saver, nothing to do here
-  void Render() override;
-  void Process(unsigned int currentTime, CDirtyRegionList &regions) override;
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnAction(const CAction &action);
+  virtual void Render();
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &regions);
 
 protected:
-  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
 
 private:
-  ADDON::CScreenSaver* m_addon;
+  bool m_bInitialized;
+  CCriticalSection m_critSection;
+#ifdef HAS_SCREENSAVER
+  std::shared_ptr<ADDON::CScreenSaver> m_addon;
+#endif
 };
-

@@ -31,9 +31,9 @@ public:
   CAddonEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description);
   CAddonEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description, const CVariant& details);
   CAddonEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description, const CVariant& details, const CVariant& executionLabel);
-  ~CAddonEvent() override = default;
+  virtual ~CAddonEvent() { }
 
-  const char* GetType() const override { return "AddonEvent"; }
+  virtual const char* GetType() const { return "AddonEvent"; }
 
 protected:
   ADDON::AddonPtr m_addon;

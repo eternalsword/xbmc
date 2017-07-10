@@ -24,6 +24,6 @@ namespace XbmcCommons
 {
   ILogger* Exception::logger = NULL;
 
-  Exception::~Exception() = default;
+  Exception::~Exception() {}
 }
 

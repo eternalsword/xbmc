@@ -20,6 +20,7 @@
 
 #include "system.h"
 #include "HTTPFileHandler.h"
+#include "filesystem/File.h"
 #include "utils/Mime.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
@@ -88,7 +89,17 @@ void CHTTPFileHandler::SetFile(const std::string& file, int responseStatus)
     {
       struct __stat64 statBuffer;
       if (fileObj.Stat(&statBuffer) == 0)
-        SetLastModifiedDate(&statBuffer);
+      {
+        struct tm *time;
+#ifdef HAVE_LOCALTIME_R
+        struct tm result = { };
+        time = localtime_r((time_t*)&statBuffer.st_mtime, &result);
+#else
+        time = localtime((time_t *)&statBuffer.st_mtime);
+#endif
+        if (time != NULL)
+          m_lastModified = *time;
+      }
     }
   }
 
@@ -102,17 +113,4 @@ void CHTTPFileHandler::SetFile(const std::string& file, int responseStatus)
   // disable caching if the last modified date couldn't be read
   if (!m_lastModified.IsValid())
     m_canBeCached = false;
-}
-
-void CHTTPFileHandler::SetLastModifiedDate(const struct __stat64 *statBuffer)
-{
-  struct tm *time;
-#ifdef HAVE_LOCALTIME_R
-  struct tm result = { };
-  time = localtime_r((time_t*)&statBuffer->st_mtime, &result);
-#else
-  time = localtime((time_t *)&statBuffer->st_mtime);
-#endif
-  if (time != NULL)
-    m_lastModified = *time;
 }

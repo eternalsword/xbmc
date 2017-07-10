@@ -40,14 +40,13 @@
 #include "filesystem/File.h"
 #include "utils/URIUtils.h"
 #include "ServiceBroker.h"
-#include "addons/binary-addons/BinaryAddonManager.h"
+#include "addons/InputStream.h"
+#include "addons/BinaryAddonCache.h"
 #include "Util.h"
 
 
 CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer, const CFileItem &fileitem, bool scanforextaudio)
 {
-  using namespace ADDON;
-
   std::string file = fileitem.GetPath();
   if (scanforextaudio)
   {
@@ -62,12 +61,29 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
     }
   }
 
-  BinaryAddonBaseList addonInfos;
-  CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true /*enabled only*/, ADDON_INPUTSTREAM);
-  for (auto addonInfo : addonInfos)
+  ADDON::VECADDONS addons;
+  ADDON::CBinaryAddonCache &addonCache = CServiceBroker::GetBinaryAddonCache();
+  addonCache.GetAddons(addons, ADDON::ADDON_INPUTSTREAM);
+  for (size_t i=0; i<addons.size(); ++i)
   {
-    if (CInputStreamAddon::Supports(addonInfo, fileitem))
-      return new CInputStreamAddon(addonInfo, pPlayer, fileitem);
+    std::shared_ptr<ADDON::CInputStream> input(std::static_pointer_cast<ADDON::CInputStream>(addons[i]));
+
+    if (input->Supports(fileitem))
+    {
+      std::shared_ptr<ADDON::CInputStream> addon = input;
+      if (!input->UseParent())
+        addon = std::shared_ptr<ADDON::CInputStream>(new ADDON::CInputStream(*input));
+
+      ADDON_STATUS status = addon->Create();
+      if (status == ADDON_STATUS_OK)
+      {
+        unsigned int videoWidth, videoHeight;
+        pPlayer->GetVideoResolution(videoWidth, videoHeight);
+        addon->SetVideoResolution(videoWidth, videoHeight);
+
+        return new CInputStreamAddon(fileitem, addon);
+      }
+    }
   }
 
   if (fileitem.IsDiscImage())
@@ -129,20 +145,15 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
   {
     if (finalFileitem.ContentLookup())
     {
-      CURL origUrl(finalFileitem.GetURL());
-      XFILE::CCurlFile curlFile;
+      XFILE::CCurlFile url;
       // try opening the url to resolve all redirects if any
       try
       {
-        if (curlFile.Open(finalFileitem.GetURL()))
+        if (url.Open(finalFileitem.GetURL()))
         {
-          CURL finalUrl(curlFile.GetURL());
-          finalUrl.SetProtocolOptions(origUrl.GetProtocolOptions());
-          finalUrl.SetUserName(origUrl.GetUserName());
-          finalUrl.SetPassword(origUrl.GetPassWord());
-          finalFileitem.SetPath(finalUrl.Get());
+          finalFileitem.SetPath(url.GetURL());
         }
-        curlFile.Close();
+        url.Close();
       }
       catch (XFILE::CRedirectException *pRedirectEx)
       {
@@ -158,9 +169,6 @@ CDVDInputStream* CDVDFactoryInputStream::CreateInputStream(IVideoPlayer* pPlayer
       return new CDVDInputStreamFFmpeg(finalFileitem);
 
     if (finalFileitem.GetMimeType() == "application/vnd.apple.mpegurl")
-      return new CDVDInputStreamFFmpeg(finalFileitem);
-
-    if (URIUtils::IsProtocol(finalFileitem.GetPath(), "udp"))
       return new CDVDInputStreamFFmpeg(finalFileitem);
   }
 

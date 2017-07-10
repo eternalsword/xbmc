@@ -19,9 +19,9 @@
  */
 
 #include "PVRChannel.h"
+#include "epg/EpgContainer.h"
 #include "filesystem/File.h"
 #include "guilib/LocalizeStrings.h"
-#include "ServiceBroker.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -29,7 +29,6 @@
 
 #include "pvr/PVRDatabase.h"
 #include "pvr/addons/PVRClients.h"
-#include "pvr/epg/EpgContainer.h"
 #include "pvr/timers/PVRTimers.h"
 
 #include "PVRChannelGroupInternal.h"
@@ -37,6 +36,7 @@
 #include <assert.h>
 
 using namespace PVR;
+using namespace EPG;
 
 bool CPVRChannel::operator==(const CPVRChannel &right) const
 {
@@ -123,7 +123,7 @@ void CPVRChannel::Serialize(CVariant& value) const
   value["channelnumber"] = m_iCachedChannelNumber;
   value["subchannelnumber"] = m_iCachedSubChannelNumber;
 
-  CPVREpgInfoTagPtr epg(GetEPGNow());
+  CEpgInfoTagPtr epg(GetEPGNow());
   if (epg)
   {
     // add the properties of the current EPG item to the main object
@@ -144,17 +144,17 @@ void CPVRChannel::Serialize(CVariant& value) const
 bool CPVRChannel::Delete(void)
 {
   bool bReturn = false;
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
+  CPVRDatabase *database = GetPVRDatabase();
   if (!database)
     return bReturn;
 
   /* delete the EPG table */
-  CPVREpgPtr epg = GetEPG();
+  CEpgPtr epg = GetEPG();
   if (epg)
   {
     CPVRChannelPtr empty;
     epg->SetChannel(empty);
-    CServiceBroker::GetPVRManager().EpgContainer().DeleteEpg(*epg, true);
+    g_EpgContainer.DeleteEpg(*epg, true);
     CSingleLock lock(m_critSection);
     m_bEPGCreated = false;
   }
@@ -163,7 +163,7 @@ bool CPVRChannel::Delete(void)
   return bReturn;
 }
 
-CPVREpgPtr CPVRChannel::GetEPG(void) const
+CEpgPtr CPVRChannel::GetEPG(void) const
 {
   int iEpgId(-1);
   {
@@ -172,27 +172,7 @@ CPVREpgPtr CPVRChannel::GetEPG(void) const
       iEpgId = m_iEpgId;
   }
 
-  return iEpgId > 0 ? CServiceBroker::GetPVRManager().EpgContainer().GetById(iEpgId) : CPVREpgPtr();
-}
-
-bool CPVRChannel::CreateEPG(bool bForce)
-{
-  CSingleLock lock(m_critSection);
-  if (!m_bEPGCreated || bForce)
-  {
-    CPVREpgPtr epg = CServiceBroker::GetPVRManager().EpgContainer().CreateChannelEpg(shared_from_this());
-    if (epg)
-    {
-      m_bEPGCreated = true;
-      if (epg->EpgID() != m_iEpgId)
-      {
-        m_iEpgId = epg->EpgID();
-        m_bChanged = true;
-      }
-      return true;
-    }
-  }
-  return false;
+  return iEpgId > 0 ? g_EpgContainer.GetById(iEpgId) : CEpgPtr();
 }
 
 bool CPVRChannel::UpdateFromClient(const CPVRChannelPtr &channel)
@@ -238,8 +218,7 @@ bool CPVRChannel::Persist()
       return true;
   }
 
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
-  if (database)
+  if (CPVRDatabase *database = GetPVRDatabase())
   {
     bool bReturn = database->Persist(*this) && database->CommitInsertQueries();
     CSingleLock lock(m_critSection);
@@ -315,12 +294,12 @@ bool CPVRChannel::SetLocked(bool bIsLocked)
 
 bool CPVRChannel::IsRecording(void) const
 {
-  return CServiceBroker::GetPVRManager().Timers()->IsRecordingOnChannel(*this);
+  return g_PVRTimers->IsRecordingOnChannel(*this);
 }
 
 CPVRRecordingPtr CPVRChannel::GetRecording(void) const
 {
-  CPVREpgInfoTagPtr epgTag = GetEPGNow();
+  EPG::CEpgInfoTagPtr epgTag = GetEPGNow();
   return (epgTag && epgTag->HasRecording()) ?
       epgTag->Recording() :
       CPVRRecordingPtr();
@@ -328,7 +307,7 @@ CPVRRecordingPtr CPVRChannel::GetRecording(void) const
 
 bool CPVRChannel::HasRecording(void) const
 {
-  CPVREpgInfoTagPtr epgTag = GetEPGNow();
+  EPG::CEpgInfoTagPtr epgTag = GetEPGNow();
   return epgTag && epgTag->HasRecording();
 }
 
@@ -389,27 +368,8 @@ bool CPVRChannel::SetLastWatched(time_t iLastWatched)
       m_iLastWatched = iLastWatched;
   }
 
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
-  if (database)
+  if (CPVRDatabase *database = GetPVRDatabase())
     return database->UpdateLastWatched(*this);
-
-  return false;
-}
-
-bool CPVRChannel::SetWasPlayingOnLastQuit(bool bSet)
-{
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
-  if (database)
-    return database->SetWasPlayingOnLastQuit(*this, bSet);
-
-  return false;
-}
-
-bool CPVRChannel::SetWasPlayingOnLastQuit(bool bSet, bool& bWasPlaying)
-{
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
-  if (database)
-    return database->SetWasPlayingOnLastQuit(*this, bSet, bWasPlaying);
 
   return false;
 }
@@ -466,7 +426,7 @@ void CPVRChannel::UpdatePath(CPVRChannelGroupInternal* group)
   strFileNameAndPath = StringUtils::Format("pvr://channels/%s/%s/%s_%d.pvr",
                                            (m_bIsRadio ? "radio" : "tv"),
                                            group->GroupName().c_str(),
-                                           CServiceBroker::GetPVRManager().Clients()->GetClientAddonId(m_iClientId).c_str(),
+                                           g_PVRClients->GetClientAddonId(m_iClientId).c_str(),
                                            m_iUniqueId);
   if (m_strFileNameAndPath != strFileNameAndPath)
   {
@@ -475,121 +435,116 @@ void CPVRChannel::UpdatePath(CPVRChannelGroupInternal* group)
   }
 }
 
-std::string CPVRChannel::GetEncryptionName(int iCaid)
+void CPVRChannel::UpdateEncryptionName(void)
 {
   // http://www.dvb.org/index.php?id=174
   // http://en.wikipedia.org/wiki/Conditional_access_system
   std::string strName(g_localizeStrings.Get(13205)); /* Unknown */
+  CSingleLock lock(m_critSection);
 
-  if (     iCaid == 0x0000)
+  if (     m_iClientEncryptionSystem == 0x0000)
     strName = g_localizeStrings.Get(19013); /* Free To Air */
-  else if (iCaid >= 0x0001 &&
-           iCaid <= 0x009F)
+  else if (m_iClientEncryptionSystem >= 0x0001 &&
+           m_iClientEncryptionSystem <= 0x009F)
     strName = g_localizeStrings.Get(19014); /* Fixed */
-  else if (iCaid >= 0x00A0 &&
-           iCaid<= 0x00A1)
+  else if (m_iClientEncryptionSystem >= 0x00A0 &&
+           m_iClientEncryptionSystem <= 0x00A1)
     strName = g_localizeStrings.Get(338); /* Analog */
-  else if (iCaid >= 0x00A2 &&
-           iCaid <= 0x00FF)
+  else if (m_iClientEncryptionSystem >= 0x00A2 &&
+           m_iClientEncryptionSystem <= 0x00FF)
     strName = g_localizeStrings.Get(19014); /* Fixed */
-  else if (iCaid >= 0x0100 &&
-           iCaid <= 0x01FF)
+  else if (m_iClientEncryptionSystem >= 0x0100 &&
+           m_iClientEncryptionSystem <= 0x01FF)
     strName = "SECA Mediaguard";
-  else if (iCaid == 0x0464)
+  else if (m_iClientEncryptionSystem == 0x0464)
     strName = "EuroDec";
-  else if (iCaid >= 0x0500 &&
-           iCaid <= 0x05FF)
+  else if (m_iClientEncryptionSystem >= 0x0500 &&
+           m_iClientEncryptionSystem <= 0x05FF)
     strName = "Viaccess";
-  else if (iCaid >= 0x0600 &&
-           iCaid <= 0x06FF)
+  else if (m_iClientEncryptionSystem >= 0x0600 &&
+           m_iClientEncryptionSystem <= 0x06FF)
     strName = "Irdeto";
-  else if (iCaid >= 0x0900 &&
-           iCaid <= 0x09FF)
+  else if (m_iClientEncryptionSystem >= 0x0900 &&
+           m_iClientEncryptionSystem <= 0x09FF)
     strName = "NDS Videoguard";
-  else if (iCaid >= 0x0B00 &&
-           iCaid <= 0x0BFF)
+  else if (m_iClientEncryptionSystem >= 0x0B00 &&
+           m_iClientEncryptionSystem <= 0x0BFF)
     strName = "Conax";
-  else if (iCaid >= 0x0D00 &&
-           iCaid <= 0x0DFF)
+  else if (m_iClientEncryptionSystem >= 0x0D00 &&
+           m_iClientEncryptionSystem <= 0x0DFF)
     strName = "CryptoWorks";
-  else if (iCaid >= 0x0E00 &&
-           iCaid <= 0x0EFF)
+  else if (m_iClientEncryptionSystem >= 0x0E00 &&
+           m_iClientEncryptionSystem <= 0x0EFF)
     strName = "PowerVu";
-  else if (iCaid == 0x1000)
+  else if (m_iClientEncryptionSystem == 0x1000)
     strName = "RAS";
-  else if (iCaid >= 0x1200 &&
-           iCaid <= 0x12FF)
+  else if (m_iClientEncryptionSystem >= 0x1200 &&
+           m_iClientEncryptionSystem <= 0x12FF)
     strName = "NagraVision";
-  else if (iCaid >= 0x1700 &&
-           iCaid <= 0x17FF)
+  else if (m_iClientEncryptionSystem >= 0x1700 &&
+           m_iClientEncryptionSystem <= 0x17FF)
     strName = "BetaCrypt";
-  else if (iCaid >= 0x1800 &&
-           iCaid <= 0x18FF)
+  else if (m_iClientEncryptionSystem >= 0x1800 &&
+           m_iClientEncryptionSystem <= 0x18FF)
     strName = "NagraVision";
-  else if (iCaid == 0x22F0)
+  else if (m_iClientEncryptionSystem == 0x22F0)
     strName = "Codicrypt";
-  else if (iCaid == 0x2600)
+  else if (m_iClientEncryptionSystem == 0x2600)
     strName = "BISS";
-  else if (iCaid == 0x4347)
+  else if (m_iClientEncryptionSystem == 0x4347)
     strName = "CryptOn";
-  else if (iCaid == 0x4800)
+  else if (m_iClientEncryptionSystem == 0x4800)
     strName = "Accessgate";
-  else if (iCaid == 0x4900)
+  else if (m_iClientEncryptionSystem == 0x4900)
     strName = "China Crypt";
-  else if (iCaid == 0x4A10)
+  else if (m_iClientEncryptionSystem == 0x4A10)
     strName = "EasyCas";
-  else if (iCaid == 0x4A20)
+  else if (m_iClientEncryptionSystem == 0x4A20)
     strName = "AlphaCrypt";
-  else if (iCaid == 0x4A70)
+  else if (m_iClientEncryptionSystem == 0x4A70)
     strName = "DreamCrypt";
-  else if (iCaid == 0x4A60)
+  else if (m_iClientEncryptionSystem == 0x4A60)
     strName = "SkyCrypt";
-  else if (iCaid == 0x4A61)
+  else if (m_iClientEncryptionSystem == 0x4A61)
     strName = "Neotioncrypt";
-  else if (iCaid == 0x4A62)
+  else if (m_iClientEncryptionSystem == 0x4A62)
     strName = "SkyCrypt";
-  else if (iCaid == 0x4A63)
+  else if (m_iClientEncryptionSystem == 0x4A63)
     strName = "Neotion SHL";
-  else if (iCaid >= 0x4A64 &&
-           iCaid <= 0x4A6F)
+  else if (m_iClientEncryptionSystem >= 0x4A64 &&
+           m_iClientEncryptionSystem <= 0x4A6F)
     strName = "SkyCrypt";
-  else if (iCaid == 0x4A80)
+  else if (m_iClientEncryptionSystem == 0x4A80)
     strName = "ThalesCrypt";
-  else if (iCaid == 0x4AA1)
+  else if (m_iClientEncryptionSystem == 0x4AA1)
     strName = "KeyFly";
-  else if (iCaid == 0x4ABF)
+  else if (m_iClientEncryptionSystem == 0x4ABF)
     strName = "DG-Crypt";
-  else if (iCaid >= 0x4AD0 &&
-           iCaid <= 0x4AD1)
+  else if (m_iClientEncryptionSystem >= 0x4AD0 &&
+           m_iClientEncryptionSystem <= 0x4AD1)
     strName = "X-Crypt";
-  else if (iCaid == 0x4AD4)
+  else if (m_iClientEncryptionSystem == 0x4AD4)
     strName = "OmniCrypt";
-  else if (iCaid == 0x4AE0)
+  else if (m_iClientEncryptionSystem == 0x4AE0)
     strName = "RossCrypt";
-  else if (iCaid == 0x5500)
+  else if (m_iClientEncryptionSystem == 0x5500)
     strName = "Z-Crypt";
-  else if (iCaid == 0x5501)
+  else if (m_iClientEncryptionSystem == 0x5501)
     strName = "Griffin";
-  else if (iCaid == 0x5601)
+  else if (m_iClientEncryptionSystem == 0x5601)
     strName = "Verimatrix";
 
-  if (iCaid >= 0)
-    strName += StringUtils::Format(" (%04X)", iCaid);
+  if (m_iClientEncryptionSystem >= 0)
+    strName += StringUtils::Format(" (%04X)", m_iClientEncryptionSystem);
 
-  return strName;
-}
-
-void CPVRChannel::UpdateEncryptionName(void)
-{
-  CSingleLock lock(m_critSection);
-  m_strClientEncryptionName = GetEncryptionName(m_iClientEncryptionSystem);
+  m_strClientEncryptionName = strName;
 }
 
 /********** EPG methods **********/
 
 int CPVRChannel::GetEPG(CFileItemList &results) const
 {
-  CPVREpgPtr epg = GetEPG();
+  CEpgPtr epg = GetEPG();
   if (!epg)
   {
     CLog::Log(LOGDEBUG, "PVR - %s - cannot get EPG for channel '%s'",
@@ -602,30 +557,30 @@ int CPVRChannel::GetEPG(CFileItemList &results) const
 
 bool CPVRChannel::ClearEPG() const
 {
-  CPVREpgPtr epg = GetEPG();
+  CEpgPtr epg = GetEPG();
   if (epg)
     epg->Clear();
 
   return true;
 }
 
-CPVREpgInfoTagPtr CPVRChannel::GetEPGNow() const
+CEpgInfoTagPtr CPVRChannel::GetEPGNow() const
 {
-  CPVREpgPtr epg = GetEPG();
+  CEpgPtr epg = GetEPG();
   if (epg)
     return epg->GetTagNow();
 
-  CPVREpgInfoTagPtr empty;
+  CEpgInfoTagPtr empty;
   return empty;
 }
 
-CPVREpgInfoTagPtr CPVRChannel::GetEPGNext() const
+CEpgInfoTagPtr CPVRChannel::GetEPGNext() const
 {
-  CPVREpgPtr epg = GetEPG();
+  CEpgPtr epg = GetEPG();
   if (epg)
     return epg->GetTagNext();
 
-  CPVREpgInfoTagPtr empty;
+  CEpgInfoTagPtr empty;
   return empty;
 }
 
@@ -886,5 +841,5 @@ std::string CPVRChannel::EPGScraper(void) const
 
 bool CPVRChannel::CanRecord(void) const
 {
-  return CServiceBroker::GetPVRManager().Clients()->GetClientCapabilities(m_iClientId).SupportsRecordings();
+  return g_PVRClients->SupportsRecordings(m_iClientId);
 }

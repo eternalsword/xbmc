@@ -96,7 +96,7 @@ public:
   CSpeed operator ++(int);
   CSpeed operator --(int);
 
-  void Archive(CArchive& ar) override;
+  virtual void Archive(CArchive& ar);
 
   bool IsValid() const;
 

@@ -6,8 +6,7 @@ set(SOURCES Platform.cpp
             xbmc.cpp
             ${OVERRIDES_CPP})
 
-set(HEADERS Filesystem.h
-            MessagePrinter.h
+set(HEADERS MessagePrinter.h
             Platform.h
             xbmc.h
             XbmcContext.h

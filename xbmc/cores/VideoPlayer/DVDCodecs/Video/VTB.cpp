@@ -18,6 +18,7 @@
  *
  */
 #include "system.h"
+#ifdef TARGET_DARWIN
 #include "platform/darwin/osx/CocoaInterface.h"
 #include "platform/darwin/DarwinUtils.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
@@ -26,9 +27,6 @@
 #include "utils/log.h"
 #include "VTB.h"
 #include "utils/BitstreamConverter.h"
-#include "utils/BitstreamReader.h"
-#include "settings/Settings.h"
-#include "ServiceBroker.h"
 
 extern "C" {
 #include "libavcodec/videotoolbox.h"
@@ -58,9 +56,6 @@ void CDecoder::Close()
 
 bool CDecoder::Open(AVCodecContext *avctx, AVCodecContext* mainctx, enum AVPixelFormat fmt, unsigned int surfaces)
 {
-  if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_USEVTB))
-    return false;
-
   if (avctx->codec_id == AV_CODEC_ID_H264)
   {
     CBitstreamConverter bs;
@@ -101,36 +96,35 @@ bool CDecoder::Open(AVCodecContext *avctx, AVCodecContext* mainctx, enum AVPixel
   return true;
 }
 
-CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* frame)
+int CDecoder::Decode(AVCodecContext* avctx, AVFrame* frame)
 {
-  CDVDVideoCodec::VCReturn status = Check(avctx);
+  int status = Check(avctx);
   if(status)
     return status;
 
   if(frame)
-  {
-    m_renderPicture = (CVPixelBufferRef)frame->data[3];
-    return CDVDVideoCodec::VC_PICTURE;
-  }
+    return VC_BUFFER | VC_PICTURE;
   else
-    return CDVDVideoCodec::VC_BUFFER;
+    return VC_BUFFER;
 }
 
-bool CDecoder::GetPicture(AVCodecContext* avctx, VideoPicture* picture)
+bool CDecoder::GetPicture(AVCodecContext* avctx, AVFrame* frame, DVDVideoPicture* picture)
 {
-  ((ICallbackHWAccel*)avctx->opaque)->GetPictureCommon(picture);
+  ((CDVDVideoCodecFFmpeg*)avctx->opaque)->GetPictureCommon(picture);
 
   picture->format = RENDER_FMT_CVBREF;
-  picture->hwPic = m_renderPicture;
+  picture->cvBufferRef = (CVPixelBufferRef)frame->data[3];
   return true;
 }
 
-CDVDVideoCodec::VCReturn CDecoder::Check(AVCodecContext* avctx)
+int CDecoder::Check(AVCodecContext* avctx)
 {
-  return CDVDVideoCodec::VC_NONE;
+  return 0;
 }
 
 unsigned CDecoder::GetAllowedReferences()
 {
   return 5;
 }
+
+#endif

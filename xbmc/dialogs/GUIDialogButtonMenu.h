@@ -27,7 +27,7 @@ class CGUIDialogButtonMenu :
 {
 public:
   CGUIDialogButtonMenu(int id = WINDOW_DIALOG_BUTTON_MENU, const std::string &xmlFile = "DialogButtonMenu.xml");
-  ~CGUIDialogButtonMenu(void) override;
-  bool OnMessage(CGUIMessage &message) override;
-  void FrameMove() override;
+  virtual ~CGUIDialogButtonMenu(void);
+  virtual bool OnMessage(CGUIMessage &message);
+  virtual void FrameMove();
 };

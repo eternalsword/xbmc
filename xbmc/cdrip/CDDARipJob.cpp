@@ -22,7 +22,6 @@
 #include "Encoder.h"
 #include "EncoderFFmpeg.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "utils/log.h"
 #include "utils/SystemInfo.h"
 #include "Util.h"
@@ -37,10 +36,6 @@
 #include "storage/MediaManager.h"
 #include "addons/AddonManager.h"
 #include "addons/AudioEncoder.h"
-
-#if defined(TARGET_WINDOWS)
-#include "platform/win32/CharsetConverter.h"
-#endif
 
 using namespace ADDON;
 using namespace MUSIC_INFO;
@@ -59,7 +54,9 @@ CCDDARipJob::CCDDARipJob(const std::string& input,
 {
 }
 
-CCDDARipJob::~CCDDARipJob() = default;
+CCDDARipJob::~CCDDARipJob()
+{
+}
 
 bool CCDDARipJob::DoWork()
 {
@@ -88,7 +85,7 @@ bool CCDDARipJob::DoWork()
 
   // setup the progress dialog
   CGUIDialogExtendedProgressBar* pDlgProgress = 
-      g_windowManager.GetWindow<CGUIDialogExtendedProgressBar>(WINDOW_DIALOG_EXT_PROGRESS);
+      (CGUIDialogExtendedProgressBar*)g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS);
   CGUIDialogProgressBarHandle* handle = pDlgProgress->GetHandle(g_localizeStrings.Get(605));
 
   int iTrack = atoi(m_input.substr(13, m_input.size() - 13 - 5).c_str());
@@ -183,18 +180,21 @@ int CCDDARipJob::RipChunk(CFile& reader, CEncoder* encoder, int& percent)
 CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
 {
   CEncoder* encoder = NULL;
-  if (CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.kodi.builtin.aac" ||
-      CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.kodi.builtin.wma")
+  if (CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.xbmc.builtin.aac" ||
+           CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOCDS_ENCODER) == "audioencoder.xbmc.builtin.wma")
   {
     std::shared_ptr<IEncoder> enc(new CEncoderFFmpeg());
     encoder = new CEncoder(enc);
   }
   else
   {
-    const BinaryAddonBasePtr addonInfo = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER), ADDON_AUDIOENCODER);
-    if (addonInfo)
+    AddonPtr addon;
+    CAddonMgr::GetInstance().GetAddon(CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOCDS_ENCODER), addon);
+    if (addon)
     {
-      std::shared_ptr<IEncoder> enc = std::make_shared<CAudioEncoder>(addonInfo);
+      std::shared_ptr<CAudioEncoder> aud =  std::static_pointer_cast<CAudioEncoder>(addon);
+      aud->Create();
+      std::shared_ptr<IEncoder> enc =  std::static_pointer_cast<IEncoder>(aud);
       encoder = new CEncoder(enc);
     }
   }
@@ -227,12 +227,8 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
 std::string CCDDARipJob::SetupTempFile()
 {
   char tmp[MAX_PATH];
-#if defined(TARGET_WINDOWS)
-  using namespace KODI::PLATFORM::WINDOWS;
-  wchar_t tmpW[MAX_PATH];
-  GetTempFileName(ToW(CSpecialProtocol::TranslatePath("special://temp/")).c_str(), L"riptrack", 0, tmpW);
-  auto tmpString = FromW(tmpW);
-  strncpy_s(tmp, tmpString.length(), tmpString.c_str(), MAX_PATH);
+#ifndef TARGET_POSIX
+  GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/").c_str(), "riptrack", 0, tmp);
 #else
   int fd;
   strncpy(tmp, CSpecialProtocol::TranslatePath("special://temp/riptrackXXXXXX").c_str(), MAX_PATH);

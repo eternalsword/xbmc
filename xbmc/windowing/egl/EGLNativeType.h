@@ -58,7 +58,7 @@ public:
     \sa: Destroy() */
   virtual ~CEGLNativeType(){};
 
-/*! \brief Unique identifier for this EGL implementation.
+/*! \brief Unique identifier for this EGL implementaiton.
 
    It should be unique enough to set it apart from other possible implementations
    on a similar platform. */

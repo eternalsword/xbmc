@@ -40,6 +40,7 @@ class CRenderCapture;
 class CBaseTexture;
 namespace Shaders { class BaseYUV2RGBShader; }
 namespace Shaders { class BaseVideoFilterShader; }
+typedef std::vector<int>     Features;
 
 
 #undef ALIGN
@@ -127,7 +128,7 @@ public:
   virtual bool RenderCapture(CRenderCapture* capture);
 
   // Player functions
-  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void* hwPic, unsigned int orientation) override;
+  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_formatunsigned, unsigned int orientation) override;
   virtual bool IsConfigured() override { return m_bConfigured; }
   virtual int GetImage(YV12Image *image, int source = AUTOSOURCE, bool readonly = false) override;
   virtual void ReleaseImage(int source, bool preserve = false) override;
@@ -170,7 +171,7 @@ protected:
   bool CreateYV12Texture(int index);
   virtual bool SkipUploadYV12(int index) { return false; }
 
-  bool UploadNV12Texture(int index);
+  void UploadNV12Texture(int index);
   void DeleteNV12Texture(int index);
   bool CreateNV12Texture(int index);
 
@@ -187,7 +188,6 @@ protected:
   // hooks for HwDec Renderered
   virtual bool LoadShadersHook() { return false; }
   virtual bool RenderHook(int idx) { return false; }
-  virtual void AfterRenderHook(int idx) {};
   virtual bool RenderUpdateVideoHook(bool clear, DWORD flags, DWORD alpha) { return false; }
   virtual int  GetImageHook(YV12Image *image, int source = AUTOSOURCE, bool readonly = false) { return NOSOURCE; }
   virtual bool RenderUpdateCheckForEmptyField() { return true; }
@@ -260,6 +260,10 @@ protected:
   Shaders::BaseVideoFilterShader *m_pVideoFilterShader;
   ESCALINGMETHOD m_scalingMethod;
   ESCALINGMETHOD m_scalingMethodGui;
+
+  Features m_renderFeatures;
+  Features m_deinterlaceMethods;
+  Features m_scalingMethods;
 
   // clear colour for "black" bars
   float m_clearColour;

@@ -22,7 +22,6 @@
 
 #include "Application.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "filesystem/Directory.h"
 #include "guilib/GUIWindowManager.h"
 #include "GUIUserMessages.h"
@@ -53,7 +52,7 @@
  */
 static int ClearPlaylist(const std::vector<std::string>& params)
 {
-  CServiceBroker::GetPlaylistPlayer().Clear();
+  g_playlistPlayer.Clear();
 
   return 0;
 }
@@ -90,21 +89,21 @@ static int PlayOffset(const std::vector<std::string>& params)
     }
 
     // user wants to play the 'other' playlist
-    if (iPlaylist != CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist())
+    if (iPlaylist != g_playlistPlayer.GetCurrentPlaylist())
     {
       g_application.StopPlaying();
-      CServiceBroker::GetPlaylistPlayer().Reset();
-      CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(iPlaylist);
+      g_playlistPlayer.Reset();
+      g_playlistPlayer.SetCurrentPlaylist(iPlaylist);
     }
   }
   // play the desired offset
   int pos = atol(strPos.c_str());
   // playlist is already playing
   if (g_application.m_pPlayer->IsPlaying())
-    CServiceBroker::GetPlaylistPlayer().PlayNext(pos);
+    g_playlistPlayer.PlayNext(pos);
   // we start playing the 'other' playlist so we need to use play to initialize the player state
   else
-    CServiceBroker::GetPlaylistPlayer().Play(pos, "");
+    g_playlistPlayer.Play(pos, "");
 
   return 0;
 }
@@ -263,40 +262,40 @@ static int PlayerControl(const std::vector<std::string>& params)
   else if (paramlow == "random" || paramlow == "randomoff" || paramlow == "randomon")
   {
     // get current playlist
-    int iPlaylist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+    int iPlaylist = g_playlistPlayer.GetCurrentPlaylist();
 
     // reverse the current setting
-    bool shuffled = CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist);
+    bool shuffled = g_playlistPlayer.IsShuffled(iPlaylist);
     if ((shuffled && paramlow == "randomon") || (!shuffled && paramlow == "randomoff"))
       return 0;
 
     // check to see if we should notify the user
     bool notify = (params.size() == 2 && StringUtils::EqualsNoCase(params[1], "notify"));
-    CServiceBroker::GetPlaylistPlayer().SetShuffle(iPlaylist, !shuffled, notify);
+    g_playlistPlayer.SetShuffle(iPlaylist, !shuffled, notify);
 
     // save settings for now playing windows
     switch (iPlaylist)
     {
       case PLAYLIST_MUSIC:
-        CMediaSettings::GetInstance().SetMusicPlaylistShuffled(CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist));
-        CServiceBroker::GetSettings().Save();
+        CMediaSettings::GetInstance().SetMusicPlaylistShuffled(g_playlistPlayer.IsShuffled(iPlaylist));
+        CSettings::GetInstance().Save();
         break;
       case PLAYLIST_VIDEO:
-        CMediaSettings::GetInstance().SetVideoPlaylistShuffled(CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist));
-        CServiceBroker::GetSettings().Save();
+        CMediaSettings::GetInstance().SetVideoPlaylistShuffled(g_playlistPlayer.IsShuffled(iPlaylist));
+        CSettings::GetInstance().Save();
       default:
         break;
     }
 
     // send message
-    CGUIMessage msg(GUI_MSG_PLAYLISTPLAYER_RANDOM, 0, 0, iPlaylist, CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist));
+    CGUIMessage msg(GUI_MSG_PLAYLISTPLAYER_RANDOM, 0, 0, iPlaylist, g_playlistPlayer.IsShuffled(iPlaylist));
     g_windowManager.SendThreadMessage(msg);
   }
   else if (StringUtils::StartsWithNoCase(params[0], "repeat"))
   {
     // get current playlist
-    int iPlaylist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
-    PLAYLIST::REPEAT_STATE previous_state = CServiceBroker::GetPlaylistPlayer().GetRepeat(iPlaylist);
+    int iPlaylist = g_playlistPlayer.GetCurrentPlaylist();
+    PLAYLIST::REPEAT_STATE previous_state = g_playlistPlayer.GetRepeat(iPlaylist);
 
     std::string paramlow(params[0]);
     StringUtils::ToLower(paramlow);
@@ -320,18 +319,18 @@ static int PlayerControl(const std::vector<std::string>& params)
 
     // check to see if we should notify the user
     bool notify = (params.size() == 2 && StringUtils::EqualsNoCase(params[1], "notify"));
-    CServiceBroker::GetPlaylistPlayer().SetRepeat(iPlaylist, state, notify);
+    g_playlistPlayer.SetRepeat(iPlaylist, state, notify);
 
     // save settings for now playing windows
     switch (iPlaylist)
     {
       case PLAYLIST_MUSIC:
         CMediaSettings::GetInstance().SetMusicPlaylistRepeat(state == PLAYLIST::REPEAT_ALL);
-        CServiceBroker::GetSettings().Save();
+        CSettings::GetInstance().Save();
         break;
       case PLAYLIST_VIDEO:
         CMediaSettings::GetInstance().SetVideoPlaylistRepeat(state == PLAYLIST::REPEAT_ALL);
-        CServiceBroker::GetSettings().Save();
+        CSettings::GetInstance().Save();
     }
 
     // send messages so now playing window can get updated
@@ -352,10 +351,6 @@ static int PlayerControl(const std::vector<std::string>& params)
         return false;
       }
     }
-  }
-  else if (paramlow == "reset")
-  {
-    g_application.OnAction(CAction(ACTION_PLAYER_RESET));
   }
 
   return 0;
@@ -469,15 +464,24 @@ static int PlayMedia(const std::vector<std::string>& params)
       }
     }
 
-    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(playlist);
-    CServiceBroker::GetPlaylistPlayer().Add(playlist, items);
-    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(playlist);
-    CServiceBroker::GetPlaylistPlayer().Play(playOffset, "");
+    g_playlistPlayer.ClearPlaylist(playlist);
+    g_playlistPlayer.Add(playlist, items);
+    g_playlistPlayer.SetCurrentPlaylist(playlist);
+    g_playlistPlayer.Play(playOffset, "");
   }
-  else if (item.IsAudio() || item.IsVideo())
-    CServiceBroker::GetPlaylistPlayer().Play(std::make_shared<CFileItem>(item), "");
   else
-    g_application.PlayMedia(item, "", PLAYLIST_NONE);
+  {
+    int playlist = item.IsAudio() ? PLAYLIST_MUSIC : PLAYLIST_VIDEO;
+    g_playlistPlayer.ClearPlaylist(playlist);
+    g_playlistPlayer.SetCurrentPlaylist(playlist);
+
+    // play media
+    if (!g_application.PlayMedia(item, "", playlist))
+    {
+      CLog::Log(LOGERROR, "PlayMedia could not play media: %s", params[0].c_str());
+      return false;
+    }
+  }
 
   return 0;
 }

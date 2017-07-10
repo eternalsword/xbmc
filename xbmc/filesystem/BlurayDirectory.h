@@ -35,8 +35,8 @@ class CBlurayDirectory: public XFILE::IDirectory
 {
 public:
   CBlurayDirectory();
-  ~CBlurayDirectory() override;
-  bool GetDirectory(const CURL& url, CFileItemList &items) override;
+  virtual ~CBlurayDirectory();
+  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
 
 private:
 

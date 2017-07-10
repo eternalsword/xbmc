@@ -36,16 +36,16 @@ class CGUIListGroup : public CGUIControlGroup
 public:
   CGUIListGroup(int parentID, int controlID, float posX, float posY, float width, float height);
   CGUIListGroup(const CGUIListGroup &right);
-  ~CGUIListGroup(void) override;
-  CGUIListGroup *Clone() const override { return new CGUIListGroup(*this); };
+  virtual ~CGUIListGroup(void);
+  virtual CGUIListGroup *Clone() const { return new CGUIListGroup(*this); };
 
-  void AddControl(CGUIControl *control, int position = -1) override;
+  virtual void AddControl(CGUIControl *control, int position = -1);
 
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void ResetAnimation(ANIMATION_TYPE type) override;
-  void UpdateVisibility(const CGUIListItem *item = NULL) override;
-  void UpdateInfo(const CGUIListItem *item) override;
-  void SetInvalid() override;
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void ResetAnimation(ANIMATION_TYPE type);
+  virtual void UpdateVisibility(const CGUIListItem *item = NULL);
+  virtual void UpdateInfo(const CGUIListItem *item);
+  virtual void SetInvalid();
 
   void EnlargeWidth(float difference);
   void EnlargeHeight(float difference);

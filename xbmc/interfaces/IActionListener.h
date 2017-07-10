@@ -25,7 +25,7 @@ class CAction;
 class IActionListener
 {
 public:
-  virtual ~IActionListener() = default;
+  virtual ~IActionListener() {};
   
   virtual bool OnAction(const CAction &action) = 0;
 };

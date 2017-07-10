@@ -20,7 +20,6 @@
 
 #include "system.h"
 #include "GUIWindowMusicPlaylistEditor.h"
-#include "ServiceBroker.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
@@ -142,20 +141,20 @@ bool CGUIWindowMusicPlaylistEditor::GetDirectory(const std::string &strDirectory
   { // root listing - list files:// and musicdb://
     CFileItemPtr files(new CFileItem("files://", true));
     files->SetLabel(g_localizeStrings.Get(744));
-    files->SetLabelPreformatted(true);
+    files->SetLabelPreformated(true);
     files->m_bIsShareOrDrive = true;
     items.Add(files);
 
     CFileItemPtr mdb(new CFileItem("musicdb://", true));
     mdb->SetLabel(g_localizeStrings.Get(14022));
-    mdb->SetLabelPreformatted(true);
+    mdb->SetLabelPreformated(true);
     mdb->m_bIsShareOrDrive = true;
     items.SetPath("");
     items.Add(mdb);
 
     CFileItemPtr vdb(new CFileItem("videodb://musicvideos/", true));
     vdb->SetLabel(g_localizeStrings.Get(20389));
-    vdb->SetLabelPreformatted(true);
+    vdb->SetLabelPreformated(true);
     vdb->m_bIsShareOrDrive = true;
     items.SetPath("");
     items.Add(vdb);
@@ -387,7 +386,7 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
     PLAYLIST::CPlayListM3U playlist;
     playlist.Add(*m_playlist);
     std::string path = URIUtils::AddFileToFolder(
-      CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH),
+      CSettings::GetInstance().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH),
       "music",
       name + ".m3u");
 
@@ -399,7 +398,7 @@ void CGUIWindowMusicPlaylistEditor::OnSavePlaylist()
 void CGUIWindowMusicPlaylistEditor::AppendToPlaylist(CFileItemList &newItems)
 {
   OnRetrieveMusicInfo(newItems);
-  FormatItemLabels(newItems, LABEL_MASKS(CServiceBroker::GetSettings().GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT), "%D", "%L", ""));
+  FormatItemLabels(newItems, LABEL_MASKS(CSettings::GetInstance().GetString(CSettings::SETTING_MUSICFILES_TRACKFORMAT), "%D", "%L", ""));
   m_playlist->Append(newItems);
   UpdatePlaylist();
 }

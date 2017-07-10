@@ -30,16 +30,16 @@ class CGUIBorderedImage : public CGUIImage
 public:
   CGUIBorderedImage(int parentID, int controlID, float posX, float posY, float width, float height, const CTextureInfo& texture, const CTextureInfo& borderTexture, const CRect &borderSize);
   CGUIBorderedImage(const CGUIBorderedImage &right);
-  ~CGUIBorderedImage(void) override;
-  CGUIBorderedImage *Clone() const override { return new CGUIBorderedImage(*this); };
+  virtual ~CGUIBorderedImage(void);
+  virtual CGUIBorderedImage *Clone() const { return new CGUIBorderedImage(*this); };
 
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  void AllocResources() override;
-  void FreeResources(bool immediately = false) override;
-  void DynamicResourceAlloc(bool bOnOff) override;
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual void AllocResources();
+  virtual void FreeResources(bool immediately = false);
+  virtual void DynamicResourceAlloc(bool bOnOff);
   
-  CRect CalcRenderRegion() const override;
+  virtual CRect CalcRenderRegion() const;
 
 protected:
   CGUITexture m_borderImage;

@@ -62,8 +62,8 @@ private:
   COMXCoreComponent    m_omx_render;
   COMXCoreComponent    m_omx_render_slave;
   bool                 m_passthrough;
-  COMXCoreTunnel       m_omx_tunnel_splitter;
-  COMXCoreTunnel       m_omx_tunnel_splitter_slave;
+  COMXCoreTunel        m_omx_tunnel_splitter;
+  COMXCoreTunel        m_omx_tunnel_splitter_slave;
   enum { AESINKPI_UNKNOWN, AESINKPI_HDMI, AESINKPI_ANALOGUE, AESINKPI_BOTH } m_output;
 };
 

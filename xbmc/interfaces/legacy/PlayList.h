@@ -61,12 +61,13 @@ namespace XBMCAddon
     //
     class PlayList : public AddonClass
     {
+      long refs;
       int iPlayList;
       PLAYLIST::CPlayList *pPlayList;
 
     public:
       PlayList(int playList);
-      ~PlayList() override;
+      virtual ~PlayList();
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///

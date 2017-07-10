@@ -34,8 +34,5 @@ namespace XFILE
     bool Exists(const CURL& url) override;
     bool Remove(const CURL& url) override;
     bool RemoveRecursive(const CURL& url) override;
-
-  private:
-    bool Create(std::wstring path) const;
   };
 }

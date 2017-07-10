@@ -24,7 +24,7 @@
 #include "threads/SingleLock.h"
 
 // Override for platform ports
-#if !defined(PLATFORM_OVERRIDE_VP_PROCESSINFO)
+#if !defined(PLATFORM_OVERRIDE)
 
 CProcessInfo* CProcessInfo::CreateInstance()
 {
@@ -37,10 +37,13 @@ CProcessInfo* CProcessInfo::CreateInstance()
 // base class definitions
 CProcessInfo::CProcessInfo()
 {
-  ResetVideoCodecInfo();
+
 }
 
-CProcessInfo::~CProcessInfo() = default;
+CProcessInfo::~CProcessInfo()
+{
+
+}
 
 void CProcessInfo::ResetVideoCodecInfo()
 {
@@ -53,23 +56,18 @@ void CProcessInfo::ResetVideoCodecInfo()
   m_videoWidth = 0;
   m_videoHeight = 0;
   m_videoFPS = 0.0;
-  m_videoDAR = 0.0;
   m_deintMethods.clear();
   m_deintMethods.push_back(EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE);
   m_deintMethodDefault = EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE;
-  m_renderInfo.Reset();
-  m_stateSeeking = false;
 
   CServiceBroker::GetDataCacheCore().SetVideoDecoderName(m_videoDecoderName, m_videoIsHWDecoder);
   CServiceBroker::GetDataCacheCore().SetVideoDeintMethod(m_videoDeintMethod);
   CServiceBroker::GetDataCacheCore().SetVideoPixelFormat(m_videoPixelFormat);
   CServiceBroker::GetDataCacheCore().SetVideoDimensions(m_videoWidth, m_videoHeight);
   CServiceBroker::GetDataCacheCore().SetVideoFps(m_videoFPS);
-  CServiceBroker::GetDataCacheCore().SetVideoDAR(m_videoDAR);
-  CServiceBroker::GetDataCacheCore().SetStateSeeking(m_stateSeeking);
 }
 
-void CProcessInfo::SetVideoDecoderName(const std::string &name, bool isHw)
+void CProcessInfo::SetVideoDecoderName(std::string name, bool isHw)
 {
   CSingleLock lock(m_videoCodecSection);
 
@@ -93,7 +91,7 @@ bool CProcessInfo::IsVideoHwDecoder()
   return m_videoIsHWDecoder;
 }
 
-void CProcessInfo::SetVideoDeintMethod(const std::string &method)
+void CProcessInfo::SetVideoDeintMethod(std::string method)
 {
   CSingleLock lock(m_videoCodecSection);
 
@@ -109,7 +107,7 @@ std::string CProcessInfo::GetVideoDeintMethod()
   return m_videoDeintMethod;
 }
 
-void CProcessInfo::SetVideoPixelFormat(const std::string &pixFormat)
+void CProcessInfo::SetVideoPixelFormat(std::string pixFormat)
 {
   CSingleLock lock(m_videoCodecSection);
 
@@ -197,12 +195,6 @@ void CProcessInfo::UpdateDeinterlacingMethods(std::list<EINTERLACEMETHOD> &metho
 
   m_deintMethods = methods;
 
-  for (auto &deint : m_renderInfo.m_deintMethods)
-  {
-    if (!Supports(deint))
-      m_deintMethods.push_back(deint);
-  }
-
   if (!Supports(EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE))
     m_deintMethods.push_front(EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE);
 }
@@ -248,7 +240,7 @@ void CProcessInfo::ResetAudioCodecInfo()
   CServiceBroker::GetDataCacheCore().SetAudioBitsPerSample(m_audioBitsPerSample);
 }
 
-void CProcessInfo::SetAudioDecoderName(const std::string &name)
+void CProcessInfo::SetAudioDecoderName(std::string name)
 {
   CSingleLock lock(m_audioCodecSection);
 
@@ -264,7 +256,7 @@ std::string CProcessInfo::GetAudioDecoderName()
   return m_audioDecoderName;
 }
 
-void CProcessInfo::SetAudioChannels(const std::string &channels)
+void CProcessInfo::SetAudioChannels(std::string channels)
 {
   CSingleLock lock(m_audioCodecSection);
 
@@ -331,50 +323,4 @@ bool CProcessInfo::IsRenderClockSync()
   CSingleLock lock(m_renderSection);
 
   return m_isClockSync;
-}
-
-void CProcessInfo::UpdateRenderInfo(CRenderInfo &info)
-{
-  CSingleLock lock(m_renderSection);
-
-  m_renderInfo = info;
-
-  for (auto &deint : m_renderInfo.m_deintMethods)
-  {
-    if (!Supports(deint))
-      m_deintMethods.push_back(deint);
-  }
-}
-
-void CProcessInfo::UpdateRenderBuffers(int queued, int discard, int free)
-{
-  CSingleLock lock(m_renderSection);
-  m_renderBufQueued = queued;
-  m_renderBufDiscard = discard;
-  m_renderBufFree = free;
-}
-
-void CProcessInfo::GetRenderBuffers(int &queued, int &discard, int &free)
-{
-  CSingleLock lock(m_renderSection);
-  queued = m_renderBufQueued;
-  discard = m_renderBufDiscard;
-  free = m_renderBufFree;
-}
-
-// player states
-void CProcessInfo::SetStateSeeking(bool active)
-{
-  CSingleLock lock(m_renderSection);
-
-  m_stateSeeking = active;
-
-  CServiceBroker::GetDataCacheCore().SetStateSeeking(active);
-}
-
-bool CProcessInfo::IsSeeking()
-{
-  CSingleLock lock(m_stateSection);
-
-  return m_stateSeeking;
 }

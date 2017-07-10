@@ -20,7 +20,6 @@
 
 #include "HTTPWebinterfaceHandler.h"
 #include "addons/AddonManager.h"
-#include "addons/AddonSystemSettings.h"
 #include "addons/Webinterface.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
@@ -40,7 +39,7 @@ CHTTPWebinterfaceHandler::CHTTPWebinterfaceHandler(const HTTPRequest &request)
   SetFile(file, responseStatus);
 }
 
-bool CHTTPWebinterfaceHandler::CanHandleRequest(const HTTPRequest &request) const
+bool CHTTPWebinterfaceHandler::CanHandleRequest(const HTTPRequest &request)
 {
   return true;
 }
@@ -109,7 +108,7 @@ bool CHTTPWebinterfaceHandler::ResolveAddon(const std::string &url, ADDON::Addon
     // determine the path within the addon
     path = StringUtils::Join(components, WEBSERVER_DIRECTORY_SEPARATOR);
   }
-  else if (!ADDON::CAddonSystemSettings::GetInstance().GetActive(ADDON::ADDON_WEB_INTERFACE, addon) || addon == NULL)
+  else if (!ADDON::CAddonMgr::GetInstance().GetDefault(ADDON::ADDON_WEB_INTERFACE, addon) || addon == NULL)
     return false;
 
   // get the path of the addon

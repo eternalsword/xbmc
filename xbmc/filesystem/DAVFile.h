@@ -27,12 +27,12 @@ namespace XFILE
   {
   public:
     CDAVFile(void);
-    ~CDAVFile(void) override;
+    virtual ~CDAVFile(void);
 
     virtual bool Execute(const CURL& url);
 
-    bool Delete(const CURL& url) override;
-    bool Rename(const CURL& url, const CURL& urlnew) override;
+    virtual bool Delete(const CURL& url);
+    virtual bool Rename(const CURL& url, const CURL& urlnew);
 
     virtual int GetLastResponseCode() { return m_lastResponseCode; }
 

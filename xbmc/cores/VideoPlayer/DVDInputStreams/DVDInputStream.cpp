@@ -30,7 +30,10 @@ CDVDInputStream::CDVDInputStream(DVDStreamType streamType, const CFileItem& file
   m_item = fileitem;
 }
 
-CDVDInputStream::~CDVDInputStream() = default;
+CDVDInputStream::~CDVDInputStream()
+{
+
+}
 
 bool CDVDInputStream::Open()
 {

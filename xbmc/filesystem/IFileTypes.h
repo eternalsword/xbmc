@@ -37,7 +37,7 @@ namespace XFILE
 /* open without caching. regardless to file type. */
   static const unsigned int READ_NO_CACHE = 0x08;
 
-/* calculate bitrate for file while reading */
+/* calcuate bitrate for file while reading */
   static const unsigned int READ_BITRATE = 0x10;
 
 /* indicate to the caller we will seek between multiple streams in the file frequently */
@@ -48,9 +48,6 @@ namespace XFILE
 
 /* indicate that caller will do write operations before reading  */
   static const unsigned int READ_AFTER_WRITE = 0x80;
-
-/* indicate that caller want to reopen a file if its already open  */
-  static const unsigned int READ_REOPEN = 0x100;
 
 struct SNativeIoControl
 {

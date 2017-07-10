@@ -1,4 +1,5 @@
-set(SOURCES AEResampleFactory.cpp
+set(SOURCES AEFactory.cpp
+            AEResampleFactory.cpp
             AESinkFactory.cpp
             Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.cpp
             Engines/ActiveAE/AudioDSPAddons/ActiveAEDSPAddon.cpp
@@ -12,9 +13,9 @@ set(SOURCES AEResampleFactory.cpp
             Engines/ActiveAE/ActiveAESink.cpp
             Engines/ActiveAE/ActiveAEStream.cpp
             Engines/ActiveAE/ActiveAESound.cpp
-            Engines/ActiveAE/ActiveAESettings.cpp
             Utils/AEBitstreamPacker.cpp
             Utils/AEChannelInfo.cpp
+            Utils/AEBuffer.cpp
             Utils/AEDeviceInfo.cpp
             Utils/AELimiter.cpp
             Utils/AEPackIEC61937.cpp
@@ -22,7 +23,8 @@ set(SOURCES AEResampleFactory.cpp
             Utils/AEUtil.cpp
             Sinks/AESinkNULL.cpp)
 
-set(HEADERS AEResampleFactory.h
+set(HEADERS AEFactory.h
+            AEResampleFactory.h
             AESinkFactory.h
             Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h
             Engines/ActiveAE/AudioDSPAddons/ActiveAEDSPAddon.h
@@ -36,7 +38,6 @@ set(HEADERS AEResampleFactory.h
             Engines/ActiveAE/ActiveAESink.h
             Engines/ActiveAE/ActiveAESound.h
             Engines/ActiveAE/ActiveAEStream.h
-            Engines/ActiveAE/ActiveAESettings.h
             Interfaces/AE.h
             Interfaces/AEEncoder.h
             Interfaces/AEResample.h
@@ -48,6 +49,7 @@ set(HEADERS AEResampleFactory.h
             Sinks/AESinkNULL.h
             Utils/AEAudioFormat.h
             Utils/AEBitstreamPacker.h
+            Utils/AEBuffer.h
             Utils/AEChannelData.h
             Utils/AEChannelInfo.h
             Utils/AEDeviceInfo.h
@@ -62,21 +64,18 @@ if(ALSA_FOUND)
   list(APPEND SOURCES Sinks/AESinkALSA.cpp
                       Sinks/alsa/ALSADeviceMonitor.cpp
                       Sinks/alsa/ALSAHControlMonitor.cpp
+                      Sinks/AESinkOSS.cpp
                       Utils/AEELDParser.cpp)
   list(APPEND HEADERS Sinks/AESinkALSA.h
                       Sinks/alsa/ALSADeviceMonitor.h
                       Sinks/alsa/ALSAHControlMonitor.h
+                      Sinks/AESinkOSS.h
                       Utils/AEELDParser.h)
 endif()
 
 if(PULSEAUDIO_FOUND)
   list(APPEND SOURCES Sinks/AESinkPULSE.cpp)
   list(APPEND HEADERS Sinks/AESinkPULSE.h)
-endif()
-
-if(SNDIO_FOUND)
-  list(APPEND SOURCES Sinks/AESinkSNDIO.cpp)
-  list(APPEND HEADERS Sinks/AESinkSNDIO.h)
 endif()
 
 if(FFMPEG_FOUND)
@@ -136,9 +135,9 @@ core_add_library(audioengine)
 target_include_directories(${CORE_LIBRARY} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 if(NOT CORE_SYSTEM_NAME STREQUAL windows)
   if(HAVE_SSE)
-    target_compile_options(${CORE_LIBRARY} PRIVATE -msse)
+    target_compile_options(audioengine PRIVATE -msse)
   endif()
   if(HAVE_SSE2)
-    target_compile_options(${CORE_LIBRARY} PRIVATE -msse2)
+    target_compile_options(audioengine PRIVATE -msse2)
   endif()
 endif()

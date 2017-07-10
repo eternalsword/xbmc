@@ -190,35 +190,35 @@ class NPT_Socket : public NPT_SocketInterface
 public:
     // constructor and destructor
     explicit NPT_Socket(NPT_SocketInterface* delegate) : m_SocketDelegate(delegate) {}
-    ~NPT_Socket() override;
+    virtual ~NPT_Socket();
 
     // delegate NPT_SocketInterface methods
-    NPT_Result Bind(const NPT_SocketAddress& address, bool reuse_address = true) override {             
+    NPT_Result Bind(const NPT_SocketAddress& address, bool reuse_address = true) {             
         return m_SocketDelegate->Bind(address, reuse_address);                            
     }                                                               
     NPT_Result Connect(const NPT_SocketAddress& address,            
-                       NPT_Timeout timeout = NPT_TIMEOUT_INFINITE) override {
+                       NPT_Timeout timeout = NPT_TIMEOUT_INFINITE) {
        return m_SocketDelegate->Connect(address, timeout);                 
     }                                                               
-    NPT_Result WaitForConnection(NPT_Timeout timeout = NPT_TIMEOUT_INFINITE) override {
+    NPT_Result WaitForConnection(NPT_Timeout timeout = NPT_TIMEOUT_INFINITE) {
         return m_SocketDelegate->WaitForConnection(timeout);                 
     } 
-    NPT_Result GetInputStream(NPT_InputStreamReference& stream) override {   
+    NPT_Result GetInputStream(NPT_InputStreamReference& stream) {   
         return m_SocketDelegate->GetInputStream(stream);                   
     }                                                               
-    NPT_Result GetOutputStream(NPT_OutputStreamReference& stream) override { 
+    NPT_Result GetOutputStream(NPT_OutputStreamReference& stream) { 
     return m_SocketDelegate->GetOutputStream(stream);                      
     }                                                               
-    NPT_Result GetInfo(NPT_SocketInfo& info) override {                      
+    NPT_Result GetInfo(NPT_SocketInfo& info) {                      
         return m_SocketDelegate->GetInfo(info);                            
     }                                                               
-    NPT_Result SetReadTimeout(NPT_Timeout timeout) override {                      
+    NPT_Result SetReadTimeout(NPT_Timeout timeout) {                      
         return m_SocketDelegate->SetReadTimeout(timeout);                            
     }                                                          
-    NPT_Result SetWriteTimeout(NPT_Timeout timeout) override {                      
+    NPT_Result SetWriteTimeout(NPT_Timeout timeout) {                      
         return m_SocketDelegate->SetWriteTimeout(timeout);                            
     }                                                          
-    NPT_Result Cancel(bool shutdown=true) override {                      
+    NPT_Result Cancel(bool shutdown=true) {                      
         return m_SocketDelegate->Cancel(shutdown);                            
     }                                                          
 
@@ -241,15 +241,15 @@ class NPT_UdpSocket : public NPT_Socket,
  public:
     // constructor and destructor
              NPT_UdpSocket(NPT_Flags flags=NPT_SOCKET_FLAG_CANCELLABLE);
-    ~NPT_UdpSocket() override;
+    virtual ~NPT_UdpSocket();
 
     // delegate NPT_UdpSocketInterface methods
     NPT_Result Send(const NPT_DataBuffer&    packet,           
-                    const NPT_SocketAddress* address = NULL) override {
+                    const NPT_SocketAddress* address = NULL) {
         return m_UdpSocketDelegate->Send(packet, address);              
     }                                                         
     NPT_Result Receive(NPT_DataBuffer&     packet,            
-                       NPT_SocketAddress*  address = NULL) override {  
+                       NPT_SocketAddress*  address = NULL) {  
         return m_UdpSocketDelegate->Receive(packet, address);           
     }
 
@@ -270,23 +270,23 @@ class NPT_UdpMulticastSocket : public NPT_UdpSocket,
 public:
     // constructor and destructor
              NPT_UdpMulticastSocket(NPT_Flags flags=NPT_SOCKET_FLAG_CANCELLABLE);
-    ~NPT_UdpMulticastSocket() override;
+    virtual ~NPT_UdpMulticastSocket();
 
     // delegate NPT_UdpMulticastSocketInterface methods
     NPT_Result JoinGroup(const NPT_IpAddress& group,            
                          const NPT_IpAddress& iface =           
-                         NPT_IpAddress::Any) override {                  
+                         NPT_IpAddress::Any) {                  
         return m_UdpMulticastSocketDelegate->JoinGroup(group, iface);
     }                                                           
     NPT_Result LeaveGroup(const NPT_IpAddress& group,           
                           const NPT_IpAddress& iface =          
-                          NPT_IpAddress::Any) override {                 
+                          NPT_IpAddress::Any) {                 
         return m_UdpMulticastSocketDelegate->LeaveGroup(group, iface);
     }                                                          
-    NPT_Result SetTimeToLive(unsigned char ttl) override {     
+    NPT_Result SetTimeToLive(unsigned char ttl) {     
         return m_UdpMulticastSocketDelegate->SetTimeToLive(ttl); 
     }
-    NPT_Result SetInterface(const NPT_IpAddress& iface) override {
+    NPT_Result SetInterface(const NPT_IpAddress& iface) {
         return m_UdpMulticastSocketDelegate->SetInterface(iface);
     }
 
@@ -303,7 +303,7 @@ class NPT_TcpClientSocket : public NPT_Socket
 public:
     // constructors and destructor
              NPT_TcpClientSocket(NPT_Flags flags=NPT_SOCKET_FLAG_CANCELLABLE);
-    ~NPT_TcpClientSocket() override;
+    virtual ~NPT_TcpClientSocket();
 };
 
 /*----------------------------------------------------------------------
@@ -315,15 +315,15 @@ class NPT_TcpServerSocket : public NPT_Socket,
 public:
     // constructors and destructor
              NPT_TcpServerSocket(NPT_Flags flags=NPT_SOCKET_FLAG_CANCELLABLE);
-    ~NPT_TcpServerSocket() override;
+    virtual ~NPT_TcpServerSocket();
 
     // delegate NPT_TcpServerSocketInterface methods
-    NPT_Result Listen(unsigned int max_clients) override {   
+    NPT_Result Listen(unsigned int max_clients) {   
         return m_TcpServerSocketDelegate->Listen(max_clients);
     }
     NPT_Result WaitForNewClient(NPT_Socket*& client, 
                                 NPT_Timeout  timeout = NPT_TIMEOUT_INFINITE,
-                                NPT_Flags    flags = 0) override {
+                                NPT_Flags    flags = 0) {
         return m_TcpServerSocketDelegate->WaitForNewClient(client, timeout, flags);
     }
 

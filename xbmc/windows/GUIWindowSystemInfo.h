@@ -29,9 +29,9 @@ class CGUIWindowSystemInfo : public CGUIWindow
 {
 public:
   CGUIWindowSystemInfo(void);
-  ~CGUIWindowSystemInfo(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  void FrameMove() override;
+  virtual ~CGUIWindowSystemInfo(void);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual void FrameMove();
 private:
   int  m_section;
   void ResetLabels();

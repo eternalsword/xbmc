@@ -21,13 +21,12 @@
 #include "PeripheralHID.h"
 #include "utils/log.h"
 #include "guilib/LocalizeStrings.h"
-#include "input/InputManager.h"
-#include "ServiceBroker.h"
+#include "input/ButtonTranslator.h"
 
 using namespace PERIPHERALS;
 
-CPeripheralHID::CPeripheralHID(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
-  CPeripheral(manager, scanResult, bus)
+CPeripheralHID::CPeripheralHID(const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
+  CPeripheral(scanResult, bus)
 {
   m_strDeviceName = scanResult.m_strDeviceName.empty() ? g_localizeStrings.Get(35001) : scanResult.m_strDeviceName;
   m_features.push_back(FEATURE_HID);
@@ -38,7 +37,7 @@ CPeripheralHID::~CPeripheralHID(void)
   if (!m_strKeymap.empty() && !GetSettingBool("do_not_use_custom_keymap"))
   {
     CLog::Log(LOGDEBUG, "%s - switching active keymapping to: default", __FUNCTION__);
-    CServiceBroker::GetInputManager().RemoveKeymap(m_strKeymap);
+    CButtonTranslator::GetInstance().RemoveDevice(m_strKeymap);
   }
 }
 
@@ -66,12 +65,12 @@ bool CPeripheralHID::InitialiseFeature(const PeripheralFeature feature)
       if (bKeymapEnabled)
       {
         CLog::Log(LOGDEBUG, "%s - adding keymapping for: %s", __FUNCTION__, m_strKeymap.c_str());
-        CServiceBroker::GetInputManager().AddKeymap(m_strKeymap);
+        CButtonTranslator::GetInstance().AddDevice(m_strKeymap);
       }
       else if (!bKeymapEnabled)
       {
         CLog::Log(LOGDEBUG, "%s - removing keymapping for: %s", __FUNCTION__, m_strKeymap.c_str());
-        CServiceBroker::GetInputManager().RemoveKeymap(m_strKeymap);
+        CButtonTranslator::GetInstance().RemoveDevice(m_strKeymap);
       }
     }
 

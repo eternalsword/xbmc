@@ -228,7 +228,6 @@ KeyMap keyMap[] = {
   { KEY_VOLUMEDOWN    , XBMCK_VOLUME_DOWN },
   { KEY_VOLUMEUP      , XBMCK_VOLUME_UP   },
   { KEY_POWER         , XBMCK_POWER       },
-  { KEY_SLEEP         , XBMCK_POWER       },
   { KEY_KPEQUAL       , XBMCK_KP_EQUALS   },
   { KEY_PAUSE         , XBMCK_PAUSE       },
   { KEY_PAUSECD       , XBMCK_PAUSE       },
@@ -443,7 +442,7 @@ XBMCMod CLinuxInputDevice::UpdateModifiers(XBMC_Event& devt)
     default: break;
   }
 
-  if (devt.type == XBMC_KEYDOWN)
+  if (devt.key.type == XBMC_KEYDOWN)
   {
     m_keyMods |= modifier;
   }
@@ -452,7 +451,7 @@ XBMCMod CLinuxInputDevice::UpdateModifiers(XBMC_Event& devt)
     m_keyMods &= ~modifier;
   }
 
-  if (devt.type == XBMC_KEYDOWN)
+  if (devt.key.type == XBMC_KEYDOWN)
   {
     modifier = XBMCKMOD_NONE;
     switch (devt.key.keysym.sym)
@@ -493,6 +492,8 @@ bool CLinuxInputDevice::KeyEvent(const struct input_event& levt, XBMC_Event& dev
       return false;
 
     devt.type = levt.value ? XBMC_MOUSEBUTTONDOWN : XBMC_MOUSEBUTTONUP;
+    devt.button.state = levt.value ? XBMC_PRESSED : XBMC_RELEASED;
+    devt.button.type = devt.type;
     devt.button.x = m_mouseX;
     devt.button.y = m_mouseY;
 
@@ -507,7 +508,7 @@ bool CLinuxInputDevice::KeyEvent(const struct input_event& levt, XBMC_Event& dev
         break;
 
       case BTN_MIDDLE:
-        devt.button.button = XBMC_BUTTON_MIDDLE;
+        devt.button.button = XBMC_BUTTON_RIGHT;
         break;
 
       case BTN_FORWARD:
@@ -542,6 +543,7 @@ bool CLinuxInputDevice::KeyEvent(const struct input_event& levt, XBMC_Event& dev
     }
 
     devt.type = levt.value ? XBMC_KEYDOWN : XBMC_KEYUP;
+    devt.key.type = devt.type;
     // warning, key.keysym.scancode is unsigned char so 0 - 255 only
     devt.key.keysym.scancode = code;
     devt.key.keysym.sym = key;
@@ -584,10 +586,14 @@ bool CLinuxInputDevice::RelEvent(const struct input_event& levt, XBMC_Event& dev
   {
   case REL_X:
     m_mouseX += levt.value;
+    devt.motion.xrel = levt.value;
+    devt.motion.yrel = 0;
     motion = true;
     break;
   case REL_Y:
     m_mouseY += levt.value;
+    devt.motion.xrel = 0;
+    devt.motion.yrel = levt.value;
     motion = true;
     break;
   case REL_WHEEL:
@@ -611,12 +617,17 @@ bool CLinuxInputDevice::RelEvent(const struct input_event& levt, XBMC_Event& dev
   if (motion)
   {
     devt.type = XBMC_MOUSEMOTION;
+    devt.motion.type = XBMC_MOUSEMOTION;
     devt.motion.x = m_mouseX;
     devt.motion.y = m_mouseY;
+    devt.motion.state = 0;
+    devt.motion.which = m_deviceIndex;
   }
   else if (wheel)
   {
      devt.type = XBMC_MOUSEBUTTONUP;
+     devt.button.state = XBMC_RELEASED;
+     devt.button.type = devt.type;
      devt.button.x = m_mouseX;
      devt.button.y = m_mouseY;
      devt.button.button = (levt.value<0) ? XBMC_BUTTON_WHEELDOWN:XBMC_BUTTON_WHEELUP;
@@ -625,6 +636,7 @@ bool CLinuxInputDevice::RelEvent(const struct input_event& levt, XBMC_Event& dev
      m_equeue.push_back(devt);
 
      /* prepare and return WHEEL down event */
+     devt.button.state = XBMC_PRESSED;
      devt.type = XBMC_MOUSEBUTTONDOWN;
   }
   else
@@ -660,8 +672,13 @@ bool CLinuxInputDevice::AbsEvent(const struct input_event& levt, XBMC_Event& dev
   }
 
   devt.type = XBMC_MOUSEMOTION;
+  devt.motion.type = XBMC_MOUSEMOTION;
   devt.motion.x = m_mouseX;
   devt.motion.y = m_mouseY;
+  devt.motion.state = 0;
+  devt.motion.xrel = 0;
+  devt.motion.yrel = 0;
+  devt.motion.which = m_deviceIndex;
 
   return true;
 }
@@ -842,7 +859,7 @@ XBMC_Event CLinuxInputDevice::ReadEvent()
 
       //printf("read event readlen = %d device name %s m_fileName %s\n", readlen, m_deviceName, m_fileName.c_str());
 
-      // sanity check if we really read the event
+      // sanity check if we realy read the event
       if(readlen != sizeof(levt))
       {
         CLog::Log(LOGERROR,"CLinuxInputDevice: read error : %s\n", strerror(errno));

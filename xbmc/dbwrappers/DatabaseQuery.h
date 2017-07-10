@@ -34,7 +34,7 @@ class CDatabaseQueryRule
 {
 public:
   CDatabaseQueryRule();
-  virtual ~CDatabaseQueryRule() = default;
+  virtual ~CDatabaseQueryRule() { };
 
   enum SEARCH_OPERATOR { OPERATOR_START = 0,
                          OPERATOR_CONTAINS,
@@ -116,7 +116,7 @@ class CDatabaseQueryRuleCombination
 {
 public:
   CDatabaseQueryRuleCombination();
-  virtual ~CDatabaseQueryRuleCombination() = default;
+  virtual ~CDatabaseQueryRuleCombination() { };
 
   typedef enum {
     CombinationOr = 0,

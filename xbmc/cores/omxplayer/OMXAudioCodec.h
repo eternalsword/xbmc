@@ -22,6 +22,9 @@
 
 #include "system.h"
 
+#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+  #include "config.h"
+#endif
 #include <vector>
 #include "libavcodec/avcodec.h"
 
@@ -99,7 +102,7 @@ public:
   virtual int GetBitRate() { return 0; }
 
   /*
-   * returns if the codec requests to use passthrough
+   * returns if the codec requests to use passtrough
    */
   virtual bool NeedPassthrough() { return false; }
 

@@ -82,8 +82,6 @@
 #define PLAYER_SUPPORTS_TEMPO        58
 #define PLAYER_IS_TEMPO              59
 #define PLAYER_PLAYSPEED             60
-#define PLAYER_SEEKNUMERIC           61
-#define PLAYER_HAS_GAME              62
 
 #define WEATHER_CONDITIONS          100
 #define WEATHER_TEMPERATURE         101
@@ -130,19 +128,17 @@
 #define SYSTEM_PROFILENAME          146
 #define SYSTEM_PROFILETHUMB         147
 #define SYSTEM_HAS_LOGINSCREEN      148
-#define SYSTEM_HAS_ACTIVE_MODAL_DIALOG  149
+#define SYSTEM_HAS_MODAL_DIALOG     149
 #define SYSTEM_HDD_SMART            150
 #define SYSTEM_HDD_TEMPERATURE      151
 #define SYSTEM_HDD_MODEL            152
 #define SYSTEM_HDD_SERIAL           153
 #define SYSTEM_HDD_FIRMWARE         154
-#define SYSTEM_HAS_VISIBLE_MODAL_DIALOG  155
 #define SYSTEM_HDD_PASSWORD         156
 #define SYSTEM_HDD_LOCKSTATE        157
 #define SYSTEM_HDD_LOCKKEY          158
 #define SYSTEM_INTERNET_STATE       159
 #define SYSTEM_HAS_INPUT_HIDDEN     160
-#define SYSTEM_HAS_PVR_ADDON        161
 #define SYSTEM_ALARM_LESS_OR_EQUAL  180
 #define SYSTEM_PROFILECOUNT         181
 #define SYSTEM_ISFULLSCREEN         182
@@ -202,10 +198,7 @@
 #define MUSICPLAYER_MOOD            238
 #define MUSICPLAYER_CONTRIBUTORS    239
 #define MUSICPLAYER_CONTRIBUTOR_AND_ROLE 240
-#define MUSICPLAYER_DBID            241
 
-#define VIDEOPLAYER_AUDIO_BITRATE     248
-#define VIDEOPLAYER_VIDEO_BITRATE     249
 #define VIDEOPLAYER_TITLE             250
 #define VIDEOPLAYER_GENRE             251
 #define VIDEOPLAYER_DIRECTOR          252
@@ -275,7 +268,6 @@
 #define VIDEOPLAYER_IMDBNUMBER        317
 #define VIDEOPLAYER_EPISODENAME       318
 #define VIDEOPLAYER_USER_RATING       319
-#define VIDEOPLAYER_DBID              320
 
 #define CONTAINER_HAS_PARENT_ITEM    341
 #define CONTAINER_CAN_FILTER         342
@@ -321,8 +313,6 @@
 #define CONTAINER_VIEWCOUNT         381
 #define CONTAINER_SHOWTITLE         382
 #define CONTAINER_PLUGINCATEGORY    383
-#define CONTAINER_NUM_ALL_ITEMS     384
-#define CONTAINER_NUM_NONFOLDER_ITEMS 385
 
 #define MUSICPM_ENABLED             390
 #define MUSICPM_SONGSPLAYED         391
@@ -351,6 +341,13 @@
 #define STRING_STARTS_WITH          422
 #define STRING_ENDS_WITH            423
 #define STRING_CONTAINS             424
+// deprecated begin
+// should be removed before L*** v18
+#define STRING_COMPARE              425
+#define STRING_STR                  426
+#define STRING_STR_LEFT             428
+#define STRING_STR_RIGHT            429
+// deprecated end
 
 #define INTEGER_IS_EQUAL            450
 #define INTEGER_GREATER_THAN        451
@@ -364,9 +361,7 @@
 #define SKIN_COLOUR_THEME           605
 #define SKIN_HAS_THEME              606
 #define SKIN_ASPECT_RATIO           607
-#define SKIN_FONT                   608
 
-#define SYSTEM_PRIVACY_POLICY       643
 #define SYSTEM_TOTAL_MEMORY         644
 #define SYSTEM_CPU_USAGE            645
 #define SYSTEM_USED_MEMORY_PERCENT  646
@@ -449,19 +444,21 @@
 #define PVR_IS_RECORDING            (PVR_CONDITIONS_START)
 #define PVR_HAS_TIMER               (PVR_CONDITIONS_START + 1)
 #define PVR_HAS_NONRECORDING_TIMER  (PVR_CONDITIONS_START + 2)
-#define PVR_IS_PLAYING_TV           (PVR_CONDITIONS_START + 3)
-#define PVR_IS_PLAYING_RADIO        (PVR_CONDITIONS_START + 4)
-#define PVR_IS_PLAYING_RECORDING    (PVR_CONDITIONS_START + 5)
-#define PVR_ACTUAL_STREAM_ENCRYPTED (PVR_CONDITIONS_START + 6)
-#define PVR_HAS_TV_CHANNELS         (PVR_CONDITIONS_START + 7)
-#define PVR_HAS_RADIO_CHANNELS      (PVR_CONDITIONS_START + 8)
-#define PVR_IS_TIMESHIFTING         (PVR_CONDITIONS_START + 9)
-#define PVR_IS_RECORDING_TV               (PVR_CONDITIONS_START + 10)
-#define PVR_HAS_TV_TIMER                  (PVR_CONDITIONS_START + 11)
-#define PVR_HAS_NONRECORDING_TV_TIMER     (PVR_CONDITIONS_START + 12)
-#define PVR_IS_RECORDING_RADIO            (PVR_CONDITIONS_START + 13)
-#define PVR_HAS_RADIO_TIMER               (PVR_CONDITIONS_START + 14)
-#define PVR_HAS_NONRECORDING_RADIO_TIMER  (PVR_CONDITIONS_START + 15)
+#define PVR_HAS_EPG                 (PVR_CONDITIONS_START + 3)
+#define PVR_HAS_TXT                 (PVR_CONDITIONS_START + 4)
+#define PVR_IS_PLAYING_TV           (PVR_CONDITIONS_START + 5)
+#define PVR_IS_PLAYING_RADIO        (PVR_CONDITIONS_START + 6)
+#define PVR_IS_PLAYING_RECORDING    (PVR_CONDITIONS_START + 7)
+#define PVR_ACTUAL_STREAM_ENCRYPTED (PVR_CONDITIONS_START + 8)
+#define PVR_HAS_TV_CHANNELS         (PVR_CONDITIONS_START + 9)
+#define PVR_HAS_RADIO_CHANNELS      (PVR_CONDITIONS_START + 10)
+#define PVR_IS_TIMESHIFTING         (PVR_CONDITIONS_START + 11)
+#define PVR_IS_RECORDING_TV               (PVR_CONDITIONS_START + 12)
+#define PVR_HAS_TV_TIMER                  (PVR_CONDITIONS_START + 13)
+#define PVR_HAS_NONRECORDING_TV_TIMER     (PVR_CONDITIONS_START + 14)
+#define PVR_IS_RECORDING_RADIO            (PVR_CONDITIONS_START + 15)
+#define PVR_HAS_RADIO_TIMER               (PVR_CONDITIONS_START + 16)
+#define PVR_HAS_NONRECORDING_RADIO_TIMER  (PVR_CONDITIONS_START + 17)
 #define PVR_CONDITIONS_END          PVR_HAS_NONRECORDING_RADIO_TIMER
 
 #define PVR_STRINGS_START           1200
@@ -521,8 +518,7 @@
 #define PVR_RADIO_NEXT_RECORDING_CHANNEL  (PVR_STRINGS_START + 56)
 #define PVR_RADIO_NEXT_RECORDING_CHAN_ICO (PVR_STRINGS_START + 57)
 #define PVR_RADIO_NEXT_RECORDING_DATETIME (PVR_STRINGS_START + 58)
-#define PVR_CHANNEL_NUMBER_INPUT    (PVR_STRINGS_START + 59)
-#define PVR_STRINGS_END             PVR_CHANNEL_NUMBER_INPUT
+#define PVR_STRINGS_END             PVR_HAS_NONRECORDING_RADIO_TIMER
 
 #define ADSP_CONDITIONS_START       1300
 #define ADSP_IS_ACTIVE              (ADSP_CONDITIONS_START)
@@ -717,7 +713,6 @@
 #define LISTITEM_TOP250             (LISTITEM_START + 89)
 #define LISTITEM_RATING_AND_VOTES   (LISTITEM_START + 90)
 #define LISTITEM_TRAILER            (LISTITEM_START + 91)
-#define LISTITEM_APPEARANCES        (LISTITEM_START + 92)
 #define LISTITEM_FILENAME_AND_PATH  (LISTITEM_START + 93)
 #define LISTITEM_SORT_LETTER        (LISTITEM_START + 94)
 #define LISTITEM_ALBUM_ARTIST       (LISTITEM_START + 95)
@@ -807,22 +802,19 @@
 #define LISTITEM_ADDON_ORIGIN       (LISTITEM_START + 177)
 #define LISTITEM_ADDON_NEWS         (LISTITEM_START + 178)
 #define LISTITEM_ADDON_SIZE         (LISTITEM_START + 179)
-#define LISTITEM_EXPIRATION_DATE    (LISTITEM_START + 180)
-#define LISTITEM_EXPIRATION_TIME    (LISTITEM_START + 181)
 
-//! @todo There are issues with the LISTITEM_PROPERTY range, breakage occurs when more than 200 properties are used in skins.
 #define LISTITEM_PROPERTY_START     (LISTITEM_START + 200)
-#define LISTITEM_PROPERTY_END       (LISTITEM_PROPERTY_START + 2300)
+#define LISTITEM_PROPERTY_END       (LISTITEM_PROPERTY_START + 1300)
 #define LISTITEM_END                (LISTITEM_PROPERTY_END)
 
-#define MUSICPLAYER_PROPERTY_OFFSET       1300  // 200 id's reserved for musicplayer props.
-#define LISTITEM_ART_OFFSET               1500  // 200 id's reserved for listitem art.
-#define LISTITEM_RATING_OFFSET      1700 // 200 id's reserved for listitem ratings.
-#define LISTITEM_VOTES_OFFSET       1900 // 200 id's reserved for listitem votes.
-#define LISTITEM_RATING_AND_VOTES_OFFSET  2100 // 200 id's reserved for listitem ratingandvotes.
+#define MUSICPLAYER_PROPERTY_OFFSET       800  // 100 id's reserved for musicplayer props.
+#define LISTITEM_ART_OFFSET               900  // 100 id's reserved for listitem art.
+#define LISTITEM_RATING_OFFSET      1000 // 100 id's reserved for listitem ratings.
+#define LISTITEM_VOTES_OFFSET       1100 // 100 id's reserved for listitem votes.
+#define LISTITEM_RATING_AND_VOTES_OFFSET  1200 // 100 id's reserved for listitem ratingandvotes.
 
-#define CONDITIONAL_LABEL_START       LISTITEM_END + 1 // 37501
-#define CONDITIONAL_LABEL_END         38500
+#define CONDITIONAL_LABEL_START       LISTITEM_END + 1 // 36501
+#define CONDITIONAL_LABEL_END         37000
 
 // the multiple information vector
 #define MULTI_INFO_START              40000

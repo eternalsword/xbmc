@@ -25,48 +25,46 @@
 #include "settings/lib/SettingsManager.h"
 
 CGUIDialogSettingsManagerBase::CGUIDialogSettingsManagerBase(int windowId, const std::string &xmlFile)
-    : CGUIDialogSettingsBase(windowId, xmlFile)
+    : CGUIDialogSettingsBase(windowId, xmlFile),
+      m_settingsManager(NULL)
 { }
 
-CGUIDialogSettingsManagerBase::~CGUIDialogSettingsManagerBase() = default;
-
-std::shared_ptr<CSetting> CGUIDialogSettingsManagerBase::GetSetting(const std::string &settingId)
+CGUIDialogSettingsManagerBase::~CGUIDialogSettingsManagerBase()
 {
-  assert(GetSettingsManager() != nullptr);
-
-  return GetSettingsManager()->GetSetting(settingId);
+  m_settingsManager = NULL;
 }
 
-void CGUIDialogSettingsManagerBase::OnOkay()
+CSetting* CGUIDialogSettingsManagerBase::GetSetting(const std::string &settingId)
 {
-  Save();
+  assert(m_settingsManager != NULL);
 
-  CGUIDialogSettingsBase::OnOkay();
+  return m_settingsManager->GetSetting(settingId);
 }
 
 std::set<std::string> CGUIDialogSettingsManagerBase::CreateSettings()
 {
-  assert(GetSettingsManager() != nullptr);
+  assert(m_settingsManager != NULL);
 
   std::set<std::string> settings = CGUIDialogSettingsBase::CreateSettings();
 
   if (!settings.empty())
-    GetSettingsManager()->RegisterCallback(this, settings);
+    m_settingsManager->RegisterCallback(this, settings);
 
   return settings;
 }
 
 void CGUIDialogSettingsManagerBase::FreeSettingsControls()
 {
+  assert(m_settingsManager != NULL);
+
   CGUIDialogSettingsBase::FreeSettingsControls();
 
-  if (GetSettingsManager() != nullptr)
-    GetSettingsManager()->UnregisterCallback(this);
+  m_settingsManager->UnregisterCallback(this);
 }
 
-std::shared_ptr<ISettingControl> CGUIDialogSettingsManagerBase::CreateControl(const std::string &controlType) const
+ISettingControl* CGUIDialogSettingsManagerBase::CreateControl(const std::string &controlType) const
 {
-  assert(GetSettingsManager() != nullptr);
+  assert(m_settingsManager != NULL);
 
-  return GetSettingsManager()->CreateControl(controlType);
+  return m_settingsManager->CreateControl(controlType);
 }

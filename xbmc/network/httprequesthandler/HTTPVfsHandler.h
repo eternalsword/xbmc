@@ -26,13 +26,13 @@
 class CHTTPVfsHandler : public CHTTPFileHandler
 {
 public:
-  CHTTPVfsHandler() = default;
-  ~CHTTPVfsHandler() override = default;
+  CHTTPVfsHandler() { }
+  virtual ~CHTTPVfsHandler() { }
   
-  IHTTPRequestHandler* Create(const HTTPRequest &request) const override { return new CHTTPVfsHandler(request); }
-  bool CanHandleRequest(const HTTPRequest &request) const override;
+  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) { return new CHTTPVfsHandler(request); }
+  virtual bool CanHandleRequest(const HTTPRequest &request);
 
-  int GetPriority() const override { return 5; }
+  virtual int GetPriority() const { return 5; }
 
 protected:
   explicit CHTTPVfsHandler(const HTTPRequest &request);

@@ -22,7 +22,6 @@
 #include "dll_util.h"
 
 #ifdef TARGET_WINDOWS
-#include "platform/win32/CharsetConverter.h"
 #include <windows.h>
 #endif
 #include <stdlib.h>
@@ -106,16 +105,14 @@ uintptr_t create_dummy_function(const char* strDllName, const char* strFunctionN
 uintptr_t get_win_function_address(const char* strDllName, const char* strFunctionName)
 {
 #ifdef TARGET_WINDOWS
-  using KODI::PLATFORM::WINDOWS::ToW;
-  auto strDllNameW = ToW(strDllName);
-  HMODULE handle = GetModuleHandle(strDllNameW.c_str());
-  if(handle == nullptr)
+  HMODULE handle = GetModuleHandle(strDllName);
+  if(handle == NULL)
   {
-    handle = LoadLibrary(strDllNameW.c_str());
+    handle = LoadLibrary(strDllName);
   }
-  if(handle != nullptr)
+  if(handle != NULL)
   {
-    auto pGNSI = reinterpret_cast<uintptr_t>(GetProcAddress(handle, strFunctionName));
+    uintptr_t pGNSI = (uintptr_t)GetProcAddress(handle, strFunctionName);
     if(pGNSI != NULL)
       return pGNSI;
   }

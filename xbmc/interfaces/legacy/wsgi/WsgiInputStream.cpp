@@ -42,7 +42,8 @@ namespace XBMCAddon
     { }
 #endif
 
-    WsgiInputStreamIterator::~WsgiInputStreamIterator() = default;
+    WsgiInputStreamIterator::~WsgiInputStreamIterator()
+    { }
 
     String WsgiInputStreamIterator::read(unsigned long size /* = 0 */) const
     {

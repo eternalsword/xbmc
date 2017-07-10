@@ -29,17 +29,15 @@
 #include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 #include "addons/Skin.h"
 #include "GUITexture.h"
 #include "utils/Variant.h"
 #include "input/Key.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "utils/SeekHandler.h"
 
 #include "windows/GUIWindowHome.h"
 #include "events/windows/GUIWindowEventLog.h"
-#include "favourites/GUIDialogFavourites.h"
 #include "settings/windows/GUIWindowSettings.h"
 #include "windows/GUIWindowFileManager.h"
 #include "settings/windows/GUIWindowSettingsCategory.h"
@@ -104,6 +102,7 @@
 #include "dialogs/GUIDialogNumeric.h"
 #include "dialogs/GUIDialogGamepad.h"
 #include "dialogs/GUIDialogSubMenu.h"
+#include "dialogs/GUIDialogFavourites.h"
 #include "dialogs/GUIDialogButtonMenu.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogPlayerControls.h"
@@ -112,7 +111,7 @@
 #include "dialogs/GUIDialogSmartPlaylistEditor.h"
 #include "dialogs/GUIDialogSmartPlaylistRule.h"
 #include "pictures/GUIDialogPictureInfo.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
+#include "addons/GUIDialogAddonSettings.h"
 #include "addons/GUIDialogAddonInfo.h"
 #ifdef HAS_LINUX_NETWORK
 #include "network/GUIDialogAccessPoints.h"
@@ -130,11 +129,10 @@
 #include "pvr/dialogs/GUIDialogPVRChannelsOSD.h"
 #include "pvr/dialogs/GUIDialogPVRGroupManager.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
-#include "pvr/dialogs/GUIDialogPVRChannelGuide.h"
+#include "pvr/dialogs/GUIDialogPVRGuideOSD.h"
 #include "pvr/dialogs/GUIDialogPVRGuideSearch.h"
 #include "pvr/dialogs/GUIDialogPVRRadioRDSInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
-#include "pvr/dialogs/GUIDialogPVRRecordingSettings.h"
 #include "pvr/dialogs/GUIDialogPVRTimerSettings.h"
 
 #include "video/dialogs/GUIDialogTeletext.h"
@@ -142,29 +140,29 @@
 #include "dialogs/GUIDialogPlayEject.h"
 #include "dialogs/GUIDialogMediaFilter.h"
 #include "video/dialogs/GUIDialogSubtitles.h"
+#include "settings/dialogs/GUIDialogAudioDSPManager.h"
+#include "settings/dialogs/GUIDialogAudioDSPSettings.h"
 
 #include "peripherals/dialogs/GUIDialogPeripheralSettings.h"
-#include "addons/interfaces/AddonInterfaces.h"
+#include "addons/binary/interfaces/AddonInterfaces.h"
 
 /* Game related include files */
 #include "games/controllers/windows/GUIControllerWindow.h"
-#include "games/windows/GUIWindowGames.h"
-#include "games/dialogs/osd/DialogGameOSD.h"
-#include "games/dialogs/osd/DialogGameVideoSettings.h"
 
-using namespace KODI;
 using namespace PVR;
 using namespace PERIPHERALS;
-using namespace MESSAGING;
+using namespace KODI::MESSAGING;
 
-CGUIWindowManager::CGUIWindowManager()
+CGUIWindowManager::CGUIWindowManager(void)
 {
-  m_pCallback = nullptr;
+  m_pCallback = NULL;
   m_iNested = 0;
   m_initialized = false;
 }
 
-CGUIWindowManager::~CGUIWindowManager() = default;
+CGUIWindowManager::~CGUIWindowManager(void)
+{
+}
 
 void CGUIWindowManager::Initialize()
 {
@@ -259,19 +257,19 @@ void CGUIWindowManager::CreateWindows()
 
   /* Load PVR related Windows and Dialogs */
   Add(new CGUIDialogTeletext);
-  Add(new CGUIWindowPVRTVChannels);
-  Add(new CGUIWindowPVRTVRecordings);
-  Add(new CGUIWindowPVRTVGuide);
-  Add(new CGUIWindowPVRTVTimers);
-  Add(new CGUIWindowPVRTVTimerRules);
-  Add(new CGUIWindowPVRTVSearch);
-  Add(new CGUIWindowPVRRadioChannels);
-  Add(new CGUIWindowPVRRadioRecordings);
-  Add(new CGUIWindowPVRRadioGuide);
-  Add(new CGUIWindowPVRRadioTimers);
-  Add(new CGUIWindowPVRRadioTimerRules);
-  Add(new CGUIWindowPVRRadioSearch);
+  Add(new CGUIWindowPVRChannels(false));
+  Add(new CGUIWindowPVRRecordings(false));
+  Add(new CGUIWindowPVRGuide(false));
+  Add(new CGUIWindowPVRTimers(false));
+  Add(new CGUIWindowPVRTimerRules(false));
+  Add(new CGUIWindowPVRSearch(false));
+  Add(new CGUIWindowPVRChannels(true));
+  Add(new CGUIWindowPVRRecordings(true));
+  Add(new CGUIWindowPVRGuide(true));
+  Add(new CGUIWindowPVRTimers(true));
+  Add(new CGUIWindowPVRTimerRules(true));
   Add(new CGUIDialogPVRRadioRDSInfo);
+  Add(new CGUIWindowPVRSearch(true));
   Add(new CGUIDialogPVRGuideInfo);
   Add(new CGUIDialogPVRRecordingInfo);
   Add(new CGUIDialogPVRTimerSettings);
@@ -279,8 +277,10 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogPVRChannelManager);
   Add(new CGUIDialogPVRGuideSearch);
   Add(new CGUIDialogPVRChannelsOSD);
-  Add(new CGUIDialogPVRChannelGuide);
-  Add(new CGUIDialogPVRRecordingSettings);
+  Add(new CGUIDialogPVRGuideOSD);
+
+  Add(new ActiveAE::CGUIDialogAudioDSPManager);
+  Add(new ActiveAE::CGUIDialogAudioDSPSettings);
 
   Add(new CGUIDialogSelect);
   Add(new CGUIDialogMusicInfo);
@@ -300,127 +300,123 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIWindowEventLog);
 
   Add(new GAME::CGUIControllerWindow);
-  Add(new GAME::CGUIWindowGames);
-  Add(new GAME::CDialogGameOSD);
-  Add(new GAME::CDialogGameVideoSettings);
 }
 
 bool CGUIWindowManager::DestroyWindows()
 {
   try
   {
-    DestroyWindow(WINDOW_SPLASH);
-    DestroyWindow(WINDOW_MUSIC_PLAYLIST);
-    DestroyWindow(WINDOW_MUSIC_PLAYLIST_EDITOR);
-    DestroyWindow(WINDOW_MUSIC_NAV);
-    DestroyWindow(WINDOW_DIALOG_MUSIC_INFO);
-    DestroyWindow(WINDOW_DIALOG_VIDEO_INFO);
-    DestroyWindow(WINDOW_VIDEO_PLAYLIST);
-    DestroyWindow(WINDOW_VIDEO_NAV);
-    DestroyWindow(WINDOW_FILES);
-    DestroyWindow(WINDOW_DIALOG_YES_NO);
-    DestroyWindow(WINDOW_DIALOG_PROGRESS);
-    DestroyWindow(WINDOW_DIALOG_NUMERIC);
-    DestroyWindow(WINDOW_DIALOG_GAMEPAD);
-    DestroyWindow(WINDOW_DIALOG_SUB_MENU);
-    DestroyWindow(WINDOW_DIALOG_BUTTON_MENU);
-    DestroyWindow(WINDOW_DIALOG_CONTEXT_MENU);
-    DestroyWindow(WINDOW_DIALOG_PLAYER_CONTROLS);
-    DestroyWindow(WINDOW_DIALOG_PLAYER_PROCESS_INFO);
-    DestroyWindow(WINDOW_DIALOG_MUSIC_OSD);
-    DestroyWindow(WINDOW_DIALOG_VIS_PRESET_LIST);
-    DestroyWindow(WINDOW_DIALOG_SELECT);
-    DestroyWindow(WINDOW_DIALOG_OK);
-    DestroyWindow(WINDOW_DIALOG_KEYBOARD);
-    DestroyWindow(WINDOW_DIALOG_KEYBOARD_TOUCH);
-    DestroyWindow(WINDOW_FULLSCREEN_VIDEO);
-    DestroyWindow(WINDOW_DIALOG_PROFILE_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_LOCK_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_NETWORK_SETUP);
-    DestroyWindow(WINDOW_DIALOG_MEDIA_SOURCE);
-    DestroyWindow(WINDOW_DIALOG_CMS_OSD_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_VIDEO_OSD_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_AUDIO_OSD_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_VIDEO_BOOKMARKS);
-    DestroyWindow(WINDOW_DIALOG_CONTENT_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_FAVOURITES);
-    DestroyWindow(WINDOW_DIALOG_SONG_INFO);
-    DestroyWindow(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
-    DestroyWindow(WINDOW_DIALOG_SMART_PLAYLIST_RULE);
-    DestroyWindow(WINDOW_DIALOG_BUSY);
-    DestroyWindow(WINDOW_DIALOG_PICTURE_INFO);
-    DestroyWindow(WINDOW_DIALOG_ADDON_INFO);
-    DestroyWindow(WINDOW_DIALOG_ADDON_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_ACCESS_POINTS);
-    DestroyWindow(WINDOW_DIALOG_SLIDER);
-    DestroyWindow(WINDOW_DIALOG_MEDIA_FILTER);
-    DestroyWindow(WINDOW_DIALOG_SUBTITLES);
+    Delete(WINDOW_SPLASH);
+    Delete(WINDOW_MUSIC_PLAYLIST);
+    Delete(WINDOW_MUSIC_PLAYLIST_EDITOR);
+    Delete(WINDOW_MUSIC_NAV);
+    Delete(WINDOW_DIALOG_MUSIC_INFO);
+    Delete(WINDOW_DIALOG_VIDEO_INFO);
+    Delete(WINDOW_VIDEO_PLAYLIST);
+    Delete(WINDOW_VIDEO_NAV);
+    Delete(WINDOW_FILES);
+    Delete(WINDOW_DIALOG_YES_NO);
+    Delete(WINDOW_DIALOG_PROGRESS);
+    Delete(WINDOW_DIALOG_NUMERIC);
+    Delete(WINDOW_DIALOG_GAMEPAD);
+    Delete(WINDOW_DIALOG_SUB_MENU);
+    Delete(WINDOW_DIALOG_BUTTON_MENU);
+    Delete(WINDOW_DIALOG_CONTEXT_MENU);
+    Delete(WINDOW_DIALOG_PLAYER_CONTROLS);
+    Delete(WINDOW_DIALOG_PLAYER_PROCESS_INFO);
+    Delete(WINDOW_DIALOG_MUSIC_OSD);
+    Delete(WINDOW_DIALOG_VIS_PRESET_LIST);
+    Delete(WINDOW_DIALOG_SELECT);
+    Delete(WINDOW_DIALOG_OK);
+    Delete(WINDOW_DIALOG_KEYBOARD);
+    Delete(WINDOW_DIALOG_KEYBOARD_TOUCH);
+    Delete(WINDOW_FULLSCREEN_VIDEO);
+    Delete(WINDOW_DIALOG_PROFILE_SETTINGS);
+    Delete(WINDOW_DIALOG_LOCK_SETTINGS);
+    Delete(WINDOW_DIALOG_NETWORK_SETUP);
+    Delete(WINDOW_DIALOG_MEDIA_SOURCE);
+    Delete(WINDOW_DIALOG_CMS_OSD_SETTINGS);
+    Delete(WINDOW_DIALOG_VIDEO_OSD_SETTINGS);
+    Delete(WINDOW_DIALOG_AUDIO_OSD_SETTINGS);
+    Delete(WINDOW_DIALOG_VIDEO_BOOKMARKS);
+    Delete(WINDOW_DIALOG_CONTENT_SETTINGS);
+    Delete(WINDOW_DIALOG_FAVOURITES);
+    Delete(WINDOW_DIALOG_SONG_INFO);
+    Delete(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
+    Delete(WINDOW_DIALOG_SMART_PLAYLIST_RULE);
+    Delete(WINDOW_DIALOG_BUSY);
+    Delete(WINDOW_DIALOG_PICTURE_INFO);
+    Delete(WINDOW_DIALOG_ADDON_INFO);
+    Delete(WINDOW_DIALOG_ADDON_SETTINGS);
+    Delete(WINDOW_DIALOG_ACCESS_POINTS);
+    Delete(WINDOW_DIALOG_SLIDER);
+    Delete(WINDOW_DIALOG_MEDIA_FILTER);
+    Delete(WINDOW_DIALOG_SUBTITLES);
 
     /* Delete PVR related windows and dialogs */
-    DestroyWindow(WINDOW_TV_CHANNELS);
-    DestroyWindow(WINDOW_TV_RECORDINGS);
-    DestroyWindow(WINDOW_TV_GUIDE);
-    DestroyWindow(WINDOW_TV_TIMERS);
-    DestroyWindow(WINDOW_TV_TIMER_RULES);
-    DestroyWindow(WINDOW_TV_SEARCH);
-    DestroyWindow(WINDOW_RADIO_CHANNELS);
-    DestroyWindow(WINDOW_RADIO_RECORDINGS);
-    DestroyWindow(WINDOW_RADIO_GUIDE);
-    DestroyWindow(WINDOW_RADIO_TIMERS);
-    DestroyWindow(WINDOW_RADIO_TIMER_RULES);
-    DestroyWindow(WINDOW_RADIO_SEARCH);
-    DestroyWindow(WINDOW_DIALOG_PVR_GUIDE_INFO);
-    DestroyWindow(WINDOW_DIALOG_PVR_RECORDING_INFO);
-    DestroyWindow(WINDOW_DIALOG_PVR_TIMER_SETTING);
-    DestroyWindow(WINDOW_DIALOG_PVR_GROUP_MANAGER);
-    DestroyWindow(WINDOW_DIALOG_PVR_CHANNEL_MANAGER);
-    DestroyWindow(WINDOW_DIALOG_PVR_GUIDE_SEARCH);
-    DestroyWindow(WINDOW_DIALOG_PVR_CHANNEL_SCAN);
-    DestroyWindow(WINDOW_DIALOG_PVR_RADIO_RDS_INFO);
-    DestroyWindow(WINDOW_DIALOG_PVR_UPDATE_PROGRESS);
-    DestroyWindow(WINDOW_DIALOG_PVR_OSD_CHANNELS);
-    DestroyWindow(WINDOW_DIALOG_PVR_CHANNEL_GUIDE);
-    DestroyWindow(WINDOW_DIALOG_OSD_TELETEXT);
-    DestroyWindow(WINDOW_DIALOG_PVR_RECORDING_SETTING);
+    Delete(WINDOW_TV_CHANNELS);
+    Delete(WINDOW_TV_RECORDINGS);
+    Delete(WINDOW_TV_GUIDE);
+    Delete(WINDOW_TV_TIMERS);
+    Delete(WINDOW_TV_TIMER_RULES);
+    Delete(WINDOW_TV_SEARCH);
+    Delete(WINDOW_RADIO_CHANNELS);
+    Delete(WINDOW_RADIO_RECORDINGS);
+    Delete(WINDOW_RADIO_GUIDE);
+    Delete(WINDOW_RADIO_TIMERS);
+    Delete(WINDOW_RADIO_TIMER_RULES);
+    Delete(WINDOW_RADIO_SEARCH);
+    Delete(WINDOW_DIALOG_PVR_GUIDE_INFO);
+    Delete(WINDOW_DIALOG_PVR_RECORDING_INFO);
+    Delete(WINDOW_DIALOG_PVR_TIMER_SETTING);
+    Delete(WINDOW_DIALOG_PVR_GROUP_MANAGER);
+    Delete(WINDOW_DIALOG_PVR_CHANNEL_MANAGER);
+    Delete(WINDOW_DIALOG_PVR_GUIDE_SEARCH);
+    Delete(WINDOW_DIALOG_PVR_CHANNEL_SCAN);
+    Delete(WINDOW_DIALOG_PVR_RADIO_RDS_INFO);
+    Delete(WINDOW_DIALOG_PVR_UPDATE_PROGRESS);
+    Delete(WINDOW_DIALOG_PVR_OSD_CHANNELS);
+    Delete(WINDOW_DIALOG_PVR_OSD_GUIDE);
+    Delete(WINDOW_DIALOG_OSD_TELETEXT);
 
-    DestroyWindow(WINDOW_DIALOG_TEXT_VIEWER);
-    DestroyWindow(WINDOW_DIALOG_PLAY_EJECT);
-    DestroyWindow(WINDOW_STARTUP_ANIM);
-    DestroyWindow(WINDOW_LOGIN_SCREEN);
-    DestroyWindow(WINDOW_VISUALISATION);
-    DestroyWindow(WINDOW_SETTINGS_MENU);
-    DestroyWindow(WINDOW_SETTINGS_PROFILES);
-    DestroyWindow(WINDOW_TEST_PATTERN);
-    DestroyWindow(WINDOW_SCREEN_CALIBRATION);
-    DestroyWindow(WINDOW_SYSTEM_INFORMATION);
-    DestroyWindow(WINDOW_SCREENSAVER);
-    DestroyWindow(WINDOW_DIALOG_VIDEO_OSD);
-    DestroyWindow(WINDOW_SLIDESHOW);
-    DestroyWindow(WINDOW_ADDON_BROWSER);
-    DestroyWindow(WINDOW_SKIN_SETTINGS);
+    Delete(WINDOW_DIALOG_AUDIO_DSP_MANAGER);
+    Delete(WINDOW_DIALOG_AUDIO_DSP_OSD_SETTINGS);
 
-    DestroyWindow(WINDOW_HOME);
-    DestroyWindow(WINDOW_PROGRAMS);
-    DestroyWindow(WINDOW_PICTURES);
-    DestroyWindow(WINDOW_WEATHER);
-    DestroyWindow(WINDOW_DIALOG_GAME_CONTROLLERS);
-    DestroyWindow(WINDOW_GAMES);
-    DestroyWindow(WINDOW_DIALOG_GAME_OSD);
-    DestroyWindow(WINDOW_DIALOG_GAME_VIDEO_SETTINGS);
+    Delete(WINDOW_DIALOG_TEXT_VIEWER);
+    Delete(WINDOW_DIALOG_PLAY_EJECT);
+    Delete(WINDOW_STARTUP_ANIM);
+    Delete(WINDOW_LOGIN_SCREEN);
+    Delete(WINDOW_VISUALISATION);
+    Delete(WINDOW_SETTINGS_MENU);
+    Delete(WINDOW_SETTINGS_PROFILES);
+    Delete(WINDOW_SETTINGS_SYSTEM);  // all the settings categories
+    Delete(WINDOW_TEST_PATTERN);
+    Delete(WINDOW_SCREEN_CALIBRATION);
+    Delete(WINDOW_SYSTEM_INFORMATION);
+    Delete(WINDOW_SCREENSAVER);
+    Delete(WINDOW_DIALOG_VIDEO_OSD);
+    Delete(WINDOW_SLIDESHOW);
+    Delete(WINDOW_ADDON_BROWSER);
+    Delete(WINDOW_SKIN_SETTINGS);
 
+    Delete(WINDOW_HOME);
+    Delete(WINDOW_PROGRAMS);
+    Delete(WINDOW_PICTURES);
+    Delete(WINDOW_WEATHER);
+    Delete(WINDOW_DIALOG_GAME_CONTROLLERS);
+
+    Remove(WINDOW_SETTINGS_SYSTEM);
     Remove(WINDOW_SETTINGS_SERVICE);
     Remove(WINDOW_SETTINGS_MYPVR);
     Remove(WINDOW_SETTINGS_PLAYER);
     Remove(WINDOW_SETTINGS_MEDIA);
     Remove(WINDOW_SETTINGS_INTERFACE);
-    Remove(WINDOW_SETTINGS_MYGAMES);
-    DestroyWindow(WINDOW_SETTINGS_SYSTEM);  // all the settings categories
-
     Remove(WINDOW_DIALOG_KAI_TOAST);
+
     Remove(WINDOW_DIALOG_SEEK_BAR);
     Remove(WINDOW_DIALOG_VOLUME_BAR);
 
-    DestroyWindow(WINDOW_EVENT_LOG);
+    Delete(WINDOW_EVENT_LOG);
   }
   catch (...)
   {
@@ -429,18 +425,6 @@ bool CGUIWindowManager::DestroyWindows()
   }
 
   return true;
-}
-
-void CGUIWindowManager::DestroyWindow(int id)
-{
-  CSingleLock lock(g_graphicsContext);
-  CGUIWindow *pWindow = GetWindow(id);
-  if (pWindow)
-  {
-    Remove(id);
-    pWindow->FreeResources(true);
-    delete pWindow;
-  }
 }
 
 bool CGUIWindowManager::SendMessage(int message, int senderID, int destID, int param1, int param2)
@@ -454,7 +438,7 @@ bool CGUIWindowManager::SendMessage(CGUIMessage& message)
   bool handled = false;
 //  CLog::Log(LOGDEBUG,"SendMessage: mess=%d send=%d control=%d param1=%d", message.GetMessage(), message.GetSenderId(), message.GetControlId(), message.GetParam1());
   // Send the message to all none window targets
-  for (int i = 0; i < int(m_vecMsgTargets.size()); i++)
+  for (int i = 0; i < (int) m_vecMsgTargets.size(); i++)
   {
     IMsgTargetCallback* pMsgTarget = m_vecMsgTargets[i];
 
@@ -469,17 +453,17 @@ bool CGUIWindowManager::SendMessage(CGUIMessage& message)
   if (message.GetMessage()==GUI_MSG_NOTIFY_ALL)
   {
     CSingleLock lock(g_graphicsContext);
-
-    for (auto it = m_activeDialogs.rbegin(); it != m_activeDialogs.rend(); ++it)
+    for (rDialog it = m_activeDialogs.rbegin(); it != m_activeDialogs.rend(); ++it)
     {
-      (*it)->OnMessage(message);
+      CGUIWindow *dialog = *it;
+      dialog->OnMessage(message);
     }
 
-    for (const auto& entry : m_mapWindows)
+    for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
     {
-      entry.second->OnMessage(message);
+      CGUIWindow *pWindow = (*it).second;
+      pWindow->OnMessage(message);
     }
-
     return true;
   }
 
@@ -572,18 +556,18 @@ void CGUIWindowManager::Add(CGUIWindow* pWindow)
   }
   // push back all the windows if there are more than one covered by this class
   CSingleLock lock(g_graphicsContext);
-
-  for (int id : pWindow->GetIDRange())
+  m_idCache.Invalidate();
+  const std::vector<int>& idRange = pWindow->GetIDRange();
+  for (std::vector<int>::const_iterator idIt = idRange.begin(); idIt != idRange.end() ; ++idIt)
   {
-    auto it = m_mapWindows.find(id);
+    WindowMap::iterator it = m_mapWindows.find(*idIt);
     if (it != m_mapWindows.end())
     {
       CLog::Log(LOGERROR, "Error, trying to add a second window with id %u "
-                          "to the window manager", id);
+                          "to the window manager", *idIt);
       return;
     }
-
-    m_mapWindows.insert(std::make_pair(id, pWindow));
+    m_mapWindows.insert(std::pair<int, CGUIWindow *>(*idIt, pWindow));
   }
 }
 
@@ -598,9 +582,9 @@ void CGUIWindowManager::RegisterDialog(CGUIWindow* dialog)
 {
   CSingleLock lock(g_graphicsContext);
   // only add the window if it does not exists
-  for (const auto& window : m_activeDialogs)
+  for (const auto& activeDialog : m_activeDialogs)
   {
-    if (window->GetID() == dialog->GetID())
+    if (activeDialog->GetID() == dialog->GetID())
       return;
   }
   m_activeDialogs.push_back(dialog);
@@ -609,15 +593,18 @@ void CGUIWindowManager::RegisterDialog(CGUIWindow* dialog)
 void CGUIWindowManager::Remove(int id)
 {
   CSingleLock lock(g_graphicsContext);
-
-  auto it = m_mapWindows.find(id);
+  m_idCache.Invalidate();
+  WindowMap::iterator it = m_mapWindows.find(id);
   if (it != m_mapWindows.end())
   {
-    CGUIWindow *window = it->second;
-    m_activeDialogs.erase(std::remove_if(m_activeDialogs.begin(),
-                                         m_activeDialogs.end(),
-                                         [window](CGUIWindow* w){ return w == window; }),
-                          m_activeDialogs.end());
+    for(std::vector<CGUIWindow*>::iterator it2 = m_activeDialogs.begin(); it2 != m_activeDialogs.end();)
+    {
+      if(*it2 == it->second)
+        it2 = m_activeDialogs.erase(it2);
+      else
+        ++it2;
+    }
+
     m_mapWindows.erase(it);
   }
   else
@@ -789,26 +776,17 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const std::vector
     if (!pNewWindow->IsDialogRunning())
     {
       CSingleExit exitit(g_graphicsContext);
-      static_cast<CGUIDialog *>(pNewWindow)->Open(params.size() > 0 ? params[0] : "");
+      ((CGUIDialog *)pNewWindow)->Open(params.size() > 0 ? params[0] : "");
     }
     return;
   }
 
-  // don't activate a window if there are active modal dialogs of type MODAL
+  // don't activate a window if there are active modal dialogs of type NORMAL
   if (!force && HasModalDialog({ DialogModalityType::MODAL }))
   {
     CLog::Log(LOGINFO, "Activate of window '%i' refused because there are active modal dialogs", iWindowID);
     g_audioManager.PlayActionSound(CAction(ACTION_ERROR));
     return;
-  }
-
-  // pause game when leaving fullscreen or resume game when entering fullscreen
-  if (g_application.m_pPlayer->IsPlayingGame())
-  {
-    if (GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO && !g_application.m_pPlayer->IsPaused())
-      g_application.OnAction(ACTION_PAUSE);
-    else if (iWindowID == WINDOW_FULLSCREEN_VIDEO && g_application.m_pPlayer->IsPaused())
-      g_application.OnAction(ACTION_PAUSE);
   }
 
   g_infoManager.SetNextWindow(iWindowID);
@@ -846,9 +824,9 @@ void CGUIWindowManager::CloseDialogs(bool forceClose) const
     return;
 
   auto activeDialogs = m_activeDialogs;
-  for (const auto& window : activeDialogs)
+  for (const auto& dialog : activeDialogs)
   {
-    window->Close(forceClose);
+    dialog->Close(forceClose);
   }
 }
 
@@ -859,10 +837,10 @@ void CGUIWindowManager::CloseInternalModalDialogs(bool forceClose) const
     return;
 
   auto activeDialogs = m_activeDialogs;
-  for (const auto& window : activeDialogs)
+  for (const auto& dialog : activeDialogs)
   {
-    if (window->IsModalDialog() && !IsAddonWindow(window->GetID()) && !IsPythonWindow(window->GetID()))
-      window->Close(forceClose);
+    if (dialog->IsModalDialog() && !IsAddonWindow(dialog->GetID()) && !IsPythonWindow(dialog->GetID()))
+      dialog->Close(forceClose);
   }
 }
 
@@ -994,8 +972,6 @@ bool CGUIWindowManager::OnAction(const CAction &action) const
           break;
         return false;
       }
-      CLog::Log(LOGWARNING, "CGUIWindowManager - %s - ignoring action %i, because topmost modal dialog closing animation is running",
-                __FUNCTION__, action.GetID());
       return true; // do nothing with the action until the anim is finished
     }
     lock.Enter();
@@ -1019,27 +995,27 @@ void CGUIWindowManager::Process(unsigned int currentTime)
   assert(g_application.IsCurrentThread());
   CSingleLock lock(g_graphicsContext);
 
-  m_dirtyregions.clear();
+  CDirtyRegionList dirtyregions;
 
   CGUIWindow* pWindow = GetWindow(GetActiveWindow());
   if (pWindow)
-    pWindow->DoProcess(currentTime, m_dirtyregions);
+    pWindow->DoProcess(currentTime, dirtyregions);
 
   // process all dialogs - visibility may change etc.
-  for (const auto& entry : m_mapWindows)
+  for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
-    CGUIWindow *pWindow = entry.second;
+    CGUIWindow *pWindow = (*it).second;
     if (pWindow && pWindow->IsDialog())
-      pWindow->DoProcess(currentTime, m_dirtyregions);
+      pWindow->DoProcess(currentTime, dirtyregions);
   }
 
-  for (CDirtyRegionList::iterator itr = m_dirtyregions.begin(); itr != m_dirtyregions.end(); ++itr)
+  for (CDirtyRegionList::iterator itr = dirtyregions.begin(); itr != dirtyregions.end(); ++itr)
     m_tracker.MarkDirtyRegion(*itr);
 }
 
 void CGUIWindowManager::MarkDirty()
 {
-  m_tracker.MarkDirtyRegion(CRect(0, 0, float(g_graphicsContext.GetWidth()), float(g_graphicsContext.GetHeight())));
+  m_tracker.MarkDirtyRegion(CRect(0, 0, (float)g_graphicsContext.GetWidth(), (float)g_graphicsContext.GetHeight()));
 }
 
 void CGUIWindowManager::MarkDirty(const CRect& rect)
@@ -1057,13 +1033,13 @@ void CGUIWindowManager::RenderPass() const
   }
 
   // we render the dialogs based on their render order.
-  auto renderList = m_activeDialogs;
+  std::vector<CGUIWindow *> renderList = m_activeDialogs;
   stable_sort(renderList.begin(), renderList.end(), RenderOrderSortFunction);
 
-  for (const auto& window : renderList)
+  for (iDialog it = renderList.begin(); it != renderList.end(); ++it)
   {
-    if (window->IsDialogRunning())
-      window->DoRender();
+    if ((*it)->IsDialogRunning())
+      (*it)->DoRender();
   }
 }
 
@@ -1143,16 +1119,11 @@ void CGUIWindowManager::AfterRender()
     pWindow->AfterRender();
 
   // make copy of vector as we may remove items from it as we go
-  auto activeDialogs = m_activeDialogs;
-  for (const auto& window : activeDialogs)
+  std::vector<CGUIWindow *> activeDialogs = m_activeDialogs;
+  for (iDialog it = activeDialogs.begin(); it != activeDialogs.end(); ++it)
   {
-    if (window->IsDialogRunning())
-    {
-      window->AfterRender();
-      // Dialog state can affect visibility states
-      if (pWindow && window->IsControlDirty())
-        pWindow->MarkDirtyRegion();
-    }
+    if ((*it)->IsDialogRunning())
+      (*it)->AfterRender();
   }
 }
 
@@ -1164,11 +1135,11 @@ void CGUIWindowManager::FrameMove()
   if(m_iNested == 0)
   {
     // delete any windows queued for deletion
-    for (const auto& window : m_deleteWindows)
+    for(iDialog it = m_deleteWindows.begin(); it != m_deleteWindows.end(); ++it)
     {
       // Free any window resources
-      window->FreeResources(true);
-      delete window;
+      (*it)->FreeResources(true);
+      delete *it;
     }
     m_deleteWindows.clear();
   }
@@ -1178,34 +1149,32 @@ void CGUIWindowManager::FrameMove()
     pWindow->FrameMove();
   // update any dialogs - we take a copy of the vector as some dialogs may close themselves
   // during this call
-  auto dialogs = m_activeDialogs;
-  for (const auto& window : dialogs)
-  {
-    window->FrameMove();
-  }
+  std::vector<CGUIWindow *> dialogs = m_activeDialogs;
+  for (iDialog it = dialogs.begin(); it != dialogs.end(); ++it)
+    (*it)->FrameMove();
 
   g_infoManager.UpdateAVInfo();
 }
 
-CGUIDialog* CGUIWindowManager::GetDialog(int id) const
-{
-  CGUIWindow *window = GetWindow(id);
-  if (window && window->IsDialog())
-    return dynamic_cast<CGUIDialog*>(window);
-  return nullptr;
-}
-
 CGUIWindow* CGUIWindowManager::GetWindow(int id) const
 {
+  CGUIWindow *window;
   if (id == 0 || id == WINDOW_INVALID)
-    return nullptr;
+    return NULL;
 
   CSingleLock lock(g_graphicsContext);
 
-  auto it = m_mapWindows.find(id);
+  window = m_idCache.Get(id);
+  if (window)
+    return window;
+
+  WindowMap::const_iterator it = m_mapWindows.find(id);
   if (it != m_mapWindows.end())
-    return it->second;
-  return nullptr;
+    window = (*it).second;
+  else
+    window = NULL;
+  m_idCache.Set(id, window);
+  return window;
 }
 
 void CGUIWindowManager::ProcessRenderLoop(bool renderOnly /*= false*/)
@@ -1229,13 +1198,10 @@ void CGUIWindowManager::SetCallback(IWindowManagerCallback& callback)
 void CGUIWindowManager::DeInitialize()
 {
   CSingleLock lock(g_graphicsContext);
-
-  // Need a copy bacause addon-dialogs remove itself on Close()
-  std::unordered_map<int, CGUIWindow*> closeMap(m_mapWindows);
-  for (const auto& entry : closeMap)
+  for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
-    CGUIWindow* pWindow = entry.second;
-    if (IsWindowActive(entry.first, false))
+    CGUIWindow* pWindow = (*it).second;
+    if (IsWindowActive(it->first, false))
     {
       pWindow->DisableAnimations();
       pWindow->Close(true);
@@ -1248,10 +1214,9 @@ void CGUIWindowManager::DeInitialize()
   m_vecMsgTargets.erase( m_vecMsgTargets.begin(), m_vecMsgTargets.end() );
 
   // destroy our custom windows...
-  for (int i = 0; i < int(m_vecCustomWindows.size()); i++)
+  for (int i = 0; i < (int)m_vecCustomWindows.size(); i++)
   {
     CGUIWindow *pWindow = m_vecCustomWindows[i];
-    RemoveFromWindowHistory(pWindow->GetID());
     Remove(pWindow->GetID());
     delete pWindow;
   }
@@ -1268,24 +1233,28 @@ void CGUIWindowManager::DeInitialize()
 void CGUIWindowManager::RemoveDialog(int id)
 {
   CSingleLock lock(g_graphicsContext);
-  m_activeDialogs.erase(std::remove_if(m_activeDialogs.begin(),
-                                       m_activeDialogs.end(),
-                                       [id](CGUIWindow* dialog) { return dialog->GetID() == id; }),
-                         m_activeDialogs.end());
+  for (iDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
+  {
+    if ((*it)->GetID() == id)
+    {
+      m_activeDialogs.erase(it);
+      return;
+    }
+  }
 }
 
-bool CGUIWindowManager::HasModalDialog(const std::vector<DialogModalityType>& types, bool ignoreClosing /* = true */) const
+bool CGUIWindowManager::HasModalDialog(const std::vector<DialogModalityType>& types) const
 {
   CSingleLock lock(g_graphicsContext);
-  for (const auto& window : m_activeDialogs)
+  for (ciDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
   {
-    if (window->IsDialog() &&
-        window->IsModalDialog() &&
-        (!ignoreClosing || !window->IsAnimating(ANIM_TYPE_WINDOW_CLOSE)))
+    if ((*it)->IsDialog() &&
+        (*it)->IsModalDialog() &&
+        !(*it)->IsAnimating(ANIM_TYPE_WINDOW_CLOSE))
     {
       if (!types.empty())
       {
-        CGUIDialog *dialog = static_cast<CGUIDialog*>(window);
+        CGUIDialog *dialog = static_cast<CGUIDialog*>(*it);
         for (const auto &type : types)
         {
           if (dialog->GetModalityType() == type)
@@ -1299,11 +1268,6 @@ bool CGUIWindowManager::HasModalDialog(const std::vector<DialogModalityType>& ty
   return false;
 }
 
-bool CGUIWindowManager::HasVisibleModalDialog(const std::vector<DialogModalityType>& types) const
-{
-  return HasModalDialog(types, false);
-}
-
 bool CGUIWindowManager::HasDialogOnScreen() const
 {
   return (m_activeDialogs.size() > 0);
@@ -1314,7 +1278,7 @@ bool CGUIWindowManager::HasDialogOnScreen() const
 int CGUIWindowManager::GetTopMostModalDialogID(bool ignoreClosing /*= false*/) const
 {
   CSingleLock lock(g_graphicsContext);
-  for (auto it = m_activeDialogs.rbegin(); it != m_activeDialogs.rend(); ++it)
+  for (crDialog it = m_activeDialogs.rbegin(); it != m_activeDialogs.rend(); ++it)
   {
     CGUIWindow *dialog = *it;
     if (dialog->IsModalDialog() && (!ignoreClosing || !dialog->IsAnimating(ANIM_TYPE_WINDOW_CLOSE)))
@@ -1415,7 +1379,7 @@ int CGUIWindowManager::GetActiveWindow() const
   return WINDOW_INVALID;
 }
 
-int CGUIWindowManager::GetActiveWindowID() const
+int CGUIWindowManager::GetActiveWindowID()
 {
   // Get the currently active window
   int iWin = GetActiveWindow() & WINDOW_ID_MASK;
@@ -1431,24 +1395,13 @@ int CGUIWindowManager::GetActiveWindowID() const
     if (g_application.m_pPlayer->IsInMenu())
       iWin = WINDOW_VIDEO_MENU;
     // check for LiveTV and switch to it's virtual window
-    else if (CServiceBroker::GetPVRManager().IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
+    else if (g_PVRManager.IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
       iWin = WINDOW_FULLSCREEN_LIVETV;
-    // special casing for numeric seek
-    else if (CSeekHandler::GetInstance().HasTimeCode())
-      iWin = WINDOW_VIDEO_TIME_SEEK;
-    // check if a game is playing
-    else if (g_application.m_pPlayer->IsPlayingGame())
-      iWin = WINDOW_FULLSCREEN_GAME;
   }
-  if (iWin == WINDOW_VISUALISATION)
-  {
-    // special casing for PVR radio
-    if (CServiceBroker::GetPVRManager().IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
-      iWin = WINDOW_FULLSCREEN_RADIO;
-    // special casing for numeric seek
-    else if (CSeekHandler::GetInstance().HasTimeCode())
-      iWin = WINDOW_VIDEO_TIME_SEEK;
-  }
+  // special casing for PVR radio
+  if (iWin == WINDOW_VISUALISATION && g_PVRManager.IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
+    iWin = WINDOW_FULLSCREEN_RADIO;
+
   // Return the window id
   return iWin;
 }
@@ -1470,8 +1423,9 @@ bool CGUIWindowManager::IsWindowActive(int id, bool ignoreClosing /* = true */) 
   if ((GetActiveWindow() & WINDOW_ID_MASK) == id) return true;
   // run through the dialogs
   CSingleLock lock(g_graphicsContext);
-  for (const auto& window : m_activeDialogs)
+  for (ciDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
   {
+    CGUIWindow *window = *it;
     if ((window->GetID() & WINDOW_ID_MASK) == id && (!ignoreClosing || !window->IsAnimating(ANIM_TYPE_WINDOW_CLOSE)))
       return true;
   }
@@ -1485,8 +1439,9 @@ bool CGUIWindowManager::IsWindowActive(const std::string &xmlFile, bool ignoreCl
   if (window && StringUtils::EqualsNoCase(URIUtils::GetFileName(window->GetProperty("xmlfile").asString()), xmlFile))
     return true;
   // run through the dialogs
-  for (const auto& window : m_activeDialogs)
+  for (ciDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
   {
+    CGUIWindow *window = *it;
     if (StringUtils::EqualsNoCase(URIUtils::GetFileName(window->GetProperty("xmlfile").asString()), xmlFile) &&
         (!ignoreClosing || !window->IsAnimating(ANIM_TYPE_WINDOW_CLOSE)))
       return true;
@@ -1507,9 +1462,9 @@ bool CGUIWindowManager::IsWindowVisible(const std::string &xmlFile) const
 void CGUIWindowManager::LoadNotOnDemandWindows()
 {
   CSingleLock lock(g_graphicsContext);
-  for (const auto& entry : m_mapWindows)
+  for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
-    CGUIWindow *pWindow = entry.second;
+    CGUIWindow *pWindow = (*it).second;
     if (pWindow->GetLoadType() == CGUIWindow::LOAD_ON_GUI_INIT)
     {
       pWindow->FreeResources(true);
@@ -1521,9 +1476,9 @@ void CGUIWindowManager::LoadNotOnDemandWindows()
 void CGUIWindowManager::UnloadNotOnDemandWindows()
 {
   CSingleLock lock(g_graphicsContext);
-  for (const auto& entry : m_mapWindows)
+  for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
-    CGUIWindow *pWindow = entry.second;
+    CGUIWindow *pWindow = (*it).second;
     if (pWindow->GetLoadType() == CGUIWindow::LOAD_ON_GUI_INIT ||
         pWindow->GetLoadType() == CGUIWindow::KEEP_IN_MEMORY)
     {
@@ -1556,23 +1511,15 @@ void CGUIWindowManager::AddToWindowHistory(int newWindowID)
   }
 }
 
-void CGUIWindowManager::RemoveFromWindowHistory(int windowID)
+void CGUIWindowManager::GetActiveModelessWindows(std::vector<int> &ids)
 {
-  std::stack<int> stack = m_windowHistory;
-
-  // pop windows from stack until we found the window
-  while (!stack.empty())
+  // run through our modeless windows, and construct a vector of them
+  // useful for saving and restoring the modeless windows on skin change etc.
+  CSingleLock lock(g_graphicsContext);
+  for (iDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
   {
-    if (stack.top() == windowID)
-      break;
-    stack.pop();
-  }
-
-  // found window in history
-  if (!stack.empty())
-  {
-    stack.pop(); // remove window from stack
-    m_windowHistory = stack;
+    if (!(*it)->IsModalDialog())
+      ids.push_back((*it)->GetID());
   }
 }
 
@@ -1580,11 +1527,11 @@ CGUIWindow *CGUIWindowManager::GetTopMostDialog() const
 {
   CSingleLock lock(g_graphicsContext);
   // find the window with the lowest render order
-  auto renderList = m_activeDialogs;
+  std::vector<CGUIWindow *> renderList = m_activeDialogs;
   stable_sort(renderList.begin(), renderList.end(), RenderOrderSortFunction);
 
   if (!renderList.size())
-    return nullptr;
+    return NULL;
 
   // return the last window in the list
   return *renderList.rbegin();
@@ -1604,19 +1551,6 @@ bool CGUIWindowManager::IsWindowTopMost(const std::string &xmlFile) const
   if (topMost && StringUtils::EqualsNoCase(URIUtils::GetFileName(topMost->GetProperty("xmlfile").asString()), xmlFile))
     return true;
   return false;
-}
-
-bool CGUIWindowManager::HasVisibleControls()
-{
-  CSingleExit lock(g_graphicsContext);
-
-  if (m_activeDialogs.empty())
-  {
-    CGUIWindow *window(GetWindow(GetActiveWindow()));
-    return !window || window->HasVisibleControls();
-  }
-  else
-    return true;
 }
 
 void CGUIWindowManager::ClearWindowHistory()
@@ -1640,10 +1574,10 @@ void CGUIWindowManager::DumpTextureUse()
     pWindow->DumpTextureUse();
 
   CSingleLock lock(g_graphicsContext);
-  for (const auto& window : m_activeDialogs)
+  for (iDialog it = m_activeDialogs.begin(); it != m_activeDialogs.end(); ++it)
   {
-    if (window->IsDialogRunning())
-      window->DumpTextureUse();
+    if ((*it)->IsDialogRunning())
+      (*it)->DumpTextureUse();
   }
 }
 #endif

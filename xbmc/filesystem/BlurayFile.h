@@ -29,9 +29,9 @@ namespace XFILE
   {
   public:
     CBlurayFile();
-    ~CBlurayFile() override;
+    virtual ~CBlurayFile();
 
   protected:
-    std::string TranslatePath(const CURL& url) override;
+    virtual std::string TranslatePath(const CURL& url);
   };
 }

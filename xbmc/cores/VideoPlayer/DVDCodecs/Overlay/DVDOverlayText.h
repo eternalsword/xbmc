@@ -50,7 +50,9 @@ public:
       m_type = src.m_type;
     }
 
-    virtual ~CElement() = default;
+    virtual ~CElement()
+    {
+    }
 
     bool IsElementType(ElementType type) { return (type == m_type); }
 
@@ -88,7 +90,9 @@ public:
     const char* GetTextPtr()
     { return m_text.c_str(); }
 
-    virtual ~CElementText() = default;
+    virtual ~CElementText()
+    {  }
+
   };
 
   class CElementProperty : public CElement

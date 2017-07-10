@@ -23,14 +23,14 @@
 
 #pragma once
 
-#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/AudioDSP.h"
+#include "addons/DllAudioDSP.h"
 #include "cores/AudioEngine/Utils/AEAudioFormat.h"
 
 class CAudioSettings
 {
 public:
   CAudioSettings();
-  ~CAudioSettings() = default;
+  ~CAudioSettings() {};
 
   bool operator!=(const CAudioSettings &right) const;
 

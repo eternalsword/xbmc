@@ -20,7 +20,6 @@
  */
 
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "pvr/PVRTypes.h"
 #include "pvr/addons/PVRClients.h"
 #include "threads/CriticalSection.h"
 #include "threads/SystemClock.h"
@@ -28,22 +27,31 @@
 #include "utils/Observer.h"
 
 #include <atomic>
-#include <string>
+#include <memory>
 #include <vector>
+
+namespace EPG
+{
+  class CEpgInfoTag;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+}
 
 namespace PVR
 {
+  class CPVRTimerInfoTag;
+  class CPVRRecording;
+
   class CPVRGUIInfo : private CThread,
                       private Observer
   {
   public:
     CPVRGUIInfo(void);
-    ~CPVRGUIInfo(void) override;
+    virtual ~CPVRGUIInfo(void);
 
     void Start(void);
     void Stop(void);
 
-    void Notify(const Observable &obs, const ObservableMessage msg) override;
+    void Notify(const Observable &obs, const ObservableMessage msg);
 
     bool TranslateBoolInfo(DWORD dwInfo) const;
     bool TranslateCharInfo(DWORD dwInfo, std::string &strValue) const;
@@ -77,7 +85,7 @@ namespace PVR
      * @brief Get the currently playing EPG tag.
      * @return The currently playing EPG tag or NULL if no EPG tag is playing.
      */
-    CPVREpgInfoTagPtr GetPlayingTag() const;
+    EPG::CEpgInfoTagPtr GetPlayingTag() const;
 
     /*!
      * @brief Get playing TV group.
@@ -90,7 +98,7 @@ namespace PVR
     {
     public:
       TimerInfo();
-      virtual ~TimerInfo() = default;
+      virtual ~TimerInfo() {}
 
       void ResetProperties();
 
@@ -142,7 +150,7 @@ namespace PVR
     class AnyTimerInfo : public TimerInfo
     {
     public:
-      AnyTimerInfo() = default;
+      AnyTimerInfo() {};
 
     private:
       int AmountActiveTimers() override;
@@ -154,7 +162,7 @@ namespace PVR
     class TVTimerInfo : public TimerInfo
     {
     public:
-      TVTimerInfo() = default;
+      TVTimerInfo() {};
 
     private:
       int AmountActiveTimers() override;
@@ -166,7 +174,7 @@ namespace PVR
     class RadioTimerInfo : public TimerInfo
     {
     public:
-      RadioTimerInfo() = default;
+      RadioTimerInfo() {};
 
     private:
       int AmountActiveTimers() override;
@@ -177,15 +185,12 @@ namespace PVR
 
     void ResetProperties(void);
     void ClearQualityInfo(PVR_SIGNAL_STATUS &qualityInfo);
-    void ClearDescrambleInfo(PVR_DESCRAMBLE_INFO &descrambleInfo);
-
-    void Process(void) override;
+    void Process(void);
 
     void UpdatePlayingTag(void);
     void UpdateTimersCache(void);
     void UpdateBackendCache(void);
     void UpdateQualityData(void);
-    void UpdateDescrambleData(void);
     void UpdateMisc(void);
     void UpdateNextTimer(void);
     void UpdateTimeshift(void);
@@ -250,9 +255,8 @@ namespace PVR
     //@}
 
     PVR_SIGNAL_STATUS               m_qualityInfo;       /*!< stream quality information */
-    PVR_DESCRAMBLE_INFO             m_descrambleInfo;    /*!< stream descramble information */
     XbmcThreads::EndTime            m_ToggleShowInfo;
-    CPVREpgInfoTagPtr               m_playingEpgTag;
+    EPG::CEpgInfoTagPtr             m_playingEpgTag;
     std::vector<SBackend>           m_backendProperties;
 
     bool                            m_bIsTimeshifting;

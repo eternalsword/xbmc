@@ -24,16 +24,13 @@
  *
  */
 
-#include <map>
 #include <memory>
-#include <string>
 #include <utility>
 #include <vector>
 
 #include "addons/IAddon.h"
 #include "guilib/GUIListItem.h"
 #include "GUIPassword.h"
-#include "pvr/PVRTypes.h"
 #include "threads/CriticalSection.h"
 #include "utils/IArchivable.h"
 #include "utils/ISerializable.h"
@@ -46,15 +43,23 @@ namespace MUSIC_INFO
   class CMusicInfoTag;
 }
 class CVideoInfoTag;
+namespace EPG
+{
+  class CEpgInfoTag;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+}
+namespace PVR
+{
+  class CPVRChannel;
+  class CPVRRecording;
+  class CPVRTimerInfoTag;
+  class CPVRRadioRDSInfoTag;
+  typedef std::shared_ptr<PVR::CPVRRecording> CPVRRecordingPtr;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
+  typedef std::shared_ptr<PVR::CPVRTimerInfoTag> CPVRTimerInfoTagPtr;
+  typedef std::shared_ptr<PVR::CPVRRadioRDSInfoTag> CPVRRadioRDSInfoTagPtr;
+}
 class CPictureInfoTag;
-
-namespace KODI
-{
-namespace GAME
-{
-  class CGameInfoTag;
-}
-}
 
 class CAlbum;
 class CArtist;
@@ -68,15 +73,10 @@ class CFileItemList;
 class CCueDocument;
 typedef std::shared_ptr<CCueDocument> CCueDocumentPtr;
 
-class IEvent;
-typedef std::shared_ptr<const IEvent> EventPtr;
-
 /* special startoffset used to indicate that we wish to resume */
 #define STARTOFFSET_RESUME (-1)
 
 class CMediaSource;
-
-class CBookmark;
 
 enum EFileFolderType {
   EFILEFOLDER_TYPE_ALWAYS     = 1<<0,
@@ -114,16 +114,14 @@ public:
   CFileItem(const CGenre& genre);
   CFileItem(const MUSIC_INFO::CMusicInfoTag& music);
   CFileItem(const CVideoInfoTag& movie);
-  CFileItem(const PVR::CPVREpgInfoTagPtr& tag);
+  CFileItem(const EPG::CEpgInfoTagPtr& tag);
   CFileItem(const PVR::CPVRChannelPtr& channel);
   CFileItem(const PVR::CPVRRecordingPtr& record);
   CFileItem(const PVR::CPVRTimerInfoTagPtr& timer);
   CFileItem(const CMediaSource& share);
   CFileItem(std::shared_ptr<const ADDON::IAddon> addonInfo);
-  CFileItem(const EventPtr& eventLogEntry);
-
-  ~CFileItem(void) override;
-  CGUIListItem *Clone() const override { return new CFileItem(*this); };
+  virtual ~CFileItem(void);
+  virtual CGUIListItem *Clone() const { return new CFileItem(*this); };
 
   const CURL GetURL() const;
   void SetURL(const CURL& url);
@@ -138,11 +136,11 @@ public:
    */
   void Reset();
   const CFileItem& operator=(const CFileItem& item);
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
-  void ToSortable(SortItem &sortable, Field field) const override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
+  virtual void ToSortable(SortItem &sortable, Field field) const;
   void ToSortable(SortItem &sortable, const Fields &fields) const;
-  bool IsFileItem() const override { return true; };
+  virtual bool IsFileItem() const { return true; };
 
   bool Exists(bool bUseCache = true) const;
 
@@ -179,19 +177,6 @@ public:
    */
   bool IsAudio() const;
 
-  /*!
-   \brief Check whether an item is 'deleted' (for example, a trashed pvr recording).
-   \return true if item is 'deleted', false otherwise.
-   */
-  bool IsDeleted() const;
-
-  /*!
-   \brief Check whether an item is an audio book item.
-   \return true if item is audiobook, false otherwise.
-   */
-  bool IsAudioBook() const;
-
-  bool IsGame() const;
   bool IsCUESheet() const;
   bool IsInternetStream(const bool bStrictCheck = false) const;
   bool IsPlayList() const;
@@ -250,10 +235,10 @@ public:
   void CleanString();
   void FillInDefaultIcon();
   void SetFileSizeLabel();
-  void SetLabel(const std::string &strLabel) override;
+  virtual void SetLabel(const std::string &strLabel);
   int GetVideoContentType() const; /* return VIDEODB_CONTENT_TYPE, but don't want to include videodb in this header */
-  bool IsLabelPreformatted() const { return m_bLabelPreformatted; }
-  void SetLabelPreformatted(bool bYesNo) { m_bLabelPreformatted=bYesNo; }
+  bool IsLabelPreformated() const { return m_bLabelPreformated; }
+  void SetLabelPreformated(bool bYesNo) { m_bLabelPreformated=bYesNo; }
   bool SortsOnTop() const { return m_specialSort == SortSpecialOnTop; }
   bool SortsOnBottom() const { return m_specialSort == SortSpecialOnBottom; }
   void SetSpecialSort(SortSpecial sort) { m_specialSort = sort; }
@@ -270,23 +255,29 @@ public:
     return m_musicInfoTag;
   }
 
-  bool HasVideoInfoTag() const;
+  inline bool HasVideoInfoTag() const
+  {
+    return m_videoInfoTag != NULL;
+  }
 
   CVideoInfoTag* GetVideoInfoTag();
 
-  const CVideoInfoTag* GetVideoInfoTag() const;
+  inline const CVideoInfoTag* GetVideoInfoTag() const
+  {
+    return m_videoInfoTag;
+  }
 
   inline bool HasEPGInfoTag() const
   {
     return m_epgInfoTag.get() != NULL;
   }
 
-  inline const PVR::CPVREpgInfoTagPtr GetEPGInfoTag() const
+  inline const EPG::CEpgInfoTagPtr GetEPGInfoTag() const
   {
     return m_epgInfoTag;
   }
 
-  inline void SetEPGInfoTag(const PVR::CPVREpgInfoTagPtr& tag)
+  inline void SetEPGInfoTag(const EPG::CEpgInfoTagPtr& tag)
   {
     m_epgInfoTag = tag;
   }
@@ -337,12 +328,6 @@ public:
   }
 
   /*!
-   \brief return the item to play. will be almost 'this', but can be different (e.g. "Play recording" from PVR EPG grid window)
-   \return the item to play
-   */
-  CFileItem GetItemToPlay() const;
-
-  /*!
    \brief Test if this item has a valid resume point set.
    \return True if this item has a resume point and it is set, false otherwise.
    */
@@ -353,14 +338,6 @@ public:
    \return The time in seconds from the start to resume playing from.
    */
   double GetCurrentResumeTime() const;
-
-  /*!
-   \brief Return the current resume time and part.
-   \param startOffset will be filled with the resume time offset in seconds if item has a resume point set, is unchanged otherwise
-   \param partNumber will be filled with the part number if item has a resume point set, is unchanged otherwise
-   \return True if the item has a resume point set, false otherwise.
-   */
-  bool GetCurrentResumeTimeAndPartNumber(int& startOffset, int& partNumber) const;
 
   inline bool HasPictureInfoTag() const
   {
@@ -374,18 +351,6 @@ public:
 
   bool HasAddonInfo() const { return m_addonInfo != nullptr; }
   const std::shared_ptr<const ADDON::IAddon> GetAddonInfo() const { return m_addonInfo; }
-
-  inline bool HasGameInfoTag() const
-  {
-    return m_gameInfoTag != NULL;
-  }
-
-  KODI::GAME::CGameInfoTag* GetGameInfoTag();
-
-  inline const KODI::GAME::CGameInfoTag* GetGameInfoTag() const
-  {
-    return m_gameInfoTag;
-  }
 
   CPictureInfoTag* GetPictureInfoTag();
 
@@ -457,7 +422,6 @@ public:
   std::string FindTrailer() const;
 
   virtual bool LoadMusicTag();
-  virtual bool LoadGameTag();
 
   /* Returns the content type of this item if known */
   const std::string& GetMimeType() const { return m_mimetype; }
@@ -560,32 +524,24 @@ private:
    */
   void Initialize();
 
-  /*!
-   \brief Return the current resume point for this item.
-   \return The resume point.
-   */
-  CBookmark GetResumePoint() const;
-
   std::string m_strPath;            ///< complete path to item
 
   SortSpecial m_specialSort;
   bool m_bIsParentFolder;
   bool m_bCanQueue;
-  bool m_bLabelPreformatted;
+  bool m_bLabelPreformated;
   std::string m_mimetype;
   std::string m_extrainfo;
   bool m_doContentLookup;
   MUSIC_INFO::CMusicInfoTag* m_musicInfoTag;
   CVideoInfoTag* m_videoInfoTag;
-  PVR::CPVREpgInfoTagPtr m_epgInfoTag;
+  EPG::CEpgInfoTagPtr m_epgInfoTag;
   PVR::CPVRChannelPtr m_pvrChannelInfoTag;
   PVR::CPVRRecordingPtr m_pvrRecordingInfoTag;
   PVR::CPVRTimerInfoTagPtr m_pvrTimerInfoTag;
   PVR::CPVRRadioRDSInfoTagPtr m_pvrRadioRDSInfoTag;
   CPictureInfoTag* m_pictureInfoTag;
   std::shared_ptr<const ADDON::IAddon> m_addonInfo;
-  KODI::GAME::CGameInfoTag* m_gameInfoTag;
-  EventPtr m_eventLogEntry;
   bool m_bIsAlbum;
 
   CCueDocumentPtr m_cueDocument;
@@ -641,8 +597,8 @@ public:
 
   CFileItemList();
   explicit CFileItemList(const std::string& strPath);
-  ~CFileItemList() override;
-  void Archive(CArchive& ar) override;
+  virtual ~CFileItemList();
+  virtual void Archive(CArchive& ar);
   CFileItemPtr operator[] (int iItem);
   const CFileItemPtr operator[] (int iItem) const;
   CFileItemPtr operator[] (const std::string& strPath);
@@ -761,13 +717,6 @@ public:
   const std::string &GetContent() const { return m_content; };
 
   void ClearSortState();
-
-  VECFILEITEMS::const_iterator begin() { return m_items.cbegin(); }
-  VECFILEITEMS::const_iterator end() { return m_items.cend(); }
-  VECFILEITEMS::const_iterator begin() const { return m_items.begin(); }
-  VECFILEITEMS::const_iterator end() const { return m_items.end(); }
-  VECFILEITEMS::const_iterator cbegin() const { return m_items.begin(); }
-  VECFILEITEMS::const_iterator cend() const { return m_items.end(); }
 private:
   void Sort(FILEITEMLISTCOMPARISONFUNC func);
   void FillSortFields(FILEITEMFILLFUNC func);

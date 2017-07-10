@@ -34,12 +34,12 @@ namespace XFILE
 class CUPnPDirectory :  public IDirectory
 {
 public:
-    CUPnPDirectory(void) = default;
-    ~CUPnPDirectory(void) override = default;
+    CUPnPDirectory(void) {}
+    virtual ~CUPnPDirectory(void) {}
 
     // IDirectory methods
-    bool GetDirectory(const CURL& url, CFileItemList &items) override;
-    bool AllowAll() const override { return true; }
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+    virtual bool AllowAll() const { return true; }
 
     // class methods
     static const char* GetFriendlyName(const CURL& url);

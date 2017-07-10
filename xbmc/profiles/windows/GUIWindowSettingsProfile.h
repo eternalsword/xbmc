@@ -27,11 +27,11 @@ class CGUIWindowSettingsProfile :
 {
 public:
   CGUIWindowSettingsProfile(void);
-  ~CGUIWindowSettingsProfile(void) override;
-  bool OnMessage(CGUIMessage& message) override;
+  virtual ~CGUIWindowSettingsProfile(void);
+  virtual bool OnMessage(CGUIMessage& message);
 
 protected:
-  void OnInitWindow() override;
+  virtual void OnInitWindow();
   CFileItemList *m_listItems;
 
   void OnPopupMenu(int iItem);

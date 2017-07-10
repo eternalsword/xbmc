@@ -19,8 +19,7 @@
  *
  */
 
-#include "pvr/PVRTypes.h"
-
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -29,9 +28,8 @@ struct PVR_TIMER_TYPE;
 
 namespace PVR
 {
-  static const int DEFAULT_RECORDING_PRIORITY = 50;
-  static const int DEFAULT_RECORDING_LIFETIME = 99; // days
-  static const unsigned int DEFAULT_RECORDING_DUPLICATEHANDLING = 0;
+  class CPVRTimerType;
+  typedef std::shared_ptr<CPVRTimerType> CPVRTimerTypePtr;
 
   class CPVRTimerType
   {
@@ -277,12 +275,6 @@ namespace PVR
     bool SupportsRecordingGroup() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_RECORDING_GROUP) > 0; }
 
     /*!
-     * @brief Check whether this type supports 'any channel', for example for defining a timer rule that should match any channel instead of a particular channel.
-     * @return True if any channel is supported, false otherwise.
-     */
-    bool SupportsAnyChannel() const { return (m_iAttributes & PVR_TIMER_TYPE_SUPPORTS_ANY_CHANNEL) > 0; }
-
-    /*!
      * @brief Obtain a list with all possible values for the priority attribute.
      * @param list out, the list with the values or an empty list, if priority is not supported by this type.
      */
@@ -296,7 +288,7 @@ namespace PVR
 
     /*!
      * @brief Obtain a list with all possible values for the lifetime attribute.
-     * @param list out, the list with the values or an empty list, if lifetime is not supported by this type.
+     * @param list out, the list with the values or an empty list, if liftime is not supported by this type.
      */
     void GetLifetimeValues(std::vector< std::pair<std::string, int> > &list) const;
 
@@ -341,6 +333,7 @@ namespace PVR
      * @return the default value.
      */
     int GetRecordingGroupDefault() const { return m_iRecordingGroupDefault; }
+
 
   private:
     void InitAttributeValues(const PVR_TIMER_TYPE &type);

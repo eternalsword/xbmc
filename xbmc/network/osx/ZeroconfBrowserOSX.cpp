@@ -121,7 +121,7 @@ namespace
 
 CZeroconfBrowserOSX::CZeroconfBrowserOSX():m_runloop(0)
 {
-  //acquire the main threads event loop
+  //aquire the main threads event loop
   m_runloop = CFRunLoopGetMain();
 }
 

@@ -26,9 +26,15 @@
 using namespace PLAYLIST;
 using namespace XFILE;
 
-CPlaylistDirectory::CPlaylistDirectory() = default;
+CPlaylistDirectory::CPlaylistDirectory()
+{
 
-CPlaylistDirectory::~CPlaylistDirectory() = default;
+}
+
+CPlaylistDirectory::~CPlaylistDirectory()
+{
+
+}
 
 bool CPlaylistDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -41,7 +47,7 @@ bool CPlaylistDirectory::GetDirectory(const CURL& url, CFileItemList &items)
   if (playlistTyp==PLAYLIST_NONE)
     return false;
 
-  CPlayList& playlist = CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlistTyp);
+  CPlayList& playlist = g_playlistPlayer.GetPlaylist(playlistTyp);
   items.Reserve(playlist.size());
 
   for (int i = 0; i < playlist.size(); ++i)

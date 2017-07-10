@@ -38,6 +38,7 @@
 @property (getter = isConfirmed) BOOL _confirmed;
 @property (assign, setter = registerKeyboard:) CIOSKeyboard *_iosKeyboard;
 
+- (void) setDefault:(NSString *)defaultText;
 - (void) setHeading:(NSString *)heading;
 - (void) setHidden:(BOOL)hidden;
 - (void) activate;

@@ -248,19 +248,22 @@ static const XBMCKEYTABLE XBMCKeyTable[] =
 
 static int XBMCKeyTableSize = sizeof(XBMCKeyTable)/sizeof(XBMCKEYTABLE);
 
-bool KeyTableLookupName(std::string keyname, XBMCKEYTABLE* keytable)
+bool KeyTableLookupName(const char* keyname, XBMCKEYTABLE* keytable)
 {
-  // If the name being searched for is empty there will be no match
-  if (keyname.empty())
+  // If the name being searched for is null or "" there will be no match
+  if (!keyname)
+    return false;
+  if (keyname[0] == '\0')
     return false;
 
   // We need the button name to be in lowercase
-  StringUtils::ToLower(keyname);
+  std::string lkeyname = keyname;
+  StringUtils::ToLower(lkeyname);
 
   // Look up the key name in XBMCKeyTable
   for (int i = 0; i < XBMCKeyTableSize; i++)
   { if (XBMCKeyTable[i].keyname)
-    { if (strcmp(keyname.c_str(), XBMCKeyTable[i].keyname) == 0)
+    { if (strcmp(lkeyname.c_str(), XBMCKeyTable[i].keyname) == 0)
       { *keytable = XBMCKeyTable[i];
         return true;
       }

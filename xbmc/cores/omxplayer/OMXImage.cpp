@@ -18,13 +18,14 @@
  *
  */
 
-#if defined(TARGET_WINDOWS)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#elif defined(TARGET_WINDOWS)
 #include "system.h"
 #endif
 
 #include "OMXImage.h"
 
-#include "ServiceBroker.h"
 #include "utils/log.h"
 #include "linux/XMemUtils.h"
 
@@ -262,7 +263,7 @@ bool COMXImage::AllocTextureInternal(EGLDisplay egl_display, EGLContext egl_cont
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  GLenum type = CServiceBroker::GetSettings().GetBool("videoscreen.textures32") ? GL_UNSIGNED_BYTE:GL_UNSIGNED_SHORT_5_6_5;
+  GLenum type = CSettings::GetInstance().GetBool("videoscreen.textures32") ? GL_UNSIGNED_BYTE:GL_UNSIGNED_SHORT_5_6_5;
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, tex->width, tex->height, 0, GL_RGB, type, 0);
   tex->egl_image = eglCreateImageKHR(egl_display, egl_context, EGL_GL_TEXTURE_2D_KHR, (EGLClientBuffer)tex->texture, NULL);
   if (!tex->egl_image)
@@ -720,7 +721,7 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
         // Exif header
         if(READ32(p) == 0x45786966)
         {
-          bool bMotorola = false;
+          bool bMotorolla = false;
           bool bError = false;
           SKIPN(p, 1 * 2);
           readBits += 2;
@@ -731,9 +732,9 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
 
           /* Discover byte order */
           if(o1 == 'M' && o2 == 'M')
-            bMotorola = true;
+            bMotorolla = true;
           else if(o1 == 'I' && o2 == 'I')
-            bMotorola = false;
+            bMotorolla = false;
           else
             bError = true;
         
@@ -745,7 +746,7 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
             unsigned int offset, a, b, numberOfTags, tagNumber;
   
             // Get first IFD offset (offset to IFD0)
-            if(bMotorola)
+            if(bMotorolla)
             {
               SKIPN(p, 1 * 2);
               readBits += 2;
@@ -774,7 +775,7 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
             } 
 
             // Get the number of directory entries contained in this IFD
-            if(bMotorola)
+            if(bMotorolla)
             {
               a = READ8(p);
               b = READ8(p);
@@ -791,7 +792,7 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
             while(numberOfTags && p < q)
             {
               // Get Tag number
-              if(bMotorola)
+              if(bMotorolla)
               {
                 a = READ8(p);
                 b = READ8(p);
@@ -809,7 +810,7 @@ OMX_IMAGE_CODINGTYPE COMXImageFile::GetCodingType(unsigned int &width, unsigned 
               //found orientation tag
               if(tagNumber == EXIF_TAG_ORIENTATION)
               {
-                if(bMotorola)
+                if(bMotorolla)
                 {
                   SKIPN(p, 1 * 7);
                   readBits += 7;

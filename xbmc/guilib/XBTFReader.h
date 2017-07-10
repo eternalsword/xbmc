@@ -31,7 +31,7 @@ class CXBTFReader : public CXBTFBase
 {
 public:
   CXBTFReader();
-  ~CXBTFReader() override;
+  ~CXBTFReader();
 
   bool Open(const std::string& path);
   bool IsOpen() const;

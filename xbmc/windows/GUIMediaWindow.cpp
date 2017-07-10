@@ -20,7 +20,6 @@
 
 #include "GUIMediaWindow.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "ContextMenuManager.h"
 #include "FileItemListModification.h"
@@ -31,16 +30,18 @@
 #include "URL.h"
 #include "Util.h"
 #include "addons/AddonManager.h"
+#include "addons/GUIDialogAddonSettings.h"
 #include "addons/PluginSource.h"
 #if defined(TARGET_ANDROID)
 #include "platform/android/activity/XBMCApp.h"
 #endif
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogMediaFilter.h"
+#include "dialogs/GUIDialogMediaSource.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogSmartPlaylistEditor.h"
-#include "favourites/FavouritesService.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "filesystem/File.h"
 #include "filesystem/FileDirectoryFactory.h"
 #include "filesystem/MultiPathDirectory.h"
@@ -50,6 +51,7 @@
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "interfaces/builtins/Builtins.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "input/Key.h"
 #include "network/Network.h"
@@ -66,6 +68,7 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+#include "video/VideoLibraryQueue.h"
 #include "view/GUIViewState.h"
 
 #define CONTROL_BTNVIEWASICONS       2
@@ -74,6 +77,9 @@
 #define CONTROL_BTN_FILTER          19
 
 #define CONTROL_LABELFILES          12
+
+#define CONTROL_VIEW_START          50
+#define CONTROL_VIEW_END            59
 
 #define PROPERTY_PATH_DB            "path.db"
 #define PROPERTY_SORT_ORDER         "sort.order"
@@ -103,17 +109,13 @@ CGUIMediaWindow::~CGUIMediaWindow()
   delete m_unfilteredItems;
 }
 
-bool CGUIMediaWindow::Load(TiXmlElement *pRootElement)
+void CGUIMediaWindow::LoadAdditionalTags(TiXmlElement *root)
 {
-  bool retVal = CGUIWindow::Load(pRootElement);
-
-  if (!retVal)
-    return false;
-
+  CGUIWindow::LoadAdditionalTags(root);
   // configure our view control
   m_viewControl.Reset();
   m_viewControl.SetParentWindow(GetID());
-  TiXmlElement *element = pRootElement->FirstChildElement("views");
+  TiXmlElement *element = root->FirstChildElement("views");
   if (element && element->FirstChild())
   { // format is <views>50,29,51,95</views>
     const std::string &allViews = element->FirstChild()->ValueStr();
@@ -126,9 +128,18 @@ bool CGUIMediaWindow::Load(TiXmlElement *pRootElement)
         m_viewControl.AddView(control);
     }
   }
+  else
+  { // backward compatibility
+    std::vector<CGUIControl *> controls;
+    GetContainers(controls);
+    for (ciControls it = controls.begin(); it != controls.end(); it++)
+    {
+      CGUIControl *control = *it;
+      if (control->GetID() >= CONTROL_VIEW_START && control->GetID() <= CONTROL_VIEW_END)
+        m_viewControl.AddView(control);
+    }
+  }
   m_viewControl.SetViewControlID(CONTROL_BTNVIEWASICONS);
-
-  return true;
 }
 
 void CGUIMediaWindow::OnWindowLoaded()
@@ -472,11 +483,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
     {
       if (m_vecItems->GetPath() == "?")
         m_vecItems->SetPath("");
-      std::string path, fileName;
       std::string dir = message.GetStringParam(0);
-      URIUtils::Split(dir, path, fileName);
-      if (StringUtils::IsInteger(fileName))
-        dir = path;
       const std::string &ret = message.GetStringParam(1);
       bool returning = StringUtils::EqualsNoCase(ret, "return");
       if (!dir.empty())
@@ -496,10 +503,7 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
           resetHistory = true;
         }
         if (resetHistory)
-        {  
-          m_vecItems->RemoveDiscCache(GetID());
           SetHistoryForPath(m_vecItems->GetPath());
-        }
       }
       if (message.GetParam1() != WINDOW_INVALID)
       { // first time to this window - make sure we set the root path
@@ -508,9 +512,6 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
       if (message.GetParam2() == PLUGIN_REFRESH_DELAY)
       {
         Refresh();
-        SetInitialVisibility();
-        RestoreControlStates();
-        SetInitialVisibility();
         return true;
       }
     }
@@ -520,14 +521,9 @@ bool CGUIMediaWindow::OnMessage(CGUIMessage& message)
   return CGUIWindow::OnMessage(message);
 }
 
-/*!
- * \brief Updates the states
- *
- * This updates the states (enable, disable, visible...) of the controls defined
- * by this window.
- *
- * \note Override this function in a derived class to add new controls
- */
+// \brief Updates the states (enable, disable, visible...)
+// of the controls defined by this window
+// Override this function in a derived class to add new controls
 void CGUIMediaWindow::UpdateButtons()
 {
   if (m_guiState.get())
@@ -570,12 +566,7 @@ void CGUIMediaWindow::ClearFileItems()
   m_unfilteredItems->Clear();
 }
 
-/*!
- * \brief Sort file items
- *
- * This sorts file items based on the sort method and sort order provided by
- * guiViewState.
- */
+// \brief Sorts Fileitems based on the sort method and sort oder provided by guiViewState
 void CGUIMediaWindow::SortItems(CFileItemList &items)
 {
   std::unique_ptr<CGUIViewState> guiState(CGUIViewState::GetViewState(GetID(), items));
@@ -596,7 +587,7 @@ void CGUIMediaWindow::SortItems(CFileItemList &items)
       {
         sorting.sortBy = sortBy;
         sorting.sortOrder = items.GetProperty(PROPERTY_SORT_ASCENDING).asBoolean() ? SortOrderAscending : SortOrderDescending;
-        sorting.sortAttributes = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone;
+        sorting.sortAttributes = CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone;
 
         // if the sort order is descending, we need to switch the original sort order, as we assume
         // in CGUIViewState::AddPlaylistOrder that SortByPlaylistOrder is ascending.
@@ -609,11 +600,7 @@ void CGUIMediaWindow::SortItems(CFileItemList &items)
   }
 }
 
-/*!
- * \brief Formats item labels
- *
- * This is based on the formatting provided by guiViewState.
- */
+// \brief Formats item labels based on the formatting provided by guiViewState
 void CGUIMediaWindow::FormatItemLabels(CFileItemList &items, const LABEL_MASKS &labelMasks)
 {
   CLabelFormatter fileFormatter(labelMasks.m_strLabelFile, labelMasks.m_strLabel2File);
@@ -622,7 +609,7 @@ void CGUIMediaWindow::FormatItemLabels(CFileItemList &items, const LABEL_MASKS &
   {
     CFileItemPtr pItem=items[i];
 
-    if (pItem->IsLabelPreformatted())
+    if (pItem->IsLabelPreformated())
       continue;
 
     if (pItem->m_bIsFolder)
@@ -635,11 +622,7 @@ void CGUIMediaWindow::FormatItemLabels(CFileItemList &items, const LABEL_MASKS &
     items.ClearSortState();
 }
 
-/*!
- * \brief Format and sort file items
- *
- * Prepares and adds the fileitems to list/thumb panel
- */
+// \brief Prepares and adds the fileitems list/thumb panel
 void CGUIMediaWindow::FormatAndSort(CFileItemList &items)
 {
   std::unique_ptr<CGUIViewState> viewState(CGUIViewState::GetViewState(GetID(), items));
@@ -655,12 +638,10 @@ void CGUIMediaWindow::FormatAndSort(CFileItemList &items)
 }
 
 /*!
- * \brief Overwrite to fill fileitems from a source
- *
- * \param[in] strDirectory Path to read
- * \param[out] items Fill with items specified in \e strDirectory
- * \return false if given directory not present
- */
+  \brief Overwrite to fill fileitems from a source
+  \param strDirectory Path to read
+  \param items Fill with items specified in \e strDirectory
+  */
 bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemList &items)
 {
   const CURL pathToUrl(strDirectory);
@@ -688,7 +669,7 @@ bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemLis
       SetupShares();
     
     CFileItemList dirItems;
-    if (!m_rootDir.GetDirectory(pathToUrl, dirItems, UseFileDirectories()))
+    if (!m_rootDir.GetDirectory(pathToUrl, dirItems))
       return false;
     
     // assign fetched directory items
@@ -706,14 +687,7 @@ bool CGUIMediaWindow::GetDirectory(const std::string &strDirectory, CFileItemLis
   // update the view state's reference to the current items
   m_guiState.reset(CGUIViewState::GetViewState(GetID(), items));
 
-  bool bHideParent = false;
-
-  if (m_guiState && m_guiState->HideParentDirItems())
-    bHideParent = true;
-  if (items.GetPath() == GetRootPath())
-    bHideParent = true;
-
-  if (!bHideParent)
+  if (m_guiState.get() && !m_guiState->HideParentDirItems() && items.GetPath() != GetRootPath())
   {
     CFileItemPtr pItem(new CFileItem(".."));
     pItem->SetPath(strParentPath);
@@ -790,21 +764,6 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
   }
 
   if (m_vecItems->GetLabel().empty())
-  {
-    // Removable sources
-    VECSOURCES removables;
-    g_mediaManager.GetRemovableDrives(removables);
-    for (auto s : removables)
-    {
-      if (URIUtils::CompareWithoutSlashAtEnd(s.strPath, m_vecItems->GetPath()))
-      {
-        m_vecItems->SetLabel(s.strName);
-        break;
-      }
-    }
-  }
-
-  if (m_vecItems->GetLabel().empty())
     m_vecItems->SetLabel(CUtil::GetTitleFromPath(m_vecItems->GetPath(), true));
 
   // check the given path for filter data
@@ -823,8 +782,6 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
       showLabel = 997;
     else if (iWindow == WINDOW_FILES)
       showLabel = 1026;
-    else if (iWindow == WINDOW_GAMES)
-      showLabel = 35250; // "Add games..."
   }
   if (m_vecItems->IsPath("sources://video/"))
     showLabel = 999;
@@ -834,8 +791,6 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
     showLabel = 997;
   else if (m_vecItems->IsPath("sources://files/"))
     showLabel = 1026;
-  else if (m_vecItems->IsPath("sources://games/"))
-    showLabel = 35250; // "Add games..."
   if (showLabel && (m_vecItems->Size() == 0 || !m_guiState->DisableAddSourceButtons())) // add 'add source button'
   {
     std::string strLabel = g_localizeStrings.Get(showLabel);
@@ -843,7 +798,7 @@ bool CGUIMediaWindow::Update(const std::string &strDirectory, bool updateFilterP
     pItem->SetPath("add");
     pItem->SetIconImage("DefaultAddSource.png");
     pItem->SetLabel(strLabel);
-    pItem->SetLabelPreformatted(true);
+    pItem->SetLabelPreformated(true);
     pItem->m_bIsFolder = true;
     pItem->SetSpecialSort(SortSpecialOnBottom);
     m_vecItems->Add(pItem);
@@ -898,30 +853,18 @@ bool CGUIMediaWindow::Refresh(bool clearCache /* = false */)
   return true;
 }
 
-/*!
- * \brief On prepare file items
- *
- * This function will be called by Update() before the labels of the fileitems
- * are formatted.
- *
- * \note Override this function to set custom thumbs or load additional media
- * info.
- *
- * It's used to load tag info for music.
- */
+// \brief This function will be called by Update() before the
+// labels of the fileitems are formatted. Override this function
+// to set custom thumbs or load additional media info.
+// It's used to load tag info for music.
 void CGUIMediaWindow::OnPrepareFileItems(CFileItemList &items)
 {
   CFileItemListModification::GetInstance().Modify(items);
 }
 
-/*!
- * \brief On cache file items
- *
- * This function will be called by Update() before
- * any additional formatting, filtering or sorting is applied.
- * 
- * \note Override this function to define a custom caching behaviour.
- */
+// \brief This function will be called by Update() before
+// any additional formatting, filtering or sorting is applied.
+// Override this function to define a custom caching behaviour.
 void CGUIMediaWindow::OnCacheFileItems(CFileItemList &items)
 {
   // Should these items be saved to the hdd
@@ -929,13 +872,9 @@ void CGUIMediaWindow::OnCacheFileItems(CFileItemList &items)
     items.Save(GetID());
 }
 
-/*!
- * \brief On click
- *
- * With this function you can react on a users click in the list/thumb panel.
- * It returns true, if the click is handled.
- * This function calls OnPlayMedia()
- */
+// \brief With this function you can react on a users click in the list/thumb panel.
+// It returns true, if the click is handled.
+// This function calls OnPlayMedia()
 bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
 {
   if ( iItem < 0 || iItem >= (int)m_vecItems->Size() ) return true;
@@ -964,7 +903,7 @@ bool CGUIMediaWindow::OnClick(int iItem, const std::string &player)
 
   if (!pItem->m_bIsFolder && pItem->IsFileFolder(EFILEFOLDER_MASK_ONCLICK))
   {
-    XFILE::IFileDirectory *pFileDirectory = nullptr;
+    XFILE::IFileDirectory *pFileDirectory = NULL;
     pFileDirectory = XFILE::CFileDirectoryFactory::Create(pItem->GetURL(), pItem.get(), "");
     if(pFileDirectory)
       pItem->m_bIsFolder = true;
@@ -1104,12 +1043,8 @@ bool CGUIMediaWindow::OnSelect(int item)
   return OnClick(item);
 }
 
-/*!
- * \brief Check disc or connection present
- *
- * Checks if there is a disc in the dvd drive and whether the
- * network is connected or not.
- */
+// \brief Checks if there is a disc in the dvd drive and whether the
+// network is connected or not.
 bool CGUIMediaWindow::HaveDiscOrConnection(const std::string& strPath, int iDriveType)
 {
   if (iDriveType==CMediaSource::SOURCE_TYPE_DVD)
@@ -1133,10 +1068,8 @@ bool CGUIMediaWindow::HaveDiscOrConnection(const std::string& strPath, int iDriv
   return true;
 }
 
-/*!
- * \brief Shows a standard error message for a given pItem.
- */
-void CGUIMediaWindow::ShowShareErrorMessage(CFileItem* pItem) const
+// \brief Shows a standard errormessage for a given pItem.
+void CGUIMediaWindow::ShowShareErrorMessage(CFileItem* pItem)
 {
   if (!pItem->m_bIsShareOrDrive)
     return;
@@ -1154,11 +1087,7 @@ void CGUIMediaWindow::ShowShareErrorMessage(CFileItem* pItem) const
   CGUIDialogOK::ShowAndGetInput(CVariant{220}, CVariant{idMessageText});
 }
 
-/*!
- * \brief Go one directory up on list items
- *
- * The function goes up one level in the directory tree
- */
+// \brief The functon goes up one level in the directory tree
 bool CGUIMediaWindow::GoParentFolder()
 {
   if (m_vecItems->IsVirtualDirectoryRoot())
@@ -1250,20 +1179,16 @@ void CGUIMediaWindow::RestoreSelectedItemFromHistory()
   m_viewControl.SetSelectedItem(0);
 }
 
-/*!
- * \brief Get history string for given file item
- *
- * \note Override the function to change the default behavior on how
- * a selected item history should look like
- */
-void CGUIMediaWindow::GetDirectoryHistoryString(const CFileItem* pItem, std::string& strHistoryString) const
+// \brief Override the function to change the default behavior on how
+// a selected item history should look like
+void CGUIMediaWindow::GetDirectoryHistoryString(const CFileItem* pItem, std::string& strHistoryString)
 {
   if (pItem->m_bIsShareOrDrive)
   {
-    // We are in the virtual directory
+    // We are in the virual directory
 
     // History string of the DVD drive
-    // must be handled separately
+    // must be handel separately
     if (pItem->m_iDriveType == CMediaSource::SOURCE_TYPE_DVD)
     {
       // Remove disc label from item label
@@ -1284,7 +1209,7 @@ void CGUIMediaWindow::GetDirectoryHistoryString(const CFileItem* pItem, std::str
     }
     else
     {
-      // Other items in virtual directory
+      // Other items in virual directory
       std::string strPath = pItem->GetPath();
       URIUtils::RemoveSlashAtEnd(strPath);
 
@@ -1314,12 +1239,8 @@ void CGUIMediaWindow::GetDirectoryHistoryString(const CFileItem* pItem, std::str
   StringUtils::ToLower(strHistoryString);
 }
 
-/*!
- * \brief Set history for path
- *
- * Call this function to create a directory history for the
- * path given by strDirectory.
- */
+// \brief Call this function to create a directory history for the
+// path given by strDirectory.
 void CGUIMediaWindow::SetHistoryForPath(const std::string& strDirectory)
 {
   // Make sure our shares are configured
@@ -1332,7 +1253,7 @@ void CGUIMediaWindow::SetHistoryForPath(const std::string& strDirectory)
     URIUtils::RemoveSlashAtEnd(strPath);
 
     CFileItemList items;
-    m_rootDir.GetDirectory(CURL(), items, UseFileDirectories());
+    m_rootDir.GetDirectory(CURL(), items);
 
     m_history.ClearPathHistory();
 
@@ -1384,20 +1305,15 @@ void CGUIMediaWindow::SetHistoryForPath(const std::string& strDirectory)
   //m_history.DumpPathHistory();
 }
 
-/*!
- * \brief On media play
- *
- * \note Override if you want to change the default behavior, what is done
- * when the user clicks on a file.
- *
- * This function is called by OnClick()
- */
+// \brief Override if you want to change the default behavior, what is done
+// when the user clicks on a file.
+// This function is called by OnClick()
 bool CGUIMediaWindow::OnPlayMedia(int iItem, const std::string &player)
 {
   // Reset Playlistplayer, playback started now does
   // not use the playlistplayer.
-  CServiceBroker::GetPlaylistPlayer().Reset();
-  CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(PLAYLIST_NONE);
+  g_playlistPlayer.Reset();
+  g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_NONE);
   CFileItemPtr pItem=m_vecItems->Get(iItem);
 
   CLog::Log(LOGDEBUG, "%s %s", __FUNCTION__, CURL::GetRedacted(pItem->GetPath()).c_str());
@@ -1414,22 +1330,17 @@ bool CGUIMediaWindow::OnPlayMedia(int iItem, const std::string &player)
   return bResult;
 }
 
-/*!
- * \brief On play and media queue
- *
- * \note Override if you want to change the default behavior of what is done
- * when the user clicks on a file in a "folder" with similar files.
- *
- * This function is called by OnClick()
- */
+// \brief Override if you want to change the default behavior of what is done
+// when the user clicks on a file in a "folder" with similar files.
+// This function is called by OnClick()
 bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item, std::string player)
 {
   //play and add current directory to temporary playlist
   int iPlaylist = m_guiState->GetPlaylist();
   if (iPlaylist != PLAYLIST_NONE)
   {
-    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(iPlaylist);
-    CServiceBroker::GetPlaylistPlayer().Reset();
+    g_playlistPlayer.ClearPlaylist(iPlaylist);
+    g_playlistPlayer.Reset();
     int mediaToPlay = 0;
     
     // first try to find mainDVD file (VIDEO_TS.IFO). 
@@ -1454,11 +1365,11 @@ bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item, std::string 
         continue;
 
       if (!nItem->IsPlayList() && !nItem->IsZIP() && !nItem->IsRAR() && (!nItem->IsDVDFile() || (URIUtils::GetFileName(nItem->GetPath()) == mainDVD)))
-        CServiceBroker::GetPlaylistPlayer().Add(iPlaylist, nItem);
+        g_playlistPlayer.Add(iPlaylist, nItem);
 
       if (item->IsSamePath(nItem.get()))
       { // item that was clicked
-        mediaToPlay = CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).size() - 1;
+        mediaToPlay = g_playlistPlayer.GetPlaylist(iPlaylist).size() - 1;
       }
     }
 
@@ -1467,27 +1378,23 @@ bool CGUIMediaWindow::OnPlayAndQueueMedia(const CFileItemPtr &item, std::string 
       m_guiState->SetPlaylistDirectory(m_vecItems->GetPath());
 
     // figure out where we start playback
-    if (CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist))
+    if (g_playlistPlayer.IsShuffled(iPlaylist))
     {
-      int iIndex = CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).FindOrder(mediaToPlay);
-      CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).Swap(0, iIndex);
+      int iIndex = g_playlistPlayer.GetPlaylist(iPlaylist).FindOrder(mediaToPlay);
+      g_playlistPlayer.GetPlaylist(iPlaylist).Swap(0, iIndex);
       mediaToPlay = 0;
     }
 
     // play
-    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(iPlaylist);
-    CServiceBroker::GetPlaylistPlayer().Play(mediaToPlay, player);
+    g_playlistPlayer.SetCurrentPlaylist(iPlaylist);
+    g_playlistPlayer.Play(mediaToPlay, player);
   }
   return true;
 }
 
-/*!
- * \brief Update file list
- *
- * Synchronize the fileitems with the playlistplayer
- * also recreates the playlist of the playlistplayer based
- * on the fileitems of the window
- */
+// \brief Synchonize the fileitems with the playlistplayer
+// It recreated the playlist of the playlistplayer based
+// on the fileitems of the window
 void CGUIMediaWindow::UpdateFileList()
 {
   int nItem = m_viewControl.GetSelectedItem();
@@ -1505,13 +1412,13 @@ void CGUIMediaWindow::UpdateFileList()
   if (m_guiState.get() && m_guiState->IsCurrentPlaylistDirectory(m_vecItems->GetPath()))
   {
     int iPlaylist=m_guiState->GetPlaylist();
-    int nSong = CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
+    int nSong = g_playlistPlayer.GetCurrentSong();
     CFileItem playlistItem;
     if (nSong > -1 && iPlaylist > -1)
-      playlistItem=*CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist)[nSong];
+      playlistItem=*g_playlistPlayer.GetPlaylist(iPlaylist)[nSong];
 
-    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(iPlaylist);
-    CServiceBroker::GetPlaylistPlayer().Reset();
+    g_playlistPlayer.ClearPlaylist(iPlaylist);
+    g_playlistPlayer.Reset();
 
     for (int i = 0; i < m_vecItems->Size(); i++)
     {
@@ -1520,11 +1427,11 @@ void CGUIMediaWindow::UpdateFileList()
         continue;
 
       if (!pItem->IsPlayList() && !pItem->IsZIP() && !pItem->IsRAR())
-        CServiceBroker::GetPlaylistPlayer().Add(iPlaylist, pItem);
+        g_playlistPlayer.Add(iPlaylist, pItem);
 
       if (pItem->GetPath() == playlistItem.GetPath() &&
           pItem->m_lStartOffset == playlistItem.m_lStartOffset)
-        CServiceBroker::GetPlaylistPlayer().SetCurrentSong(CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).size() - 1);
+        g_playlistPlayer.SetCurrentSong(g_playlistPlayer.GetPlaylist(iPlaylist).size() - 1);
     }
   }
 }
@@ -1579,8 +1486,8 @@ void CGUIMediaWindow::OnInitWindow()
   }
   else
   {
-    CGUIMessage msg(GUI_MSG_WINDOW_INIT, 0, 0, WINDOW_INVALID, PLUGIN_REFRESH_DELAY);
-    g_windowManager.SendThreadMessage(msg, GetID());
+    CGUIMessage msg(GUI_MSG_WINDOW_INIT, 0, 0, 0, PLUGIN_REFRESH_DELAY);
+    g_windowManager.SendThreadMessage(msg, m_controlID);
   }
 
   if (updateStartDirectory)
@@ -1706,7 +1613,7 @@ void CGUIMediaWindow::GetContextButtons(int itemNumber, CContextButtons &buttons
       !URIUtils::IsProtocol(item->GetPath(), "musicsearch") &&
       !StringUtils::StartsWith(item->GetPath(), "pvr://guide/") && !StringUtils::StartsWith(item->GetPath(), "pvr://timers/"))
   {
-    if (CServiceBroker::GetFavouritesService().IsFavourited(*item.get(), GetID()))
+    if (XFILE::CFavouritesDirectory::IsFavourite(item.get(), GetID()))
       buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
     else
       buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
@@ -1724,7 +1631,7 @@ bool CGUIMediaWindow::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
   case CONTEXT_BUTTON_ADD_FAVOURITE:
     {
       CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CServiceBroker::GetFavouritesService().AddOrRemove(*item.get(), GetID());
+      XFILE::CFavouritesDirectory::AddOrRemove(item.get(), GetID());
       return true;
     }
   case CONTEXT_BUTTON_BROWSE_INTO:
@@ -1754,7 +1661,7 @@ bool CGUIMediaWindow::WaitForNetwork() const
   if (g_application.getNetwork().IsAvailable())
     return true;
 
-  CGUIDialogProgress *progress = g_windowManager.GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+  CGUIDialogProgress *progress = (CGUIDialogProgress *)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
   if (!progress)
     return true;
 
@@ -1894,7 +1801,7 @@ void CGUIMediaWindow::OnFilterItems(const std::string &filter)
     // to be able to select the same item as before we need to adjust
     // the path of the item i.e. add or remove the "filter=" URL option
     // but that's only necessary for folder items
-    if (currentItem.get() && currentItem->m_bIsFolder)
+    if (currentItem.get() != NULL && currentItem->m_bIsFolder)
     {
       CURL curUrl(currentItemPath), newUrl(m_strFilterPath);
       if (newUrl.HasOption("filter"))
@@ -2054,7 +1961,7 @@ bool CGUIMediaWindow::Filter(bool advanced /* = true */)
   if (!m_canFilterAdvanced || !advanced)
   {
     const CGUIControl *btnFilter = GetControl(CONTROL_BTN_FILTER);
-    if (btnFilter && btnFilter->GetControlType() == CGUIControl::GUICONTROL_EDIT)
+    if (btnFilter != NULL && btnFilter->GetControlType() == CGUIControl::GUICONTROL_EDIT)
     { // filter updated
       CGUIMessage selected(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_BTN_FILTER);
       OnMessage(selected);
@@ -2083,10 +1990,9 @@ bool CGUIMediaWindow::Filter(bool advanced /* = true */)
 
 std::string CGUIMediaWindow::GetStartFolder(const std::string &dir)
 {
-  if (StringUtils::EqualsNoCase(dir, "$root") ||
-      StringUtils::EqualsNoCase(dir, "root"))
+  std::string lower(dir); StringUtils::ToLower(lower);
+  if (lower == "$root" || lower == "root")
     return "";
-
   return dir;
 }
 

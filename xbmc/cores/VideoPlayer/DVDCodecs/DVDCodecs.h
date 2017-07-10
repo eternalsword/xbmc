@@ -20,9 +20,17 @@
  *
  */
 
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
+
 #include <string>
 #include <vector>
 #include "cores/VideoPlayer/VideoRenderers/RenderFormats.h"
+
+// 0x100000 is the video starting range
+
+// 0x200000 is the audio starting range
 
 // special options that can be passed to a codec
 class CDVDCodecOption

@@ -126,13 +126,12 @@ void CNfsConnection::clearMembers()
     // NOTE - DON'T CLEAR m_exportList HERE!
     // splitUrlIntoExportAndPath checks for m_exportList.empty()
     // and would query the server in an excessive unwanted fashion
-    // also don't clear m_KeepAliveTimeouts here because we
-    // would loose any "paused" file handles during export change
     m_exportPath.clear();
     m_hostName.clear();
     m_writeChunkSize = 0;
     m_readChunkSize = 0;  
     m_pNfsContext = NULL;
+    m_KeepAliveTimeouts.clear();
 }
 
 void CNfsConnection::destroyOpenContexts()
@@ -274,7 +273,7 @@ bool CNfsConnection::splitUrlIntoExportAndPath(const CURL& url,std::string &expo
             continue;
           exportPath = *it;
           //handle special case where root is exported
-          //in that case we don't want to strip off to
+          //in that case we don't want to stripp off to
           //much from the path
           if( exportPath == path )
             relativePath = "//";
@@ -347,8 +346,6 @@ void CNfsConnection::Deinit()
     m_pLibNfs->Unload();    
   }        
   clearMembers();
-  // clear any keep alive timouts on deinit
-  m_KeepAliveTimeouts.clear();
 }
 
 /* This is called from CApplication::ProcessSlow() and is used to tell if nfs have been idle for too long */
@@ -357,7 +354,7 @@ void CNfsConnection::CheckIfIdle()
   /* We check if there are open connections. This is done without a lock to not halt the mainthread. It should be thread safe as
    worst case scenario is that m_OpenConnections could read 0 and then changed to 1 if this happens it will enter the if wich will lead to another check, wich is locked.  */
   if (m_OpenConnections == 0 && m_pNfsContext != NULL)
-  { /* I've set the the maximum IDLE time to be 1 min and 30 sec. */
+  { /* I've set the the maxiumum IDLE time to be 1 min and 30 sec. */
     CSingleLock lock(*this);
     if (m_OpenConnections == 0 /* check again - when locked */)
     {
@@ -405,15 +402,7 @@ void CNfsConnection::resetKeepAlive(std::string _exportPath, struct nfsfh  *_pFi
 {
   CSingleLock lock(keepAliveLock);
   //refresh last access time of the context aswell
-  struct nfs_context *pContext = getContextFromMap(_exportPath, true);
-  
-  // if we keep alive using m_pNfsContext we need to mark
-  // its last access time too here
-  if (m_pNfsContext == pContext)
-  {
-    m_lastAccessedTime = XbmcThreads::SystemClockMillis();
-  }
-  
+  getContextFromMap(_exportPath, true);
   //adds new keys - refreshs existing ones
   m_KeepAliveTimeouts[_pFileHandle].exportPath = _exportPath;
   m_KeepAliveTimeouts[_pFileHandle].refreshCounter = KEEP_ALIVE_TIMEOUT;
@@ -713,7 +702,7 @@ void CNFSFile::Close()
     int ret = 0;
     CLog::Log(LOGDEBUG,"CNFSFile::Close closing file %s", m_url.GetFileName().c_str());
     // remove it from keep alive list before closing
-    // so keep alive code doesn't process it anymore
+    // so keep alive code doens't process it anymore
     gNfsConnection.removeFromKeepAliveList(m_pFileHandle);
     ret = gNfsConnection.GetImpl()->nfs_close(m_pNfsContext, m_pFileHandle);
         
@@ -736,7 +725,7 @@ ssize_t CNFSFile::Write(const void* lpBuf, size_t uiBufSize)
   size_t numberOfBytesWritten = 0;
   int writtenBytes = 0;
   size_t leftBytes = uiBufSize;
-  //clamp max write chunksize to 32kb - fixme - this might be superfluous with future libnfs versions
+  //clamp max write chunksize to 32kb - fixme - this might be superfluious with future libnfs versions
   size_t chunkSize = gNfsConnection.GetMaxWriteChunkSize() > 32768 ? 32768 : (size_t)gNfsConnection.GetMaxWriteChunkSize();
   
   CSingleLock lock(gNfsConnection);

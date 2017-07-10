@@ -35,6 +35,7 @@ using namespace ADDON;
 #define CONTROL_BTNREFRESH             2
 #define CONTROL_SELECTLOCATION         3
 #define CONTROL_LABELUPDATED          11
+#define CONTROL_IMAGELOGO            101
 
 #define CONTROL_STATICTEMP           223
 #define CONTROL_STATICFEEL           224
@@ -63,7 +64,8 @@ CGUIWindowWeather::CGUIWindowWeather(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIWindowWeather::~CGUIWindowWeather(void) = default;
+CGUIWindowWeather::~CGUIWindowWeather(void)
+{}
 
 bool CGUIWindowWeather::OnMessage(CGUIMessage& message)
 {

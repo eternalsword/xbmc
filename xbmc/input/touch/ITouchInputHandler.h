@@ -50,7 +50,7 @@ public:
   ITouchInputHandler()
     : m_dpi(160.0f)
   { }
-  ~ITouchInputHandler() override = default;
+  virtual ~ITouchInputHandler() { }
 
   /*!
    * \brief Handle a touch event
@@ -58,7 +58,7 @@ public:
    * Handles the given touch event at the given location.
    * This takes into account all the currently active pointers
    * which need to be updated before calling this method to
-   * actually interpret and handle the changes in touch.
+   * actually interprete and handle the changes in touch.
    *
    * \param event    The actual touch event (abort, down, up, move)
    * \param x        The x coordinate (with sub-pixel) of the touch

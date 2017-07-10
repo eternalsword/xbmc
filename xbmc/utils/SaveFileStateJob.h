@@ -47,8 +47,8 @@ public:
                     m_updatePlayCount(updatePlayCount),
                     m_videoSettings(videoSettings),
                     m_audioSettings(audioSettings) {}
-        ~CSaveFileStateJob() override = default;
-  bool  DoWork() override;
+  virtual       ~CSaveFileStateJob() {}
+  virtual bool  DoWork();
 };
 
 #endif // SAVE_FILE_STATE_H__

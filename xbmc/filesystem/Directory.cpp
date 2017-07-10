@@ -21,7 +21,6 @@
 #include "Directory.h"
 #include "DirectoryFactory.h"
 #include "FileDirectoryFactory.h"
-#include "ServiceBroker.h"
 #include "commons/Exception.h"
 #include "FileItem.h"
 #include "DirectoryCache.h"
@@ -63,7 +62,7 @@ private:
       , m_imp(imp)
     {}
   public:
-    bool DoWork() override
+    virtual bool DoWork()
     {
       m_result->m_list.SetURL(m_result->m_listDir);
       m_result->m_result         = m_imp->GetDirectory(m_result->m_dir, m_result->m_list);
@@ -116,9 +115,11 @@ public:
 };
 
 
-CDirectory::CDirectory() = default;
+CDirectory::CDirectory()
+{}
 
-CDirectory::~CDirectory() = default;
+CDirectory::~CDirectory()
+{}
 
 bool CDirectory::GetDirectory(const std::string& strPath, CFileItemList &items, const std::string &strMask /*=""*/, int flags /*=DIR_FLAG_DEFAULTS*/, bool allowThreads /* = false */)
 {
@@ -217,7 +218,7 @@ bool CDirectory::GetDirectory(const CURL& url, CFileItemList &items, const CHint
     }
     // filter hidden files
     //! @todo we shouldn't be checking the gui setting here, callers should use getHidden instead
-    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_SHOWHIDDEN) && !(hints.flags & DIR_FLAG_GET_HIDDEN))
+    if (!CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_SHOWHIDDEN) && !(hints.flags & DIR_FLAG_GET_HIDDEN))
     {
       for (int i = 0; i < items.Size(); ++i)
       {
@@ -371,14 +372,12 @@ bool CDirectory::RemoveRecursive(const CURL& url)
   return false;
 }
 
-void CDirectory::FilterFileDirectories(CFileItemList &items, const std::string &mask,
-                                       bool expandImages)
+void CDirectory::FilterFileDirectories(CFileItemList &items, const std::string &mask)
 {
   for (int i=0; i< items.Size(); ++i)
   {
     CFileItemPtr pItem=items[i];
-    auto mode = expandImages ? EFILEFOLDER_TYPE_ONBROWSE : EFILEFOLDER_TYPE_ALWAYS;
-    if (!pItem->m_bIsFolder && pItem->IsFileFolder(mode))
+    if (!pItem->m_bIsFolder && pItem->IsFileFolder(EFILEFOLDER_TYPE_ALWAYS))
     {
       std::unique_ptr<IFileDirectory> pDirectory(CFileDirectoryFactory::Create(pItem->GetURL(),pItem.get(),mask));
       if (pDirectory.get())

@@ -21,6 +21,8 @@
 #include "IWindowManagerCallback.h"
 
 
-IWindowManagerCallback::IWindowManagerCallback(void) = default;
+IWindowManagerCallback::IWindowManagerCallback(void)
+{}
 
-IWindowManagerCallback::~IWindowManagerCallback(void) = default;
+IWindowManagerCallback::~IWindowManagerCallback(void)
+{}

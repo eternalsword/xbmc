@@ -27,22 +27,20 @@ class DllAvUtil;
 namespace ActiveAE
 {
 
-class CActiveAE;
-
 class CActiveAESound : public IAESound
 {
 public:
-  CActiveAESound (const std::string &filename, CActiveAE *ae);
-  ~CActiveAESound() override;
+  CActiveAESound (const std::string &filename);
+  virtual ~CActiveAESound();
 
-  void Play() override;
-  void Stop() override;
-  bool IsPlaying() override;
+  virtual void Play();
+  virtual void Stop();
+  virtual bool IsPlaying();
 
-  void SetChannel(AEChannel channel) override { m_channel = channel; }
-  AEChannel GetChannel() override { return m_channel; }
-  void SetVolume(float volume) override { m_volume = std::max(0.0f, std::min(1.0f, volume)); }
-  float GetVolume() override { return m_volume; }
+  virtual void SetChannel(AEChannel channel) { m_channel = channel; }
+  virtual AEChannel GetChannel() { return m_channel; }
+  virtual void SetVolume(float volume) { m_volume = std::max(0.0f, std::min(1.0f, volume)); }
+  virtual float GetVolume() { return m_volume; }
 
   uint8_t** InitSound(bool orig, SampleConfig config, int nb_samples);
   bool StoreSound(bool orig, uint8_t **buffer, int samples, int linesize);
@@ -61,7 +59,6 @@ public:
   static int64_t Seek(void *h, int64_t pos, int whence);
 
 protected:
-  CActiveAE *m_activeAE;
   std::string m_filename;
   XFILE::CFile *m_pFile;
   bool m_isSeekPossible;

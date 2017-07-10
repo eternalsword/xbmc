@@ -32,14 +32,14 @@ namespace XFILE
   class CEventsDirectory : public IDirectory
   {
   public:
-    CEventsDirectory() = default;
-    ~CEventsDirectory() override = default;
+    CEventsDirectory() { }
+    virtual ~CEventsDirectory() { }
 
     // implementations of IDirectory
-    bool GetDirectory(const CURL& url, CFileItemList& items) override;
-    bool Create(const CURL& url) override { return true; }
-    bool Exists(const CURL& url) override { return true; }
-    bool AllowAll() const override { return true; }
+    virtual bool GetDirectory(const CURL& url, CFileItemList& items);
+    virtual bool Create(const CURL& url) { return true; }
+    virtual bool Exists(const CURL& url) { return true; }
+    virtual bool AllowAll() const { return true; }
 
     static CFileItemPtr EventToFileItem(const EventPtr& activity);
   };

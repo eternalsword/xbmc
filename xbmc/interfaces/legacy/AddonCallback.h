@@ -47,7 +47,7 @@ namespace XBMCAddon
     }
   public:
 
-    ~AddonCallback() override;
+    virtual ~AddonCallback();
 
     inline void setHandler(CallbackHandler* _handler) { handler = _handler; }
     void invokeCallback(Callback* callback);

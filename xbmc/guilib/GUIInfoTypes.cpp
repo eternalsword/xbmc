@@ -35,7 +35,9 @@ CGUIInfoBool::CGUIInfoBool(bool value)
   m_value = value;
 }
 
-CGUIInfoBool::~CGUIInfoBool() = default;
+CGUIInfoBool::~CGUIInfoBool()
+{
+}
 
 void CGUIInfoBool::Parse(const std::string &expression, int context)
 {
@@ -96,11 +98,11 @@ bool CGUIInfoColor::Update()
 
 void CGUIInfoColor::Parse(const std::string &label, int context)
 {
-  if (label.empty())
-    return;
-
   // Check for the standard $INFO[] block layout, and strip it if present
   std::string label2 = label;
+  if (label == "-")
+    return;
+
   if (StringUtils::StartsWithNoCase(label, "$var["))
   {
     label2 = label.substr(5, label.length() - 6);

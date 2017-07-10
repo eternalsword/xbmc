@@ -51,6 +51,9 @@ public:
   std::string GetProxyUser() const;
   std::string GetProxyPassword() const;
 
+private:
+  CURL GetM3UBestBandwidthStream(const CURL &url, size_t bandwidth);
+
 protected:
   bool m_can_pause;
   bool m_can_seek;

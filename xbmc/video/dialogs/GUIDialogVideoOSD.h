@@ -27,11 +27,11 @@ class CGUIDialogVideoOSD : public CGUIDialog
 public:
 
   CGUIDialogVideoOSD(void);
-  ~CGUIDialogVideoOSD(void) override;
+  virtual ~CGUIDialogVideoOSD(void);
 
-  void FrameMove() override;
-  bool OnMessage(CGUIMessage& message) override;
-  bool OnAction(const CAction &action) override;
+  virtual void FrameMove();
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnAction(const CAction &action);
 protected:
-  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
 };

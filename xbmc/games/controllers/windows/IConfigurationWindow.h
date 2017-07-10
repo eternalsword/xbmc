@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -45,9 +45,6 @@ class CEvent;
  *   3) When the wizard's active feature loses focus, the wizard is cancelled
  *      and the prompt for input ends.
  */
-
-namespace KODI
-{
 namespace GAME
 {
   class CControllerFeature;
@@ -58,7 +55,7 @@ namespace GAME
   class IControllerList
   {
   public:
-    virtual ~IControllerList() = default;
+    virtual ~IControllerList(void) { }
 
     /*!
      * \brief  Initialize the resource
@@ -91,12 +88,6 @@ namespace GAME
     virtual void OnSelect(unsigned int controllerIndex) = 0;
 
     /*!
-     * \brief Get the index of the focused controller
-     * \return The index of the focused controller, or -1 if no controller has been focused yet
-     */
-    virtual int GetFocusedController() const = 0;
-
-    /*!
      * \brief Reset the focused controller
      */
     virtual void ResetController(void) = 0;
@@ -108,7 +99,7 @@ namespace GAME
   class IFeatureList
   {
   public:
-    virtual ~IFeatureList() = default;
+    virtual ~IFeatureList(void) { }
 
     /*!
      * \brief  Initialize the resource
@@ -148,7 +139,7 @@ namespace GAME
   class IFeatureButton
   {
   public:
-    virtual ~IFeatureButton() = default;
+    virtual ~IFeatureButton(void) { }
 
     /*!
      * \brief Get the feature represented by this button
@@ -190,7 +181,7 @@ namespace GAME
   class IConfigurationWizard
   {
   public:
-    virtual ~IConfigurationWizard() = default;
+    virtual ~IConfigurationWizard(void) { }
 
     /*!
      * \brief Start the wizard at the specified feature
@@ -211,5 +202,4 @@ namespace GAME
      */
     virtual bool Abort(bool bWait = true) = 0;
   };
-}
 }

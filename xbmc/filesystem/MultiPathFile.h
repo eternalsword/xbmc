@@ -27,12 +27,12 @@ namespace XFILE
   {
   public:
     CMultiPathFile(void);
-    ~CMultiPathFile(void) override;
-    bool Open(const CURL& url) override;
-    bool Exists(const CURL& url) override;
-    int Stat(const CURL& url, struct __stat64* buffer) override;
+    virtual ~CMultiPathFile(void);
+    virtual bool Open(const CURL& url);
+    virtual bool Exists(const CURL& url);
+    virtual int Stat(const CURL& url, struct __stat64* buffer);
 
   protected:
-    std::string TranslatePath(const CURL &url) override;
+    virtual std::string TranslatePath(const CURL &url);
   };
 }

@@ -1,6 +1,7 @@
 set(SOURCES TestAlarmClock.cpp
             TestAliasShortcutUtils.cpp
             TestArchive.cpp
+            TestAsyncFileCopy.cpp
             TestBase64.cpp
             TestBitstreamStats.cpp
             TestCharsetConverter.cpp

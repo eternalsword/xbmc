@@ -19,30 +19,40 @@
  */
 
 #include "DVDCodecUtils.h"
-#include "TimingConstants.h"
+#include "DVDClock.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
 #include "utils/log.h"
 #include "cores/FFmpeg.h"
 #include "Util.h"
+
+#ifdef TARGET_WINDOWS
+#pragma comment(lib, "avcodec.lib")
+#pragma comment(lib, "avfilter.lib")
+#pragma comment(lib, "avformat.lib")
+#pragma comment(lib, "avutil.lib")
+#pragma comment(lib, "postproc.lib")
+#pragma comment(lib, "swresample.lib")
+#pragma comment(lib, "swscale.lib")
+#endif
 
 extern "C" {
 #include "libswscale/swscale.h"
 }
 
 // allocate a new picture (AV_PIX_FMT_YUV420P)
-VideoPicture* CDVDCodecUtils::AllocatePicture(int iWidth, int iHeight)
+DVDVideoPicture* CDVDCodecUtils::AllocatePicture(int iWidth, int iHeight)
 {
-  VideoPicture* pPicture = new VideoPicture;
+  DVDVideoPicture* pPicture = new DVDVideoPicture;
   if (pPicture)
   {
     pPicture->iWidth = iWidth;
     pPicture->iHeight = iHeight;
 
-    int w = (iWidth + 1) / 2;
-    int h = (iHeight + 1) / 2;
+    int w = iWidth / 2;
+    int h = iHeight / 2;
     int size = w * h;
     int totalsize = (iWidth * iHeight) + size * 2;
-    uint8_t* data = static_cast<uint8_t*>(av_malloc(totalsize));
+    uint8_t* data = new uint8_t[totalsize];
     if (data)
     {
       pPicture->data[0] = data;
@@ -64,13 +74,13 @@ VideoPicture* CDVDCodecUtils::AllocatePicture(int iWidth, int iHeight)
   return pPicture;
 }
 
-void CDVDCodecUtils::FreePicture(VideoPicture* pPicture)
+void CDVDCodecUtils::FreePicture(DVDVideoPicture* pPicture)
 {
   av_free(pPicture->data[0]);
   delete pPicture;
 }
 
-bool CDVDCodecUtils::CopyPicture(VideoPicture* pDst, VideoPicture* pSrc)
+bool CDVDCodecUtils::CopyPicture(DVDVideoPicture* pDst, DVDVideoPicture* pSrc)
 {
   uint8_t *s, *d;
   int w = pSrc->iWidth;
@@ -109,7 +119,7 @@ bool CDVDCodecUtils::CopyPicture(VideoPicture* pDst, VideoPicture* pSrc)
   return true;
 }
 
-bool CDVDCodecUtils::CopyPicture(YV12Image* pImage, VideoPicture *pSrc)
+bool CDVDCodecUtils::CopyPicture(YV12Image* pImage, DVDVideoPicture *pSrc)
 {
   uint8_t *s = pSrc->data[0];
   uint8_t *d = pImage->plane[0];
@@ -163,10 +173,10 @@ bool CDVDCodecUtils::CopyPicture(YV12Image* pImage, VideoPicture *pSrc)
   return true;
 }
 
-VideoPicture* CDVDCodecUtils::ConvertToNV12Picture(VideoPicture *pSrc)
+DVDVideoPicture* CDVDCodecUtils::ConvertToNV12Picture(DVDVideoPicture *pSrc)
 {
   // Clone a YV12 picture to new NV12 picture.
-  VideoPicture* pPicture = new VideoPicture;
+  DVDVideoPicture* pPicture = new DVDVideoPicture;
   if (pPicture)
   {
     *pPicture = *pSrc;
@@ -220,10 +230,10 @@ VideoPicture* CDVDCodecUtils::ConvertToNV12Picture(VideoPicture *pSrc)
   return pPicture;
 }
 
-VideoPicture* CDVDCodecUtils::ConvertToYUV422PackedPicture(VideoPicture *pSrc, ERenderFormat format)
+DVDVideoPicture* CDVDCodecUtils::ConvertToYUV422PackedPicture(DVDVideoPicture *pSrc, ERenderFormat format)
 {
   // Clone a YV12 picture to new YUY2 or UYVY picture.
-  VideoPicture* pPicture = new VideoPicture;
+  DVDVideoPicture* pPicture = new DVDVideoPicture;
   if (pPicture)
   {
     *pPicture = *pSrc;
@@ -275,7 +285,7 @@ VideoPicture* CDVDCodecUtils::ConvertToYUV422PackedPicture(VideoPicture *pSrc, E
   return pPicture;
 }
 
-bool CDVDCodecUtils::CopyNV12Picture(YV12Image* pImage, VideoPicture *pSrc)
+bool CDVDCodecUtils::CopyNV12Picture(YV12Image* pImage, DVDVideoPicture *pSrc)
 {
   uint8_t *s = pSrc->data[0];
   uint8_t *d = pImage->plane[0];
@@ -318,7 +328,7 @@ bool CDVDCodecUtils::CopyNV12Picture(YV12Image* pImage, VideoPicture *pSrc)
   return true;
 }
 
-bool CDVDCodecUtils::CopyYUV422PackedPicture(YV12Image* pImage, VideoPicture *pSrc)
+bool CDVDCodecUtils::CopyYUV422PackedPicture(YV12Image* pImage, DVDVideoPicture *pSrc)
 {
   uint8_t *s = pSrc->data[0];
   uint8_t *d = pImage->plane[0];
@@ -419,7 +429,7 @@ ERenderFormat CDVDCodecUtils::EFormatFromPixfmt(int fmt)
   return RENDER_FMT_NONE;
 }
 
-AVPixelFormat CDVDCodecUtils::PixfmtFromEFormat(ERenderFormat fmt)
+int CDVDCodecUtils::PixfmtFromEFormat(ERenderFormat fmt)
 {
   for(const EFormatMap *p = g_format_map; p->pix_fmt != AV_PIX_FMT_NONE; ++p)
   {

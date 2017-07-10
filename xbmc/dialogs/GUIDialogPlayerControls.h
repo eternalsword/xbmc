@@ -27,5 +27,5 @@ class CGUIDialogPlayerControls :
 {
 public:
   CGUIDialogPlayerControls(void);
-  ~CGUIDialogPlayerControls(void) override;
+  virtual ~CGUIDialogPlayerControls(void);
 };

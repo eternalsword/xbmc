@@ -21,13 +21,15 @@
 #include "system.h"
 #ifdef HAS_ALSA
 
-#include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
 #include "ALSAHControlMonitor.h"
+
+#include "AEFactory.h"
 #include "linux/FDEventMonitor.h"
 #include "utils/log.h"
-#include "ServiceBroker.h"
 
-CALSAHControlMonitor::CALSAHControlMonitor() = default;
+CALSAHControlMonitor::CALSAHControlMonitor()
+{
+}
 
 CALSAHControlMonitor::~CALSAHControlMonitor()
 {
@@ -129,7 +131,7 @@ int CALSAHControlMonitor::HCTLCallback(snd_hctl_elem_t *elem, unsigned int mask)
      * Currently we just re-enumerate on any change.
      * Custom callbacks for handling other control monitoring may be implemented when needed.
      */
-    CServiceBroker::GetActiveAE().DeviceChange();
+    CAEFactory::DeviceChange();
   }
 
   return 0;

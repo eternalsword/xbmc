@@ -251,7 +251,7 @@ LibraryLoader* DllLoaderContainer::LoadDll(const char* sName, bool bLoadSymbols)
 #ifdef TARGET_POSIX
   pLoader = new SoLoader(sName, bLoadSymbols);
 #elif defined(TARGET_WINDOWS)
-  pLoader = new Win32DllLoader(sName, false);
+  pLoader = new Win32DllLoader(sName);
 #else
   pLoader = new DllLoader(sName, m_bTrack, false, bLoadSymbols);
 #endif

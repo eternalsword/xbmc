@@ -33,7 +33,7 @@ CPODocument::CPODocument()
   m_Entry.msgStrPlural.resize(1);
 }
 
-CPODocument::~CPODocument() = default;
+CPODocument::~CPODocument() {}
 
 bool CPODocument::LoadFile(const std::string &pofilename)
 {

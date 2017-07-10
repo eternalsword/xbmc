@@ -20,7 +20,6 @@
  *
  */
 
-#include <memory>
 #include <set>
 #include "guilib/GUIDialog.h"
 #include "threads/Thread.h"
@@ -38,7 +37,7 @@ class CBackgroundPicLoader : public CThread
 {
 public:
   CBackgroundPicLoader();
-  ~CBackgroundPicLoader() override;
+  ~CBackgroundPicLoader();
 
   void Create(CGUIWindowSlideShow *pCallback);
   void LoadPic(int iPic, int iSlideNumber, const std::string &strFileName, const int maxWidth, const int maxHeight);
@@ -47,7 +46,7 @@ public:
   int Pic() const { return m_iPic; }
 
 private:
-  void Process() override;
+  void Process();
   int m_iPic;
   int m_iSlideNumber;
   std::string m_strFileName;
@@ -64,7 +63,7 @@ class CGUIWindowSlideShow : public CGUIDialog
 {
 public:
   CGUIWindowSlideShow(void);
-  ~CGUIWindowSlideShow() override = default;
+  virtual ~CGUIWindowSlideShow() {};
 
   bool OnMessage(CGUIMessage& message) override;
   EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
@@ -153,7 +152,7 @@ private:
 
   int m_iCurrentPic;
   // background loader
-  std::unique_ptr<CBackgroundPicLoader> m_pBackgroundLoader;
+  CBackgroundPicLoader* m_pBackgroundLoader;
   int m_iLastFailedNextSlide;
   bool m_bLoadNextPic;
   RESOLUTION m_Resolution;

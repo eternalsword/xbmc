@@ -28,7 +28,7 @@ class CRenderSystemGL : public CRenderSystemBase
 {
 public:
   CRenderSystemGL();
-  ~CRenderSystemGL() override;
+  virtual ~CRenderSystemGL();
   void CheckOpenGLQuirks();
   bool InitRenderSystem() override;
   bool DestroyRenderSystem() override;
@@ -72,7 +72,7 @@ protected:
   virtual void PresentRenderImpl(bool rendered) = 0;
   void CalculateMaxTexturesize();
 
-  bool m_bVsyncInit = false;
+  bool m_bVsyncInit;
   int m_width;
   int m_height;
 

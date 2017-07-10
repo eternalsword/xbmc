@@ -41,19 +41,16 @@
       <pagedown>PageDown</pagedown>
       <return>Select</return>
       <return mod="longpress">ContextMenu</return>
-      <return mod="ctrl">Enter</return>
       <enter>Select</enter>
       <enter mod="longpress">ContextMenu</enter>
-      <enter mod="ctrl">Enter</enter>
       <backspace>Back</backspace>
       <browser_back>Back</browser_back>
       <browser_back mod="longpress">ActivateWindow(Home)</browser_back>
       <key id='65446'>Back</key>
       <m>Menu</m>
       <n mod="ctrl">ActivateWindow(PlayerControls)</n>
-      <s>ActivateWindow(ShutdownMenu)</s>
+      <s>ActivateWindow(shutdownmenu)</s>
       <escape>PreviousMenu</escape>
-      <escape mod="longpress">Back</escape>
       <i>Info</i>
       <menu>ContextMenu</menu>
       <menu mod="longpress">Menu</menu>
@@ -94,8 +91,8 @@
       <backslash>ToggleFullScreen</backslash>
       <home>FirstPage</home>
       <end>LastPage</end>
-      <power>ActivateWindow(ShutdownMenu)</power>
-      <sleep>ActivateWindow(ShutdownMenu)</sleep>
+      <power>ActivateWindow(shutdownmenu)</power>
+      <sleep>ActivateWindow(shutdownmenu)</sleep>
       <!-- PVR windows -->
       <e>ActivateWindow(TVGuide)</e>
       <epg>ActivateWindow(TVGuide)</epg>
@@ -159,8 +156,8 @@
       <m mod="ctrl,shift">PlayerControl(ShowVideoMenu)</m>         <!-- MCE DVD menu -->
       <o mod="ctrl">ActivateWindow(TVRecordings)</o>  <!-- MCE Recorded TV -->
       <t mod="ctrl">ActivateWindow(TVChannels)</t>  <!-- MCE Live TV  -->
-      <t mod="ctrl,shift">ActivateWindow(TVChannels)</t>  <!-- MCE TV -->
-      <a mod="ctrl">ActivateWindow(RadioChannels)</a>  <!-- MCE Radio -->
+      <t mod="ctrl,shift">ActivateWindow(TVChannels)</t>  <!-- MCE My TV -->
+      <a mod="ctrl">ActivateWindow(RadioChannels)</a>  <!-- MCE My Radio -->
       <!-- MCE keypresses without an obvious use in Kodi -->
       <u mod="ctrl">Notification(MCEKeypress, DVD subtitle, 3)</u>
       <a mod="ctrl,shift">Notification(MCEKeypress, DVD audio, 3)</a>
@@ -183,7 +180,6 @@
   </Home>
   <VirtualKeyboard>
     <keyboard>
-      <c mod="longpress">noop</c>
       <left>Left</left>
       <right>Right</right>
       <up>Up</up>
@@ -194,18 +190,15 @@
       <browser_back>Backspace</browser_back>
       <browser_back mod="longpress">PreviousMenu</browser_back>
       <play_pause mod="longpress">Enter</play_pause>
-      <browser_search>VoiceRecognizer</browser_search>
-      <menu>VoiceRecognizer</menu>
     </keyboard>
   </VirtualKeyboard>
-  <TVChannels>
+  <MyTVChannels>
     <keyboard>
-      <delete>Delete</delete>
       <m mod="ctrl">Move</m>
       <h>PreviousMenu</h>
     </keyboard>
-  </TVChannels>
-  <TVRecordings>
+  </MyTVChannels>
+  <MyTVRecordings>
     <keyboard>
       <delete>Delete</delete>
       <r>Rename</r>
@@ -215,8 +208,8 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </keyboard>
-  </TVRecordings>
-  <TVTimers>
+  </MyTVRecordings>
+  <MyTVTimers>
     <keyboard>
       <delete>Delete</delete>
       <r>Rename</r>
@@ -226,36 +219,21 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </keyboard>
-  </TVTimers>
-  <TVTimerRules>
-    <keyboard>
-      <delete>Delete</delete>
-      <r>Rename</r>
-      <b>PreviousMenu</b>
-      <red>Red</red>
-      <green>Green</green>
-      <yellow>Yellow</yellow>
-      <blue>Blue</blue>
-    </keyboard>
-  </TVTimerRules>
+  </MyTVTimers>
   <TVGuide>
     <keyboard>
       <e>PreviousMenu</e>
       <t>ShowTimerRule</t>
       <epg>PreviousMenu</epg>
-      <g>NextChannelGroup</g>
-      <backspace mod="longpress">Number0</backspace> <!-- 0 key goes to "now" on EPG timeline -->
-      <browser_back mod="longpress">Number0</browser_back> <!-- 0 key goes to "now" on EPG timeline -->
     </keyboard>
   </TVGuide>
-  <RadioChannels>
+  <MyRadioChannels>
     <keyboard>
-      <delete>Delete</delete>
       <m mod="ctrl">Move</m>
       <j>PreviousMenu</j>
     </keyboard>
-  </RadioChannels>
-  <RadioRecordings>
+  </MyRadioChannels>
+  <MyRadioRecordings>
     <keyboard>
       <delete>Delete</delete>
       <r>Rename</r>
@@ -264,8 +242,8 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </keyboard>
-  </RadioRecordings>
-  <RadioTimers>
+  </MyRadioRecordings>
+  <MyRadioTimers>
     <keyboard>
       <delete>Delete</delete>
       <r>Rename</r>
@@ -274,23 +252,11 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </keyboard>
-  </RadioTimers>
-  <RadioTimerRules>
-    <keyboard>
-      <delete>Delete</delete>
-      <r>Rename</r>
-      <red>Red</red>
-      <green>Green</green>
-      <yellow>Yellow</yellow>
-      <blue>Blue</blue>
-    </keyboard>
-  </RadioTimerRules>
+  </MyRadioTimers>
   <RadioGuide>
     <keyboard>
       <e>PreviousMenu</e>
       <t>ShowTimerRule</t>
-      <backspace mod="longpress">Number0</backspace> <!-- 0 key goes to "now" on EPG timeline -->
-      <browser_back mod="longpress">Number0</browser_back> <!-- 0 key goes to "now" on EPG timeline -->
     </keyboard>
   </RadioGuide>
   <FileManager>
@@ -303,7 +269,7 @@
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
   </FileManager>
-  <MusicPlaylist>
+  <MyMusicPlaylist>
     <keyboard>
       <n>Back</n>
       <delete>Delete</delete>
@@ -311,15 +277,15 @@
       <d>MoveItemDown</d>
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
-  </MusicPlaylist>
-  <MusicPlaylistEditor>
+  </MyMusicPlaylist>
+  <MyMusicPlaylistEditor>
     <keyboard>
       <u>MoveItemUp</u>
       <d>MoveItemDown</d>
       <delete>Delete</delete>
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
-  </MusicPlaylistEditor>
+  </MyMusicPlaylistEditor>
   <Music>
     <keyboard>
       <n>Playlist</n>
@@ -348,7 +314,6 @@
       <menu>OSD</menu>
       <i>Info</i>
       <o>PlayerProcessInfo</o>
-      <o mod="ctrl,shift">PlayerDebug</o>
       <z>AspectRatio</z>
       <zoom>AspectRatio</zoom>
       <t>ShowSubtitles</t>
@@ -360,10 +325,7 @@
       <down>ChapterOrBigStepBack</down>
       <up mod="longpress">AudioNextLanguage</up>
       <down mod="longpress">NextSubtitle</down>
-      <left mod="alt">PlayerControl(tempodown)</left>
-      <right mod="alt">PlayerControl(tempoup)</right>
       <a>AudioDelay</a>
-      <a mod="ctrl">AudioNextLanguage</a>
       <escape>Fullscreen</escape>
       <c>Playlist</c>
       <v>ActivateWindow(Teletext)</v>
@@ -372,38 +334,8 @@
       <down mod="ctrl">SubtitleShiftDown</down>
       <pageup>SkipNext</pageup>
       <pagedown>SkipPrevious</pagedown>
-      <plus mod="ctrl">VolAmpUp</plus>
-      <equals mod="ctrl">VolAmpUp</equals>
-      <minus mod="ctrl">VolAmpDown</minus>
-      <b mod="ctrl">CreateBookmark</b>
-      <b mod="alt">CreateEpisodeBookmark</b>
     </keyboard>
   </FullscreenVideo>
-  <FullscreenGame>
-    <keyboard>
-      <f>FastForward</f>
-      <r>Rewind</r>
-      <period>StepForward</period>
-      <comma>StepBack</comma>
-      <backspace>Fullscreen</backspace>
-      <backspace mod="longpress">Stop</backspace>
-      <browser_back>Fullscreen</browser_back>
-      <browser_back mod="longpress">Stop</browser_back>
-      <return>OSD</return>
-      <enter>OSD</enter>
-      <return mod="longpress">PlayPause</return>
-      <enter mod="longpress">PlayPause</enter>
-      <m>OSD</m>
-      <menu>OSD</menu>
-      <i>Info</i>
-      <o>CodecInfo</o>
-      <z>AspectRatio</z>
-      <zoom>AspectRatio</zoom>
-      <left>StepBack</left>
-      <right>StepForward</right>
-      <escape>Fullscreen</escape>
-    </keyboard>
-  </FullscreenGame>
   <VideoTimeSeek>
     <keyboard>
       <return>Select</return>
@@ -459,6 +391,8 @@
       <o>PlayerProcessInfo</o>
       <l>LockPreset</l>
       <escape>FullScreen</escape>
+      <g>ActivateWindow(PVROSDGuide)</g>
+      <c>ActivateWindow(PVROSDChannels)</c>
     </keyboard>
   </Visualisation>
   <MusicOSD>
@@ -585,7 +519,7 @@
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
   </Videos>
-  <VideoPlaylist>
+  <MyVideoPlaylist>
     <keyboard>
       <n>Back</n>
       <delete>Delete</delete>
@@ -593,13 +527,13 @@
       <d>MoveItemDown</d>
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
-  </VideoPlaylist>
-  <Pictures>
+  </MyVideoPlaylist>
+  <MyPictures>
     <keyboard>
       <delete>Delete</delete>
       <backspace mod="longpress">ActivateWindow(Home)</backspace>
     </keyboard>
-  </Pictures>
+  </MyPictures>
   <ContextMenu>
     <keyboard>
       <c>Back</c>
@@ -663,8 +597,6 @@
       <down>Down</down>
       <return>OSD</return>
       <enter>OSD</enter>
-      <g>ActivateWindow(PVRChannelGuide)</g>
-      <c>ActivateWindow(PVROSDChannels)</c>
       <return mod="longpress">ActivateWindow(PVROSDChannels)</return>
       <enter mod="longpress">ActivateWindow(PVROSDChannels)</enter>
       <pageup>ChannelUp</pageup>
@@ -679,8 +611,6 @@
       <down>Down</down>
       <return>OSD</return>
       <enter>OSD</enter>
-      <g>ActivateWindow(PVRChannelGuide)</g>
-      <c>ActivateWindow(PVROSDChannels)</c>
       <return mod="longpress">ActivateWindow(PVROSDChannels)</return>
       <enter mod="longpress">ActivateWindow(PVROSDChannels)</enter>
       <pageup>ChannelUp</pageup>
@@ -695,13 +625,13 @@
       <c>Close</c>
     </keyboard>
   </PVROSDChannels>
-  <PVRChannelGuide>
+  <PVROSDGuide>
     <keyboard>
       <backspace>Close</backspace>
       <escape>Close</escape>
       <browser_back>Close</browser_back>
     </keyboard>
-  </PVRChannelGuide>
+  </PVROSDGuide>
   <PVRSettings>
     <keyboard>
       <backspace>PreviousMenu</backspace>

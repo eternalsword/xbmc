@@ -39,7 +39,8 @@ CPVRRadioRDSInfoTag::CPVRRadioRDSInfoTag(void)
   Clear();
 }
 
-CPVRRadioRDSInfoTag::~CPVRRadioRDSInfoTag() = default;
+CPVRRadioRDSInfoTag::~CPVRRadioRDSInfoTag()
+{}
 
 void CPVRRadioRDSInfoTag::Serialize(CVariant& value) const
 {

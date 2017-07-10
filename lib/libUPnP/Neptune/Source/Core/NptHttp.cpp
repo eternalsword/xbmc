@@ -332,7 +332,7 @@ public:
                                   bool                              chunked,
                                   NPT_HttpClient::Connection*       connection,
                                   bool                              should_persist);
-    ~NPT_HttpEntityBodyInputStream() override;
+    virtual ~NPT_HttpEntityBodyInputStream();
                                   
     // methods
     bool SizeIsKnown() { return m_SizeIsKnown; }
@@ -340,19 +340,19 @@ public:
     // NPT_InputStream methods
     NPT_Result Read(void*     buffer, 
                     NPT_Size  bytes_to_read, 
-                    NPT_Size* bytes_read = NULL) override;
-    NPT_Result Seek(NPT_Position /*offset*/) override { 
+                    NPT_Size* bytes_read = NULL);
+    NPT_Result Seek(NPT_Position /*offset*/) { 
         return NPT_ERROR_NOT_SUPPORTED; 
     }
-    NPT_Result Tell(NPT_Position& offset) override { 
+    NPT_Result Tell(NPT_Position& offset) { 
         offset = m_Position; 
         return NPT_SUCCESS; 
     }
-    NPT_Result GetSize(NPT_LargeSize& size) override {
+    NPT_Result GetSize(NPT_LargeSize& size) {
         size = m_Size;
         return NPT_SUCCESS; 
     }
-    NPT_Result GetAvailable(NPT_LargeSize& available) override;
+    NPT_Result GetAvailable(NPT_LargeSize& available);
     
 private:
     // methods
@@ -1007,7 +1007,7 @@ public:
     static NPT_HttpEnvProxySelector* GetInstance();
     
     // NPT_HttpProxySelector methods
-    NPT_Result GetProxyForUrl(const NPT_HttpUrl& url, NPT_HttpProxyAddress& proxy) override;
+    NPT_Result GetProxyForUrl(const NPT_HttpUrl& url, NPT_HttpProxyAddress& proxy);
 
 private:    
     // class variables
@@ -1220,7 +1220,7 @@ public:
                                 NPT_UInt16  htts_proxy_port);
 
     // NPT_HttpProxySelector methods
-    NPT_Result GetProxyForUrl(const NPT_HttpUrl& url, NPT_HttpProxyAddress& proxy) override;
+    NPT_Result GetProxyForUrl(const NPT_HttpUrl& url, NPT_HttpProxyAddress& proxy);
 
 private:
     // members

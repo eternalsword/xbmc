@@ -37,7 +37,7 @@ namespace Shaders {
   {
   public:
     CShader() { m_compiled = false; }
-    virtual ~CShader() = default;
+    virtual ~CShader() {}
     virtual bool Compile() = 0;
     virtual void Free() = 0;
     virtual GLuint Handle() = 0;
@@ -62,9 +62,9 @@ namespace Shaders {
   {
   public:
     CVertexShader() { m_vertexShader = 0; }
-    ~CVertexShader() override { Free(); }
-    void Free() override {}
-    GLuint Handle() override { return m_vertexShader; }
+    virtual ~CVertexShader() { Free(); }
+    virtual void Free() {}
+    virtual GLuint Handle() { return m_vertexShader; }
 
   protected:
     GLuint m_vertexShader;
@@ -73,16 +73,16 @@ namespace Shaders {
   class CGLSLVertexShader : public CVertexShader
   {
   public:
-    void Free() override;
-    bool Compile() override;
+    virtual void Free();
+    virtual bool Compile();
   };
 
 #ifndef HAS_GLES
   class CARBVertexShader : public CVertexShader
   {
   public:
-    void Free() override;
-    bool Compile() override;
+    virtual void Free();
+    virtual bool Compile();
   };
 #endif
 
@@ -94,9 +94,9 @@ namespace Shaders {
   {
   public:
     CPixelShader() { m_pixelShader = 0; }
-    ~CPixelShader() override { Free(); }
-    void Free() override {}
-    GLuint Handle() override { return m_pixelShader; }
+    virtual ~CPixelShader() { Free(); }
+    virtual void Free() {}
+    virtual GLuint Handle() { return m_pixelShader; }
 
   protected:
     GLuint m_pixelShader;
@@ -106,16 +106,16 @@ namespace Shaders {
   class CGLSLPixelShader : public CPixelShader
   {
   public:
-    void Free() override;
-    bool Compile() override;
+    virtual void Free();
+    virtual bool Compile();
   };
 
 #ifndef HAS_GLES
   class CARBPixelShader : public CPixelShader
   {
   public:
-    void Free() override;
-    bool Compile() override;
+    virtual void Free();
+    virtual bool Compile();
   };
 #endif
 
@@ -162,7 +162,7 @@ namespace Shaders {
     // compile and link the shaders
     virtual bool CompileAndLink() = 0;
 
-    // override to to perform custom tasks on successful compilation
+    // override to to perform custom tasks on successfull compilation
     // and linkage. E.g. obtaining handles to shader attributes.
     virtual void OnCompiledAndLinked() {}
 
@@ -204,16 +204,16 @@ namespace Shaders {
       }
 
     // enable the shader
-    bool Enable() override;
+    virtual bool Enable();
 
     // disable the shader
-    void Disable() override;
+    virtual void Disable();
 
     // free resources
-    void Free() override;
+    virtual void Free();
 
     // compile and link the shaders
-    bool CompileAndLink() override;
+    virtual bool CompileAndLink();
 
   protected:
     GLint         m_lastProgram;
@@ -241,16 +241,16 @@ namespace Shaders {
       }
 
     // enable the shader
-    bool Enable() override;
+    virtual bool Enable();
 
     // disable the shader
-    void Disable() override;
+    virtual void Disable();
 
     // free resources
-    void Free() override;
+    virtual void Free();
 
     // compile and link the shaders
-    bool CompileAndLink() override;
+    virtual bool CompileAndLink();
 
   protected:
 

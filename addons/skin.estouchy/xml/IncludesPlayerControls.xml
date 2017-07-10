@@ -18,7 +18,6 @@
 			<font></font>
 			<texturenofocus></texturenofocus>
 			<texturefocus></texturefocus>
-			<onclick>Dialog.Close(all)</onclick>
 			<onclick>ActivateWindow(Home)</onclick>
 		</control>
 		<control type="image">
@@ -86,9 +85,9 @@
 					<posy>40</posy>
 					<width>552</width>
 					<height>12</height>
-					<info>Player.ProgressCache</info>
+					<info>Player.Cache</info>
 					<midtexture colordiffuse="grey2">white.png</midtexture>
-					<texturebg colordiffuse="grey3">white.png</texturebg>
+					<texturebg></texturebg>
 				</control>
 				<control type="progress">
 					<description>Progressbar</description>
@@ -97,7 +96,6 @@
 					<width>552</width>
 					<height>12</height>
 					<info>Player.Progress</info>
-					<texturebg colordiffuse="002C2C2C">white.png</texturebg>
 				</control>
 				<control type="slider" id="87">
 					<description>Seek Slider</description>
@@ -348,8 +346,8 @@
 		</control>
 		<include>BottomMenu</include>
 		<include content="PopupMenu">
-			<param name="panel-posy">-80</param>
-			<param name="panel-height">640</param>
+			<param name="panel-posy">0</param>
+			<param name="panel-height">560</param>
 		</include>
 	</include>
 </includes>

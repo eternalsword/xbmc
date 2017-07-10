@@ -31,7 +31,9 @@ CGUIFixedListContainer::CGUIFixedListContainer(int parentID, int controlID, floa
   SetCursor(m_fixedCursor);
 }
 
-CGUIFixedListContainer::~CGUIFixedListContainer(void) = default;
+CGUIFixedListContainer::~CGUIFixedListContainer(void)
+{
+}
 
 bool CGUIFixedListContainer::OnAction(const CAction &action)
 {
@@ -200,8 +202,6 @@ bool CGUIFixedListContainer::SelectItemFromPoint(const CPoint &point)
   if (!m_focusedLayout || !m_layout)
     return false;
 
-  MarkDirtyRegion();
-
   const float mouse_scroll_speed = 0.25f;
   const float mouse_max_amount = 1.5f;
   float sizeOfItem = m_layout->Size(m_orientation);
@@ -272,7 +272,6 @@ void CGUIFixedListContainer::SelectItem(int item)
       SetContainerMoving(cursor - GetCursor());
     SetCursor(cursor);
     ScrollToOffset(item - GetCursor());
-    MarkDirtyRegion();
   }
 }
 

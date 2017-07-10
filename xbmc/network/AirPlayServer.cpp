@@ -36,7 +36,6 @@
 #include "filesystem/Directory.h"
 #include "FileItem.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "PlayListPlayer.h"
 #include "utils/md5.h"
@@ -718,7 +717,7 @@ bool CAirPlayServer::CTCPClient::checkAuthorization(const std::string& authStr,
      }
      else
      {
-       CLog::Log(LOGDEBUG, "AirAuth: successful authentication from AirPlay client");
+       CLog::Log(LOGDEBUG, "AirAuth: successfull authentication from AirPlay client");
      }
   }
   m_bAuthenticated = authValid;
@@ -737,7 +736,7 @@ void CAirPlayServer::restoreVolume()
 {
   CSingleLock lock(ServerInstanceLock);
 
-  if (ServerInstance && ServerInstance->m_origVolume != -1 && CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
+  if (ServerInstance && ServerInstance->m_origVolume != -1 && CSettings::GetInstance().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
   {
     g_application.SetVolume((float)ServerInstance->m_origVolume);
     ServerInstance->m_origVolume = -1;
@@ -756,10 +755,14 @@ void dumpPlist(DllLibPlist *pLibPlist, plist_t *dict)
 std::string getStringFromPlist(DllLibPlist *pLibPlist,plist_t node)
 {
   std::string ret;
-  char *tmpStr = nullptr;
+  char *tmpStr = NULL;
   pLibPlist->plist_get_string_val(node, &tmpStr);
   ret = tmpStr;
+#ifdef TARGET_WINDOWS
+  pLibPlist->plist_free_string_val(tmpStr);
+#else
   free(tmpStr);
+#endif
   return ret;
 }
 
@@ -851,7 +854,7 @@ int CAirPlayServer::CTCPClient::ProcessRequest( std::string& responseHeader,
       {
         float oldVolume = g_application.GetVolume();
         volume *= 100;
-        if(oldVolume != volume && CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
+        if(oldVolume != volume && CSettings::GetInstance().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
         {
           backupVolume();
           g_application.SetVolume(volume);          

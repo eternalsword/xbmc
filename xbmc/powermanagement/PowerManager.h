@@ -20,7 +20,6 @@
  *
  */
 
-#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,20 +44,20 @@ enum PowerState
 class CNullPowerSyscall : public CAbstractPowerSyscall
 {
 public:
-  bool Powerdown() override { return false; }
-  bool Suspend() override { return false; }
-  bool Hibernate() override { return false; }
-  bool Reboot() override { return false; }
+  virtual bool Powerdown()    { return false; }
+  virtual bool Suspend()      { return false; }
+  virtual bool Hibernate()    { return false; }
+  virtual bool Reboot()       { return false; }
 
-  bool CanPowerdown() override { return true; }
-  bool CanSuspend() override { return true; }
-  bool CanHibernate() override { return true; }
-  bool CanReboot() override { return true; }
+  virtual bool CanPowerdown() { return true; }
+  virtual bool CanSuspend()   { return true; }
+  virtual bool CanHibernate() { return true; }
+  virtual bool CanReboot()    { return true; }
 
-  int  BatteryLevel() override { return 0; }
+  virtual int  BatteryLevel() { return 0; }
 
 
-  bool PumpPowerEvents(IPowerEventsCallback *callback) override { return false; }
+  virtual bool PumpPowerEvents(IPowerEventsCallback *callback) { return false; }
 };
 
 // This class will wrap and handle PowerSyscalls.
@@ -67,7 +66,7 @@ class CPowerManager : public IPowerEventsCallback
 {
 public:
   CPowerManager();
-  ~CPowerManager() override;
+  ~CPowerManager();
 
   void Initialize();
   void SetDefaults();
@@ -86,13 +85,13 @@ public:
 
   void ProcessEvents();
 
-  static void SettingOptionsShutdownStatesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsShutdownStatesFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 private:
-  void OnSleep() override;
-  void OnWake() override;
+  void OnSleep();
+  void OnWake();
 
-  void OnLowBattery() override;
+  void OnLowBattery();
 
   IPowerSyscall *m_instance;
 };

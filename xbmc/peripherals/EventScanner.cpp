@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016-2017 Team Kodi
+ *      Copyright (C) 2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -45,21 +45,20 @@ void CEventScanner::Start(void)
 
 void CEventScanner::Stop(void)
 {
-  StopThread(false);
   m_scanEvent.Set();
   StopThread(true);
 }
 
-EventRateHandle CEventScanner::SetRate(double rateHz)
+EventRateHandle CEventScanner::SetRate(float rateHz)
 {
   CSingleLock lock(m_mutex);
 
-  const double oldRate = GetRateHz();
+  const float oldRate = GetRateHz();
 
   EventRateHandle handle = EventRateHandle(new CEventRateHandle(rateHz, this));
   m_handles.push_back(handle);
 
-  const double newRate = GetRateHz();
+  const float newRate = GetRateHz();
 
   CLog::Log(LOGDEBUG, "PERIPHERALS: Event sampling rate set from %.2f to %.2f", oldRate, newRate);
 
@@ -70,7 +69,7 @@ void CEventScanner::Release(CEventRateHandle* handle)
 {
   CSingleLock lock(m_mutex);
 
-  const double oldRate = GetRateHz();
+  const float oldRate = GetRateHz();
 
   m_handles.erase(std::remove_if(m_handles.begin(), m_handles.end(),
     [handle](const EventRateHandle& myHandle)
@@ -78,14 +77,14 @@ void CEventScanner::Release(CEventRateHandle* handle)
       return handle == myHandle.get();
     }), m_handles.end());
 
-  const double newRate = GetRateHz();
+  const float newRate = GetRateHz();
 
   CLog::Log(LOGDEBUG, "PERIPHERALS: Event sampling rate set from %.2f to %.2f", oldRate, newRate);
 }
 
 void CEventScanner::Process(void)
 {
-  double nextScanMs = static_cast<double>(SystemClockMillis());
+  float nextScanMs = static_cast<float>(SystemClockMillis());
 
   while (!m_bStop)
   {
@@ -93,12 +92,8 @@ void CEventScanner::Process(void)
 
     m_callback->ProcessEvents();
 
-    const double nowMs = static_cast<double>(SystemClockMillis());
-    const double scanIntervalMs = GetScanIntervalMs();
-
-    // Handle wrap-around
-    if (nowMs < nextScanMs)
-      nextScanMs = nowMs;
+    const float nowMs = static_cast<float>(SystemClockMillis());
+    const float scanIntervalMs = GetScanIntervalMs();
 
     while (nextScanMs <= nowMs)
       nextScanMs += scanIntervalMs;
@@ -110,11 +105,11 @@ void CEventScanner::Process(void)
   }
 }
 
-double CEventScanner::GetRateHz(void) const
+float CEventScanner::GetRateHz(void) const
 {
   CSingleLock lock(m_mutex);
 
-  double scanRateHz = 0.0;
+  float scanRateHz = 0.0f;
 
   for (const EventRateHandle& handle : m_handles)
   {
@@ -122,7 +117,7 @@ double CEventScanner::GetRateHz(void) const
       scanRateHz = handle->GetRateHz();
   }
 
-  if (scanRateHz == 0.0)
+  if (scanRateHz == 0.0f)
     scanRateHz = DEFAULT_SCAN_RATE_HZ;
 
   return scanRateHz;

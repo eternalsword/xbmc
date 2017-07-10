@@ -40,6 +40,7 @@
 using namespace XFILE;
 
 #define CONTROL_PROFILES 2
+#define CONTROL_LASTLOADED_PROFILE 3
 #define CONTROL_LOGINSCREEN 4
 #define CONTROL_AUTOLOGIN 5
 
@@ -233,7 +234,7 @@ void CGUIWindowSettingsProfile::OnInitWindow()
 
 bool CGUIWindowSettingsProfile::GetAutoLoginProfileChoice(int &iProfile)
 {
-  CGUIDialogSelect *dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
+  CGUIDialogSelect *dialog = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
   if (!dialog) return false;
 
   // add items

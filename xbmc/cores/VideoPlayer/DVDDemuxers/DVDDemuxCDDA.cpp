@@ -21,7 +21,7 @@
 #include "DVDInputStreams/DVDInputStream.h"
 #include "DVDDemuxCDDA.h"
 #include "DVDDemuxUtils.h"
-#include "TimingConstants.h"
+#include "../DVDClock.h"
 
 // CDDA audio demuxer based on AirTunes audio Demuxer.
 
@@ -136,7 +136,7 @@ DemuxPacket* CDVDDemuxCDDA::Read()
   return pPacket;
 }
 
-bool CDVDDemuxCDDA::SeekTime(double time, bool backwards, double* startpts)
+bool CDVDDemuxCDDA::SeekTime(int time, bool backwords, double* startpts)
 {
   int bytes_per_second = m_stream->iBitRate>>3;
   // clamp seeks to bytes per full sample

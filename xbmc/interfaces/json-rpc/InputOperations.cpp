@@ -25,7 +25,7 @@
 #include "guilib/GUIWindow.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIKeyboardFactory.h"
-#include "input/ActionTranslator.h"
+#include "input/ButtonTranslator.h"
 #include "input/Key.h"
 #include "utils/Variant.h"
 #include "input/XBMC_keyboard.h"
@@ -88,8 +88,8 @@ JSONRPC_STATUS CInputOperations::SendText(const std::string &method, ITransportL
 
 JSONRPC_STATUS CInputOperations::ExecuteAction(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
-  unsigned int action;
-  if (!CActionTranslator::TranslateString(parameterObject["action"].asString(), action))
+  int action;
+  if (!CButtonTranslator::TranslateActionString(parameterObject["action"].asString().c_str(), action))
     return InvalidParams;
 
   return SendAction(action);
@@ -145,12 +145,12 @@ JSONRPC_STATUS CInputOperations::ShowCodec(const std::string &method, ITransport
   return MethodNotFound;
 }
 
-JSONRPC_STATUS CInputOperations::ShowOSD(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
-{
-  return SendAction(ACTION_SHOW_OSD);
-}
-
 JSONRPC_STATUS CInputOperations::ShowPlayerProcessInfo(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
 {
   return SendAction(ACTION_PLAYER_PROCESS_INFO);
+}
+
+JSONRPC_STATUS CInputOperations::ShowOSD(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result)
+{
+  return SendAction(ACTION_SHOW_OSD);
 }

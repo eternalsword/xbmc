@@ -35,7 +35,9 @@ CGUIDialogPlayEject::CGUIDialogPlayEject()
 {
 }
 
-CGUIDialogPlayEject::~CGUIDialogPlayEject() = default;
+CGUIDialogPlayEject::~CGUIDialogPlayEject()
+{
+}
 
 bool CGUIDialogPlayEject::OnMessage(CGUIMessage& message)
 {

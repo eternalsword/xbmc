@@ -29,10 +29,10 @@ class CInputCodingTableBasePY : public IInputCodingTable
 {
 public:
   CInputCodingTableBasePY();
-  ~CInputCodingTableBasePY() override = default;
+  virtual ~CInputCodingTableBasePY() {}
 
-  bool GetWordListPage(const std::string& strCode, bool isFirstPage) override;
-  std::vector<std::wstring> GetResponse(int) override;
+  virtual bool GetWordListPage(const std::string& strCode, bool isFirstPage);
+  virtual std::vector<std::wstring> GetResponse(int);
 private:
   std::vector<std::wstring> m_words;
 };

@@ -37,7 +37,7 @@ public:
   {
     RegisterHandler(handler);
   }
-  ~IGenericTouchGestureDetector() override = default;
+  virtual ~IGenericTouchGestureDetector() { }
 
   /*!
    * \brief Check whether the gesture recognition is finished or not

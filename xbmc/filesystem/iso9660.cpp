@@ -19,6 +19,11 @@
  *
  */
 
+#include <algorithm>
+#include "system.h"
+#include "utils/log.h"
+#include <stdlib.h>
+
 /*
  Redbook   : CDDA
  Yellowbook : CDROM
@@ -44,18 +49,12 @@ ISO9660
 #include "utils/CharsetConverter.h"
 #include "threads/SingleLock.h"
 #include "IFile.h"
-#include "system.h"
-#include "utils/log.h"
 
 #ifndef TARGET_WINDOWS
 #include "storage/DetectDVDType.h"  // for MODE2_DATA_SIZE etc.
 #include "linux/XFileUtils.h"
 #include "linux/XTimeUtils.h"
-#else
-#include "platform/win32/CharsetConverter.h"
 #endif
-#include <stdlib.h>
-#include <algorithm>
 #include <cdio/bytesex.h>
 //#define _DEBUG_OUTPUT 1
 
@@ -92,7 +91,7 @@ const std::string iso9660::ParseName(struct iso9660_Directory& isodir)
     {
       if (isodir.FileName[iPos] == 'N' && isodir.FileName[iPos + 1] == 'M')
       {
-        // alternate name
+        // altername name
         // "N" "M"  LEN_NM  1  FLAGS  NAMECONTENT
         // BP1 BP2    BP3      BP4  BP5     BP6-LEN_NM
         int iNameLen = isodir.FileName[iPos + 2] - 5;
@@ -180,7 +179,7 @@ struct iso_dirtree *iso9660::ReadRecursiveDirFromSector( DWORD sector, const cha
   if (!pCurr_dir_cache )
     return NULL;
 
-  int bResult = ::ReadFile( m_info.ISO_HANDLE, pCurr_dir_cache, wSectorSize, &lpNumberOfBytesRead, NULL );
+  BOOL bResult = ::ReadFile( m_info.ISO_HANDLE, pCurr_dir_cache, wSectorSize, &lpNumberOfBytesRead, NULL );
   if (!bResult || lpNumberOfBytesRead != wSectorSize)
   {
     CLog::Log(LOGERROR, "%s: unable to read", __FUNCTION__);
@@ -378,7 +377,7 @@ struct iso_dirtree *iso9660::ReadRecursiveDirFromSector( DWORD sector, const cha
         if (bContinue)
         {
 
-          //     int semipos = temp_text.find(";",0); //the directory is not separate by ";",but by its length
+          //     int semipos = temp_text.find(";",0); //the directory is not seperate by ";",but by its length
           //     if (semipos >= 0)
           //       temp_text.erase(semipos,temp_text.length()-semipos);
 
@@ -498,7 +497,7 @@ void iso9660::Scan()
     DWORD lpNumberOfBytesRead;
     char* pCurr_dir_cache = (char*)malloc( 16*wSectorSize );
     iso9660_Directory isodir;
-    int bResult = ::ReadFile( m_info.ISO_HANDLE, pCurr_dir_cache, wSectorSize, &lpNumberOfBytesRead, NULL );
+    BOOL bResult = ::ReadFile( m_info.ISO_HANDLE, pCurr_dir_cache, wSectorSize, &lpNumberOfBytesRead, NULL );
     memcpy( &isodir, pCurr_dir_cache, sizeof(isodir));
 
     int iso9660searchpointer=0;
@@ -633,7 +632,7 @@ struct iso_dirtree *iso9660::FindFolder( char *Folder )
 //******************************************************************************************************************
 HANDLE iso9660::FindFirstFile( char *szLocalFolder, WIN32_FIND_DATA *wfdFile )
 {
-  if (m_info.ISO_HANDLE == nullptr) return static_cast<HANDLE>(nullptr);
+  if (m_info.ISO_HANDLE == 0) return (HANDLE)0;
   memset( wfdFile, 0, sizeof(WIN32_FIND_DATA));
 
   m_searchpointer = FindFolder( szLocalFolder );
@@ -644,12 +643,7 @@ HANDLE iso9660::FindFirstFile( char *szLocalFolder, WIN32_FIND_DATA *wfdFile )
 
     if ( m_searchpointer )
     {
-#ifdef TARGET_WINDOWS
-      wcscpy_s(wfdFile->cFileName, MAX_PATH, KODI::PLATFORM::WINDOWS::ToW(m_searchpointer->name).c_str());
-#else
-      strncpy(wfdFile->cFileName, m_searchpointer->name, sizeof(wfdFile->cFileName) - 1);
-      wfdFile->cFileName[sizeof(wfdFile->cFileName) - 1] = '\0';
-#endif
+      strcpy(wfdFile->cFileName, m_searchpointer->name );
 
       if ( m_searchpointer->type == 2 )
         wfdFile->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
@@ -659,10 +653,10 @@ HANDLE iso9660::FindFirstFile( char *szLocalFolder, WIN32_FIND_DATA *wfdFile )
       wfdFile->ftCreationTime = m_searchpointer->filetime;
 
       wfdFile->nFileSizeLow = m_searchpointer->Length;
-      return reinterpret_cast<HANDLE>(1);
+      return (HANDLE)1;
     }
   }
-  return static_cast<HANDLE>(nullptr);
+  return (HANDLE)0;
 }
 
 //******************************************************************************************************************
@@ -675,12 +669,7 @@ int iso9660::FindNextFile( HANDLE szLocalFolder, WIN32_FIND_DATA *wfdFile )
 
   if ( m_searchpointer )
   {
-#ifdef TARGET_WINDOWS
-    wcscpy_s(wfdFile->cFileName, MAX_PATH, KODI::PLATFORM::WINDOWS::ToW(m_searchpointer->name).c_str());
-#else
-    strncpy(wfdFile->cFileName, m_searchpointer->name, sizeof(wfdFile->cFileName) - 1);
-    wfdFile->cFileName[sizeof(wfdFile->cFileName) - 1] = '\0';
-#endif
+    strcpy(wfdFile->cFileName, m_searchpointer->name );
 
     if ( m_searchpointer->type == 2 )
       wfdFile->dwFileAttributes |= FILE_ATTRIBUTE_DIRECTORY;
@@ -740,8 +729,7 @@ HANDLE iso9660::OpenFile(const char *filename)
   while ( strpbrk( pointer, "\\/" ) )
     pointer = strpbrk( pointer, "\\/" ) + 1;
 
-  strncpy(work, filename, sizeof(work) - 1);
-  work[sizeof(work) - 1] = '\0';
+  strcpy(work, filename );
   pointer2 = work;
 
   while ( strpbrk(pointer2 + 1, "\\" ) )
@@ -750,17 +738,9 @@ HANDLE iso9660::OpenFile(const char *filename)
   *(pointer2 + 1) = 0;
 
   intptr_t loop = (intptr_t)FindFirstFile( work, &fileinfo );
-
-#ifdef TARGET_WINDOWS
-  auto wpointer = KODI::PLATFORM::WINDOWS::ToW(pointer);
-#endif
   while ( loop > 0)
   {
-#ifdef TARGET_WINDOWS
-    if (!_wcsicmp(fileinfo.cFileName, wpointer.c_str()))
-#else
     if ( !stricmp(fileinfo.cFileName, pointer ) )
-#endif
       loop = -1;
     else
       loop = FindNextFile( NULL, &fileinfo );

@@ -33,8 +33,8 @@
 
 using namespace XFILE;
 
-CHTTPDirectory::CHTTPDirectory(void) = default;
-CHTTPDirectory::~CHTTPDirectory(void) = default;
+CHTTPDirectory::CHTTPDirectory(void){}
+CHTTPDirectory::~CHTTPDirectory(void){}
 
 bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -136,7 +136,7 @@ bool CHTTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         CURL url2(url);
 
         /* NOTE: Force any &...; encoding (e.g. &amp;) into % encoding else CURL objects interpret them incorrectly
-         * due to the ; also being allowed as URL option separator
+         * due to the ; also being allowed as URL option seperator
          */
         if (fileCharset.empty())
           g_charsetConverter.unknownToUTF8(strLinkBase);

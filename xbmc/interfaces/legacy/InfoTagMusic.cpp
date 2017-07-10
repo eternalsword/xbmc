@@ -42,11 +42,6 @@ namespace XBMCAddon
       delete infoTag;
     }
 
-    int InfoTagMusic::getDbId()
-    {
-      return infoTag->GetDatabaseId();
-    }
-
     String InfoTagMusic::getURL()
     {
       return infoTag->GetURL();
@@ -55,11 +50,6 @@ namespace XBMCAddon
     String InfoTagMusic::getTitle()
     {
       return infoTag->GetTitle();
-    }
-
-    String InfoTagMusic::getMediaType()
-    {
-      return infoTag->GetType();
     }
 
     String InfoTagMusic::getArtist()

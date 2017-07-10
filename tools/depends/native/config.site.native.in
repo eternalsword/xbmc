@@ -1,6 +1,6 @@
 LD="${LD:-@LD_FOR_BUILD@}"
-CC="${CC:-@CCACHE@ @CC_FOR_BUILD@}"
-CXX="${CXX:-@CCACHE@ @CXX_FOR_BUILD@}"
+CC="${CC:-@CC_FOR_BUILD@}"
+CXX="${CXX:-@CXX_FOR_BUILD@}"
 AR="${AR:-@AR_FOR_BUILD@}"
 RANLIB="${RANLIB:-@RANLIB_FOR_BUILD@}"
 AS="${AS:-@AS_FOR_BUILD@}"
@@ -24,12 +24,3 @@ fi
 
 LD_LIBRARY_PATH=@prefix@/@tool_dir@/lib:$LD_LIBRARY_PATH
 NASM=@prefix@/@tool_dir@/bin/yasm
-
-if test "@platform_os@" = "osx" ; then
-  # Xcode 8 + 10.11, clock_gettime and getentropy is present
-  # in 10.12 but will get wrongly detected if building on 10.11
-  ac_cv_search_clock_gettime=no
-  ac_cv_func_clock_gettime=no
-  ac_cv_func_getentropy=no
-fi
-

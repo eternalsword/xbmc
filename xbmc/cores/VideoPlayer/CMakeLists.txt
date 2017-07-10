@@ -1,4 +1,4 @@
-set(SOURCES AudioSinkAE.cpp
+set(SOURCES DVDAudio.cpp
             DVDClock.cpp
             DVDDemuxSPU.cpp
             DVDFileInfo.cpp
@@ -6,17 +6,16 @@ set(SOURCES AudioSinkAE.cpp
             DVDMessageQueue.cpp
             DVDOverlayContainer.cpp
             DVDStreamInfo.cpp
-            PTSTracker.cpp
+            DVDTSCorrection.cpp
             Edl.cpp
             VideoPlayerAudio.cpp
             VideoPlayer.cpp
             VideoPlayerRadioRDS.cpp
             VideoPlayerSubtitle.cpp
             VideoPlayerTeletext.cpp
-            VideoPlayerVideo.cpp
-            VideoReferenceClock.cpp)
+            VideoPlayerVideo.cpp)
 
-set(HEADERS AudioSinkAE.h
+set(HEADERS DVDAudio.h
             DVDClock.h
             DVDDemuxSPU.h
             DVDFileInfo.h
@@ -25,16 +24,14 @@ set(HEADERS AudioSinkAE.h
             DVDOverlayContainer.h
             DVDResource.h
             DVDStreamInfo.h
+            DVDTSCorrection.h
             Edl.h
             IVideoPlayer.h
-            PTSTracker.h
-            TimingConstants.h
             VideoPlayer.h
             VideoPlayerAudio.h
             VideoPlayerRadioRDS.h
             VideoPlayerSubtitle.h
             VideoPlayerTeletext.h
-            VideoPlayerVideo.h
-            VideoReferenceClock.h)
+            VideoPlayerVideo.h)
 
 core_add_library(VideoPlayer)

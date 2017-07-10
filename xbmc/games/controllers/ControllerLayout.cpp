@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2017 Team Kodi
+ *      Copyright (C) 2015-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #include "ControllerLayout.h"
 #include "Controller.h"
 #include "ControllerDefinitions.h"
-#include "ControllerTranslator.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/log.h"
 #include "utils/XMLUtils.h"
@@ -29,7 +28,6 @@
 #include <algorithm>
 #include <sstream>
 
-using namespace KODI;
 using namespace GAME;
 using namespace JOYSTICK;
 
@@ -99,36 +97,32 @@ bool CControllerLayout::Deserialize(const TiXmlElement* pElement, const CControl
     CLog::Log(LOGDEBUG, "<%s> tag has no \"%s\" attribute", LAYOUT_XML_ROOT, LAYOUT_XML_ATTR_LAYOUT_IMAGE);
 
   // Features
-  for (const TiXmlElement* pCategory = pElement->FirstChildElement(); pCategory != nullptr; pCategory = pCategory->NextSiblingElement())
+  for (const TiXmlElement* pGroup = pElement->FirstChildElement(); pGroup != nullptr; pGroup = pGroup->NextSiblingElement())
   {
-    if (pCategory->ValueStr() != LAYOUT_XML_ELM_CATEGORY)
+    if (pGroup->ValueStr() != LAYOUT_XML_ELM_GROUP)
     {
-      CLog::Log(LOGERROR, "<%s> tag is misnamed: <%s>", LAYOUT_XML_ELM_CATEGORY, pCategory->Value() ? pCategory->Value() : "");
+      CLog::Log(LOGDEBUG, "<%s> tag is misnamed: <%s>", LAYOUT_XML_ELM_GROUP, pGroup->Value() ? pGroup->Value() : "");
       continue;
     }
 
-    // Category
-    std::string strCategory = XMLUtils::GetAttribute(pCategory, LAYOUT_XML_ATTR_CATEGORY_NAME);
-    FEATURE_CATEGORY category = CControllerTranslator::TranslateFeatureCategory(strCategory);
+    // Group
+    std::string strGroup;
 
-    // Category label
-    std::string strCategoryLabel;
-
-    std::string strCategoryLabelId = XMLUtils::GetAttribute(pCategory, LAYOUT_XML_ATTR_CATEGORY_LABEL);
-    if (!strCategoryLabelId.empty())
+    std::string strGroupLabel = XMLUtils::GetAttribute(pGroup, LAYOUT_XML_ATTR_GROUP_LABEL);
+    if (!strGroupLabel.empty())
     {
-      unsigned int categoryLabelId;
-      std::istringstream(strCategoryLabelId) >> categoryLabelId;
-      strCategoryLabel = g_localizeStrings.GetAddonString(controller->ID(), categoryLabelId);
-      if (strCategoryLabel.empty())
-        strCategoryLabel = g_localizeStrings.Get(categoryLabelId);
+      unsigned int categoryId;
+      std::istringstream(strGroupLabel) >> categoryId;
+      strGroup = g_localizeStrings.GetAddonString(controller->ID(), categoryId);
+      if (strGroup.empty())
+        strGroup = g_localizeStrings.Get(categoryId);
     }
 
-    for (const TiXmlElement* pFeature = pCategory->FirstChildElement(); pFeature != nullptr; pFeature = pFeature->NextSiblingElement())
+    for (const TiXmlElement* pFeature = pGroup->FirstChildElement(); pFeature != nullptr; pFeature = pFeature->NextSiblingElement())
     {
       CControllerFeature feature;
 
-      if (!feature.Deserialize(pFeature, controller, category, strCategoryLabel))
+      if (!feature.Deserialize(pFeature, controller, strGroup))
         return false;
 
       m_features.push_back(feature);

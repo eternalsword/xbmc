@@ -23,7 +23,7 @@
 class IPowerEventsCallback
 {
 public:
-  virtual ~IPowerEventsCallback() = default;
+  virtual ~IPowerEventsCallback() { }
 
   virtual void OnSleep() = 0;
   virtual void OnWake() = 0;
@@ -34,7 +34,7 @@ public:
 class IPowerSyscall
 {
 public:
-  virtual ~IPowerSyscall() = default;
+  virtual ~IPowerSyscall() {};
   virtual bool Powerdown()    = 0;
   virtual bool Suspend()      = 0;
   virtual bool Hibernate()    = 0;
@@ -69,7 +69,7 @@ public:
 class CAbstractPowerSyscall : public IPowerSyscall
 {
 public:
-  int CountPowerFeatures() override
+  virtual int CountPowerFeatures()
   {
       return (CanPowerdown() ? 1 : 0)
              + (CanSuspend() ? 1 : 0)
@@ -83,10 +83,10 @@ class CPowerSyscallWithoutEvents : public CAbstractPowerSyscall
 public:
   CPowerSyscallWithoutEvents() { m_OnResume = false; m_OnSuspend = false; }
 
-  bool Suspend() override { m_OnSuspend = true; return false; }
-  bool Hibernate() override { m_OnSuspend = true; return false; }
+  virtual bool Suspend() { m_OnSuspend = true; return false; }
+  virtual bool Hibernate() { m_OnSuspend = true; return false; }
 
-  bool PumpPowerEvents(IPowerEventsCallback *callback) override
+  virtual bool PumpPowerEvents(IPowerEventsCallback *callback)
   {
     if (m_OnSuspend)
     {

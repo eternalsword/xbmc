@@ -23,7 +23,7 @@
 #include "DVDDemuxUtils.h"
 #include "utils/log.h"
 #include "settings/Settings.h"
-#include "TimingConstants.h"
+#include "../DVDClock.h"
 
 #define FF_MAX_EXTRADATA_SIZE ((1 << 28) - FF_INPUT_BUFFER_PADDING_SIZE)
 
@@ -133,22 +133,20 @@ void CDVDDemuxClient::Flush()
   m_dtsAtDisplayTime = DVD_NOPTS_VALUE;
 }
 
-bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
+void CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
 {
-  bool change = false;
-
   CDemuxStream* st = GetStream(pkt->iStreamId);
   if (st == nullptr)
-    return change;
+    return;
 
   if (st->ExtraSize)
-    return change;
+    return;
 
   CDemuxStreamClientInternal* stream = dynamic_cast<CDemuxStreamClientInternal*>(st);
 
   if (stream == nullptr ||
      stream->m_parser == nullptr)
-    return change;
+    return;
 
   if (stream->m_context == nullptr)
   {
@@ -157,7 +155,7 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
     {
       CLog::Log(LOGERROR, "%s - can't find decoder", __FUNCTION__);
       stream->DisposeParser();
-      return change;
+      return;
     }
 
     stream->m_context = avcodec_alloc_context3(codec);
@@ -165,7 +163,7 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
     {
       CLog::Log(LOGERROR, "%s - can't allocate context", __FUNCTION__);
       stream->DisposeParser();
-      return change;
+      return;
     }
     stream->m_context->time_base.num = 1;
     stream->m_context->time_base.den = DVD_TIME_BASE;
@@ -185,8 +183,6 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
       memcpy(st->ExtraData, pkt->pData, len);
       memset((uint8_t*)st->ExtraData + len, 0 , FF_INPUT_BUFFER_PADDING_SIZE);
       stream->m_parser_split = false;
-      change = true;
-      CLog::Log(LOGDEBUG, "CDVDDemuxClient::ParsePacket - split extradata");
     }
   }
 
@@ -200,7 +196,7 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
                              (int64_t)(pkt->dts * DVD_TIME_BASE),
                              0);
   // our parse is setup to parse complete frames, so we don't care about outbufs
-  if (len >= 0)
+  if(len >= 0)
   {
     if (stream->m_context->profile != st->profile &&
         stream->m_context->profile != FF_PROFILE_UNKNOWN)
@@ -272,7 +268,7 @@ bool CDVDDemuxClient::ParsePacket(DemuxPacket* pkt)
   else
     CLog::Log(LOGDEBUG, "%s - parser returned error %d", __FUNCTION__, len);
 
-  return change;
+  return;
 }
 
 DemuxPacket* CDVDDemuxClient::Read()
@@ -280,35 +276,26 @@ DemuxPacket* CDVDDemuxClient::Read()
   if (!m_IDemux)
     return nullptr;
 
-  if (m_packet)
-    return m_packet.release();
-
-  m_packet.reset(m_IDemux->ReadDemux());
-  if (!m_packet)
+  DemuxPacket* pPacket = m_IDemux->ReadDemux();
+  if (!pPacket)
   {
     return nullptr;
   }
 
-  if (m_packet->iStreamId == DMX_SPECIALID_STREAMINFO)
+  if (pPacket->iStreamId == DMX_SPECIALID_STREAMINFO)
   {
     RequestStreams();
-    CDVDDemuxUtils::FreeDemuxPacket(m_packet.release());
+    CDVDDemuxUtils::FreeDemuxPacket(pPacket);
     return CDVDDemuxUtils::AllocateDemuxPacket(0);
   }
-  else if (m_packet->iStreamId == DMX_SPECIALID_STREAMCHANGE)
+  else if (pPacket->iStreamId == DMX_SPECIALID_STREAMCHANGE)
   {
     RequestStreams();
   }
-  else if (m_packet->iStreamId >= 0 && m_streams.count(m_packet->iStreamId) > 0)
+  else if (pPacket->iStreamId >= 0 &&
+           m_streams[pPacket->iStreamId])
   {
-    if (ParsePacket(m_packet.get()))
-    {
-      RequestStreams();
-      DemuxPacket *pPacket = CDVDDemuxUtils::AllocateDemuxPacket(0);
-      pPacket->iStreamId = DMX_SPECIALID_STREAMCHANGE;
-      pPacket->demuxerId = m_demuxerId;
-      return pPacket;
-    }
+    ParsePacket(pPacket);
   }
 
   CDVDInputStream::IDisplayTime *inputStream = m_pInput->GetIDisplayTime();
@@ -318,18 +305,18 @@ DemuxPacket* CDVDDemuxClient::Read()
     if (m_displayTime != dispTime)
     {
       m_displayTime = dispTime;
-      if (m_packet->dts != DVD_NOPTS_VALUE)
+      if (pPacket->dts != DVD_NOPTS_VALUE)
       {
-        m_dtsAtDisplayTime = m_packet->dts;
+        m_dtsAtDisplayTime = pPacket->dts;
       }
     }
-    if (m_dtsAtDisplayTime != DVD_NOPTS_VALUE && m_packet->dts != DVD_NOPTS_VALUE)
+    if (m_dtsAtDisplayTime != DVD_NOPTS_VALUE && pPacket->dts != DVD_NOPTS_VALUE)
     {
-      m_packet->dispTime = m_displayTime;
-      m_packet->dispTime += DVD_TIME_TO_MSEC(m_packet->dts - m_dtsAtDisplayTime);
+      pPacket->dispTime = m_displayTime;
+      pPacket->dispTime += DVD_TIME_TO_MSEC(pPacket->dts - m_dtsAtDisplayTime);
     }
   }
-  return m_packet.release();
+  return pPacket;
 }
 
 CDemuxStream* CDVDDemuxClient::GetStream(int iStreamId) const
@@ -345,18 +332,9 @@ std::vector<CDemuxStream*> CDVDDemuxClient::GetStreams() const
 {
   std::vector<CDemuxStream*> streams;
 
-  for (auto &st : m_streams)
+  for (auto &iter : m_streams)
   {
-    // if video stream has no extradata, hide it from player
-    // but continue reading it for parsing
-    if (st.second->type == STREAM_VIDEO && !st.second->ExtraData)
-    {
-      if (m_IDemux)
-        m_IDemux->EnableStream(st.second->uniqueId, true);
-      continue;
-    }
-
-    streams.push_back(st.second.get());
+    streams.push_back(iter.second.get());
   }
 
   return streams;
@@ -444,7 +422,6 @@ void CDVDDemuxClient::RequestStreams()
       streamVideo->iHeight         = source->iHeight;
       streamVideo->iWidth          = source->iWidth;
       streamVideo->fAspect         = source->fAspect;
-      streamVideo->iBitRate = source->iBitRate;
       streamVideo->stereo_mode     = "mono";
       if (source->ExtraSize > 0 && source->ExtraData)
       {
@@ -547,8 +524,8 @@ void CDVDDemuxClient::RequestStreams()
     dStream->uniqueId = stream->uniqueId;
     dStream->codec = stream->codec;
     dStream->codecName = stream->codecName;
-    dStream->cryptoSession = stream->cryptoSession;
-    dStream->externalInterfaces = stream->externalInterfaces;
+    dStream->bandwidth = stream->bandwidth;
+    dStream->uniqueId = stream->uniqueId;
     for (int j=0; j<4; j++)
       dStream->language[j] = stream->language[j];
 
@@ -609,7 +586,7 @@ std::string CDVDDemuxClient::GetStreamCodecName(int iStreamId)
   return strName;
 }
 
-bool CDVDDemuxClient::SeekTime(double timems, bool backwards, double *startpts)
+bool CDVDDemuxClient::SeekTime(int timems, bool backwards, double *startpts)
 {
   if (m_IDemux)
   {

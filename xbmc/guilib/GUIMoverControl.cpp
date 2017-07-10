@@ -41,7 +41,8 @@ CGUIMoverControl::CGUIMoverControl(int parentID, int controlID, float posX, floa
   SetLocation(0, 0, false);  // defaults
 }
 
-CGUIMoverControl::~CGUIMoverControl(void) = default;
+CGUIMoverControl::~CGUIMoverControl(void)
+{}
 
 void CGUIMoverControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {

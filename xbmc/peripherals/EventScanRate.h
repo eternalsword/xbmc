@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016-2017 Team Kodi
+ *      Copyright (C) 2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -32,7 +32,7 @@ namespace PERIPHERALS
   class IEventRateCallback
   {
   public:
-    virtual ~IEventRateCallback(void) = default;
+    virtual ~IEventRateCallback(void) { }
 
     /*!
      * \brief Release the specified handle
@@ -46,14 +46,14 @@ namespace PERIPHERALS
   class CEventRateHandle
   {
   public:
-    CEventRateHandle(double rateHz, IEventRateCallback* callback);
+    CEventRateHandle(float rateHz, IEventRateCallback* callback);
 
-    ~CEventRateHandle(void) = default;
+    ~CEventRateHandle(void) { }
 
     /*!
      * \brief Get the rate this handle represents
      */
-    double GetRateHz(void) const { return m_rateHz; }
+    float GetRateHz(void) const { return m_rateHz; }
 
     /*!
      * \brief Release the handle
@@ -61,7 +61,7 @@ namespace PERIPHERALS
     void Release(void);
 
   private:
-    const double              m_rateHz;
+    const float               m_rateHz;
     IEventRateCallback* const m_callback;
   };
 }

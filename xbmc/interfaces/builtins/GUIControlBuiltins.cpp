@@ -21,8 +21,7 @@
 #include "GUIControlBuiltins.h"
 
 #include "guilib/GUIWindowManager.h"
-#include "input/WindowTranslator.h"
-#include "utils/StringUtils.h"
+#include "input/ButtonTranslator.h"
 
 /*! \brief Send a move event to a GUI control.
  *  \param params The parameters.
@@ -48,7 +47,7 @@ static int SendClick(const std::vector<std::string>& params)
   if (params.size() == 2)
   {
     // have a window - convert it
-    int windowID = CWindowTranslator::TranslateWindow(params[0]);
+    int windowID = CButtonTranslator::TranslateWindow(params[0]);
     CGUIMessage message(GUI_MSG_CLICKED, atoi(params[1].c_str()), windowID);
     g_windowManager.SendMessage(message);
   }
@@ -70,7 +69,7 @@ static int SendClick(const std::vector<std::string>& params)
 static int SendMessage(const std::vector<std::string>& params)
 {
   int controlID = atoi(params[0].c_str());
-  int windowID = (params.size() == 3) ? CWindowTranslator::TranslateWindow(params[2]) : g_windowManager.GetActiveWindow();
+  int windowID = (params.size() == 3) ? CButtonTranslator::TranslateWindow(params[2]) : g_windowManager.GetActiveWindow();
   if (params[1] == "moveup")
     g_windowManager.SendMessage(GUI_MSG_MOVE_OFFSET, windowID, controlID, 1);
   else if (params[1] == "movedown")
@@ -89,16 +88,12 @@ static int SendMessage(const std::vector<std::string>& params)
  *  \param params The parameters.
  *  \details params[0] = ID of control.
  *           params[1] = ID of subitem of control (optional).
- *           params[2] = "absolute" to focus the absolute position instead of the relative one (optional).
  */
 static int SetFocus(const std::vector<std::string>& params)
 {
   int controlID = atol(params[0].c_str());
   int subItem = (params.size() > 1) ? atol(params[1].c_str())+1 : 0;
-  int absID = 0;
-  if (params.size() > 2 && StringUtils::EqualsNoCase(params[2].c_str(), "absolute"))
-    absID = 1;
-  CGUIMessage msg(GUI_MSG_SETFOCUS, g_windowManager.GetFocusedWindow(), controlID, subItem, absID);
+  CGUIMessage msg(GUI_MSG_SETFOCUS, g_windowManager.GetFocusedWindow(), controlID, subItem);
   g_windowManager.SendMessage(msg);
 
   return 0;
@@ -152,7 +147,6 @@ static int ShiftPage(const std::vector<std::string>& params)
 ///     Change current focus to a different control id
 ///     @param[in] controlId             ID of control.
 ///     @param[in] subitemId             ID of subitem of control (optional).
-///     @param[in] absolute              "absolute" to focus the absolute position instead of the relative one (optional).
 ///   }
 ///   \table_row2_l{
 ///     <b>`pagedown(controlId)`</b>
@@ -179,7 +173,6 @@ static int ShiftPage(const std::vector<std::string>& params)
 ///     Change current focus to a different control id
 ///     @param[in] controlId             ID of control.
 ///     @param[in] subitemId             ID of subitem of control (optional).
-///     @param[in] absolute              "absolute" to focus the absolute position instead of the relative one (optional).
 ///   }
 ///  \table_end
 ///

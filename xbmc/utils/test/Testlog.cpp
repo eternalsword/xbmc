@@ -33,8 +33,8 @@
 class Testlog : public testing::Test
 {
 protected:
-  Testlog() = default;
-  ~Testlog() override
+  Testlog(){}
+  ~Testlog()
   {
     CLog::Close();
   }

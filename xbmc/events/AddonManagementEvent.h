@@ -30,11 +30,11 @@ public:
   CAddonManagementEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description);
   CAddonManagementEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description, const CVariant& details);
   CAddonManagementEvent(ADDON::AddonPtr addon, EventLevel level, const CVariant& description, const CVariant& details, const CVariant& executionLabel);
-  ~CAddonManagementEvent() override = default;
+  virtual ~CAddonManagementEvent() { }
 
-  const char* GetType() const override { return "AddonManagementEvent"; }
-  std::string GetExecutionLabel() const override;
+  virtual const char* GetType() const { return "AddonManagementEvent"; }
+  virtual std::string GetExecutionLabel() const;
 
-  bool CanExecute() const override { return m_addon != NULL; }
-  bool Execute() const override;
+  virtual bool CanExecute() const { return m_addon != NULL; }
+  virtual bool Execute() const;
 };

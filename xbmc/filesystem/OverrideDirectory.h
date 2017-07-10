@@ -27,11 +27,11 @@ class COverrideDirectory : public IDirectory
 {
 public:
   COverrideDirectory();
-  ~COverrideDirectory() override;
+  virtual ~COverrideDirectory();
 
-  bool Create(const CURL& url) override;
-  bool Exists(const CURL& url) override;
-  bool Remove(const CURL& url) override;
+  virtual bool Create(const CURL& url);
+  virtual bool Exists(const CURL& url);
+  virtual bool Remove(const CURL& url);
 
 protected:
   virtual std::string TranslatePath(const CURL &url) = 0;

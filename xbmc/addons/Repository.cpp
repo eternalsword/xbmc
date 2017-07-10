@@ -54,7 +54,7 @@ using namespace KODI::MESSAGING;
 
 using KODI::MESSAGING::HELPERS::DialogResponse;
 
-std::unique_ptr<CRepository> CRepository::FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext)
+std::unique_ptr<CRepository> CRepository::FromExtension(AddonProps props, const cp_extension_t* ext)
 {
   DirList dirs;
   AddonVersion version("0.0.0");
@@ -88,11 +88,11 @@ std::unique_ptr<CRepository> CRepository::FromExtension(CAddonInfo addonInfo, co
     info.hashes = CAddonMgr::GetInstance().GetExtValue(ext->configuration, "hashes") == "true";
     dirs.push_back(std::move(info));
   }
-  return std::unique_ptr<CRepository>(new CRepository(std::move(addonInfo), std::move(dirs)));
+  return std::unique_ptr<CRepository>(new CRepository(std::move(props), std::move(dirs)));
 }
 
-CRepository::CRepository(CAddonInfo addonInfo, DirList dirs)
-    : CAddon(std::move(addonInfo)), m_dirs(std::move(dirs))
+CRepository::CRepository(AddonProps props, DirList dirs)
+    : CAddon(std::move(props)), m_dirs(std::move(dirs))
 {
 }
 
@@ -243,22 +243,72 @@ bool CRepositoryUpdateJob::DoWork()
       AddonPtr oldAddon;
       if (database.GetAddon(addon->ID(), oldAddon) && addon->Version() > oldAddon->Version())
       {
-        if (!oldAddon->Icon().empty() || !oldAddon->Art().empty() || !oldAddon->Screenshots().empty())
+        if (!oldAddon->Icon().empty() || !oldAddon->FanArt().empty() || !oldAddon->Screenshots().empty())
           CLog::Log(LOGDEBUG, "CRepository: invalidating cached art for '%s'", addon->ID().c_str());
-
         if (!oldAddon->Icon().empty())
           textureDB.InvalidateCachedTexture(oldAddon->Icon());
-
+        if (!oldAddon->FanArt().empty())
+          textureDB.InvalidateCachedTexture(oldAddon->Icon());
         for (const auto& path : oldAddon->Screenshots())
           textureDB.InvalidateCachedTexture(path);
-
-        for (const auto& art : oldAddon->Art())
-          textureDB.InvalidateCachedTexture(art.second);
       }
     }
     textureDB.CommitMultipleExecute();
   }
 
   database.UpdateRepositoryContent(m_repo->ID(), m_repo->Version(), newChecksum, addons);
+
+  //Update broken status
+  database.BeginMultipleExecute();
+  for (const auto& addon : addons)
+  {
+    AddonPtr localAddon;
+    CAddonMgr::GetInstance().GetAddon(addon->ID(), localAddon);
+
+    if (localAddon && localAddon->Version() > addon->Version())
+      //We have a newer verison locally
+      continue;
+
+    if (database.GetAddonVersion(addon->ID()).first > addon->Version())
+      //Newer version in db (ie. in a different repo)
+      continue;
+
+    std::string broken = addon->Broken();
+    bool depsMet = CAddonInstaller::GetInstance().CheckDependencies(addon);
+    if (!depsMet && broken.empty())
+      broken = "DEPSNOTMET";
+
+    if (localAddon)
+    {
+      bool brokenInDb = database.IsAddonBroken(addon->ID());
+      if (!broken.empty() && !brokenInDb)
+      {
+        //newly broken
+        int line = 24096;
+        if (broken == "DEPSNOTMET")
+          line = 24104;
+        if (HELPERS::ShowYesNoDialogLines(CVariant{addon->Name()}, CVariant{line}, CVariant{24097}, CVariant{""}) 
+          == DialogResponse::YES)
+        {
+          CAddonMgr::GetInstance().DisableAddon(addon->ID());
+        }
+
+        CLog::Log(LOGDEBUG, "CRepositoryUpdateJob[%s] addon '%s' marked broken. reason: \"%s\"",
+             m_repo->ID().c_str(), addon->ID().c_str(), broken.c_str());
+
+        CEventLog::GetInstance().Add(EventPtr(new CAddonManagementEvent(addon, 24096)));
+      }
+      else if (broken.empty() && brokenInDb)
+      {
+        //Unbroken
+        CLog::Log(LOGDEBUG, "CRepositoryUpdateJob[%s] addon '%s' unbroken",
+            m_repo->ID().c_str(), addon->ID().c_str());
+      }
+    }
+
+    //Update broken status
+    database.BreakAddon(addon->ID(), broken);
+  }
+  database.CommitMultipleExecute();
   return true;
 }

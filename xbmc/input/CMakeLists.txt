@@ -1,42 +1,18 @@
-set(SOURCES Action.cpp
-            ActionTranslator.cpp
-            AppTranslator.cpp
-            ButtonTranslator.cpp
-            CustomControllerTranslator.cpp
-            GamepadTranslator.cpp
+set(SOURCES ButtonTranslator.cpp
             InertialScrollingHandler.cpp
             InputCodingTableBaiduPY.cpp
             InputCodingTableBasePY.cpp
             InputCodingTableFactory.cpp
             InputCodingTableKorean.cpp
             InputManager.cpp
-            IRTranslator.cpp
-            JoystickMapper.cpp
             Key.cpp
             KeyboardLayout.cpp
             KeyboardLayoutManager.cpp
             KeyboardStat.cpp
-            KeyboardTranslator.cpp
-            Keymap.cpp
-            KeymapEnvironment.cpp
             MouseStat.cpp
-            MouseTranslator.cpp
-            TouchTranslator.cpp
-            WindowKeymap.cpp
-            WindowTranslator.cpp
             XBMC_keytable.cpp)
 
-set(HEADERS hardware/IHardwareInput.h
-            Action.h
-            ActionIDs.h
-            ActionTranslator.h
-            AppTranslator.h
-            ButtonTranslator.h
-            CustomControllerTranslator.h
-            GamepadTranslator.h
-            IButtonMapper.h
-            IKeymap.h
-            IKeymapEnvironment.h
+set(HEADERS ButtonTranslator.h
             InertialScrollingHandler.h
             InputCodingTable.h
             InputCodingTableBaiduPY.h
@@ -44,24 +20,16 @@ set(HEADERS hardware/IHardwareInput.h
             InputCodingTableFactory.h
             InputCodingTableKorean.h
             InputManager.h
-            IRTranslator.h
-            JoystickMapper.h
             Key.h
             KeyboardLayout.h
             KeyboardLayoutManager.h
             KeyboardStat.h
-            KeyboardTranslator.h
-            Keymap.h
-            KeymapEnvironment.h
             MouseStat.h
-            MouseTranslator.h
-            TouchTranslator.h
-            WindowTranslator.h
-            WindowKeymap.h
             XBIRRemote.h
             XBMC_keyboard.h
             XBMC_keysym.h
             XBMC_keytable.h
+            XBMC_mouse.h
             XBMC_vkeys.h)
 
 core_add_library(input)

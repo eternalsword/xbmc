@@ -32,9 +32,13 @@
 #include "utils/URIUtils.h"
 
 
-CDVDSubtitleStream::CDVDSubtitleStream() = default;
+CDVDSubtitleStream::CDVDSubtitleStream()
+{
+}
 
-CDVDSubtitleStream::~CDVDSubtitleStream() = default;
+CDVDSubtitleStream::~CDVDSubtitleStream()
+{
+}
 
 bool CDVDSubtitleStream::Open(const std::string& strFile)
 {

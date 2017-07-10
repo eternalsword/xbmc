@@ -23,16 +23,11 @@
 #include <set>
 #include <string>
 #include <vector>
-
-#include "input/joysticks/IInputProvider.h"
 #include "peripherals/PeripheralTypes.h"
 
 class TiXmlDocument;
 class CSetting;
-class IKeymap;
 
-namespace KODI
-{
 namespace JOYSTICK
 {
   class IButtonMapper;
@@ -40,13 +35,11 @@ namespace JOYSTICK
   class IDriverReceiver;
   class IInputHandler;
 }
-}
 
 namespace PERIPHERALS
 {
   class CGUIDialogPeripheralSettings;
   class CPeripheralBus;
-  class CPeripherals;
 
   typedef enum
   {
@@ -55,13 +48,13 @@ namespace PERIPHERALS
     STATE_STANDBY
   } CecStateChange;
 
-  class CPeripheral : public KODI::JOYSTICK::IInputProvider
+  class CPeripheral
   {
     friend class CGUIDialogPeripheralSettings;
 
   public:
-    CPeripheral(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
-    ~CPeripheral(void) override;
+    CPeripheral(const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    virtual ~CPeripheral(void);
 
     bool operator ==(const CPeripheral &right) const;
     bool operator !=(const CPeripheral &right) const;
@@ -102,14 +95,14 @@ namespace PERIPHERALS
 
     /*!
      * @brief Initialises the peripheral.
-     * @return True when the peripheral has been initialised successfully, false otherwise.
+     * @return True when the peripheral has been initialised succesfully, false otherwise.
      */
     bool Initialise(void);
 
     /*!
      * @brief Initialise one of the features of this peripheral.
      * @param feature The feature to initialise.
-     * @return True when the feature has been initialised successfully, false otherwise.
+     * @return True when the feature has been initialised succesfully, false otherwise.
      */
     virtual bool InitialiseFeature(const PeripheralFeature feature) { return true; }
 
@@ -140,7 +133,7 @@ namespace PERIPHERALS
      * @brief Get all subdevices if this device is multifunctional.
      * @param subDevices The subdevices.
      */
-    virtual void GetSubdevices(PeripheralVector &subDevices) const;
+    virtual void GetSubdevices(std::vector<CPeripheral *> &subDevices) const;
 
     /*!
      * @return True when this device is multifunctional, false otherwise.
@@ -152,7 +145,7 @@ namespace PERIPHERALS
      * @param strKey The key of the setting.
      * @param setting The setting.
      */
-    virtual void AddSetting(const std::string &strKey, std::shared_ptr<const CSetting> setting, int order);
+    virtual void AddSetting(const std::string &strKey, const CSetting *setting, int order);
 
     /*!
      * @brief Check whether a setting is known with the given key.
@@ -194,28 +187,24 @@ namespace PERIPHERALS
     virtual void LoadPersistedSettings(void);
     virtual void ResetDefaultSettings(void);
 
-    virtual std::vector<std::shared_ptr<CSetting>> GetSettings(void) const;
+    virtual std::vector<CSetting *> GetSettings(void) const;
 
     virtual bool ErrorOccured(void) const { return m_bError; }
 
-    virtual void RegisterJoystickDriverHandler(KODI::JOYSTICK::IDriverHandler* handler, bool bPromiscuous) { }
-    virtual void UnregisterJoystickDriverHandler(KODI::JOYSTICK::IDriverHandler* handler) { }
+    virtual void RegisterJoystickDriverHandler(JOYSTICK::IDriverHandler* handler, bool bPromiscuous) { }
+    virtual void UnregisterJoystickDriverHandler(JOYSTICK::IDriverHandler* handler) { }
 
-    // implementation of IInputProvider
-    void RegisterInputHandler(KODI::JOYSTICK::IInputHandler* handler, bool bPromiscuous) override;
-    void UnregisterInputHandler(KODI::JOYSTICK::IInputHandler* handler) override;
+    virtual void RegisterJoystickInputHandler(JOYSTICK::IInputHandler* handler);
+    virtual void UnregisterJoystickInputHandler(JOYSTICK::IInputHandler* handler);
 
-    virtual void RegisterJoystickButtonMapper(KODI::JOYSTICK::IButtonMapper* mapper);
-    virtual void UnregisterJoystickButtonMapper(KODI::JOYSTICK::IButtonMapper* mapper);
+    virtual void RegisterJoystickButtonMapper(JOYSTICK::IButtonMapper* mapper);
+    virtual void UnregisterJoystickButtonMapper(JOYSTICK::IButtonMapper* mapper);
 
-    virtual KODI::JOYSTICK::IDriverReceiver* GetDriverReceiver() { return nullptr; }
-
-    virtual IKeymap *GetKeymap(const std::string &controllerId) { return nullptr; }
+    virtual JOYSTICK::IDriverReceiver* GetDriverReceiver() { return nullptr; }
 
   protected:
     virtual void ClearSettings(void);
 
-    CPeripherals&                    m_manager;
     PeripheralType                   m_type;
     PeripheralBusType                m_busType;
     PeripheralBusType                m_mappedBusType;
@@ -232,11 +221,11 @@ namespace PERIPHERALS
     bool                             m_bHidden;
     bool                             m_bError;
     std::vector<PeripheralFeature>   m_features;
-    PeripheralVector                 m_subDevices;
+    std::vector<CPeripheral *>       m_subDevices;
     std::map<std::string, PeripheralDeviceSetting> m_settings;
     std::set<std::string>             m_changedSettings;
     CPeripheralBus*                  m_bus;
-    std::map<KODI::JOYSTICK::IInputHandler*, std::unique_ptr<KODI::JOYSTICK::IDriverHandler>> m_inputHandlers;
-    std::map<KODI::JOYSTICK::IButtonMapper*, KODI::JOYSTICK::IDriverHandler*> m_buttonMappers;
+    std::map<JOYSTICK::IInputHandler*, std::unique_ptr<JOYSTICK::IDriverHandler>> m_inputHandlers;
+    std::map<JOYSTICK::IButtonMapper*, JOYSTICK::IDriverHandler*> m_buttonMappers;
   };
 }

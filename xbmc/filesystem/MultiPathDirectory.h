@@ -32,10 +32,10 @@ class CMultiPathDirectory :
 {
 public:
   CMultiPathDirectory(void);
-  ~CMultiPathDirectory(void) override;
-  bool GetDirectory(const CURL& url, CFileItemList &items) override;
-  bool Exists(const CURL& url) override;
-  bool Remove(const CURL& url) override;
+  virtual ~CMultiPathDirectory(void);
+  virtual bool GetDirectory(const CURL& url, CFileItemList &items);
+  virtual bool Exists(const CURL& url);
+  virtual bool Remove(const CURL& url);
 
   static std::string GetFirstPath(const std::string &strPath);
   static bool SupportsWriteFileOperations(const std::string &strPath);

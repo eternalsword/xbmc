@@ -21,15 +21,16 @@
 #include "PeripheralImon.h"
 #include "utils/log.h"
 #include "settings/Settings.h"
+#include "threads/Atomics.h"
 #include "input/InputManager.h"
 
 using namespace PERIPHERALS;
 
-std::atomic<long> CPeripheralImon::m_lCountOfImonsConflictWithDInput(0L);
+volatile long CPeripheralImon::m_lCountOfImonsConflictWithDInput = 0;
 
 
-CPeripheralImon::CPeripheralImon(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
-  CPeripheralHID(manager, scanResult, bus)
+CPeripheralImon::CPeripheralImon(const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
+  CPeripheralHID(scanResult, bus)
 {
   m_features.push_back(FEATURE_IMON);
   m_bImonConflictsWithDInput = false;
@@ -39,7 +40,7 @@ void CPeripheralImon::OnDeviceRemoved()
 {
   if (m_bImonConflictsWithDInput)
   {
-    if (--m_lCountOfImonsConflictWithDInput == 0)
+    if (AtomicDecrement(&m_lCountOfImonsConflictWithDInput) == 0)
       ActionOnImonConflict(false);    
   }
 }
@@ -57,7 +58,7 @@ bool CPeripheralImon::InitialiseFeature(const PeripheralFeature feature)
 
     if (m_bImonConflictsWithDInput)
     {
-      ++m_lCountOfImonsConflictWithDInput;
+      AtomicIncrement(&m_lCountOfImonsConflictWithDInput);
       ActionOnImonConflict(true);
     }
     return CPeripheral::InitialiseFeature(feature);
@@ -66,7 +67,7 @@ bool CPeripheralImon::InitialiseFeature(const PeripheralFeature feature)
   return CPeripheralHID::InitialiseFeature(feature);
 }
 
-void CPeripheralImon::AddSetting(const std::string &strKey, std::shared_ptr<const CSetting> setting, int order)
+void CPeripheralImon::AddSetting(const std::string &strKey, const CSetting *setting, int order)
 {
 #if !defined(TARGET_WINDOWS)
   if (strKey.compare("disable_winjoystick")!=0)
@@ -81,13 +82,13 @@ void CPeripheralImon::OnSettingChanged(const std::string &strChangedSetting)
     if (m_bImonConflictsWithDInput && !GetSettingBool("disable_winjoystick"))
     {
       m_bImonConflictsWithDInput = false;
-      if (--m_lCountOfImonsConflictWithDInput == 0)
+      if (AtomicDecrement(&m_lCountOfImonsConflictWithDInput) == 0)
         ActionOnImonConflict(false);
     }
     else if(!m_bImonConflictsWithDInput && GetSettingBool("disable_winjoystick"))
     {
       m_bImonConflictsWithDInput = true;
-      ++m_lCountOfImonsConflictWithDInput;
+      AtomicIncrement(&m_lCountOfImonsConflictWithDInput);
       ActionOnImonConflict(true);
     }
   }

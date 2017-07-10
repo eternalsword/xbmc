@@ -191,9 +191,15 @@ static bool LoadWithFallback(const std::string& path, const std::string& languag
   return true;
 }
 
-CLocalizeStrings::CLocalizeStrings(void) = default;
+CLocalizeStrings::CLocalizeStrings(void)
+{
 
-CLocalizeStrings::~CLocalizeStrings(void) = default;
+}
+
+CLocalizeStrings::~CLocalizeStrings(void)
+{
+
+}
 
 void CLocalizeStrings::ClearSkinStrings()
 {

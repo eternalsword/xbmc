@@ -37,7 +37,9 @@ CGUIButtonControl::CGUIButtonControl(int parentID, int controlID, float posX, fl
   ControlType = GUICONTROL_BUTTON;
 }
 
-CGUIButtonControl::~CGUIButtonControl(void) = default;
+CGUIButtonControl::~CGUIButtonControl(void)
+{
+}
 
 void CGUIButtonControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {

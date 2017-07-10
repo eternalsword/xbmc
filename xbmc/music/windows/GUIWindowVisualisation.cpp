@@ -21,12 +21,11 @@
 #include "GUIWindowVisualisation.h"
 #include "Application.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "music/dialogs/GUIDialogMusicOSD.h"
 #include "GUIUserMessages.h"
 #include "GUIInfoManager.h"
 #include "guilib/GUIWindowManager.h"
-#include "input/InputManager.h"
+#include "input/ButtonTranslator.h"
 #include "input/Key.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
@@ -47,9 +46,9 @@ CGUIWindowVisualisation::CGUIWindowVisualisation(void)
 
 bool CGUIWindowVisualisation::OnAction(const CAction &action)
 {
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH) &&
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH) &&
       g_infoManager.IsPlayerChannelPreviewActive() &&
-      (action.GetID() == ACTION_SELECT_ITEM || CServiceBroker::GetInputManager().GetGlobalAction(action.GetButtonCode()).GetID() == ACTION_SELECT_ITEM))
+      (action.GetID() == ACTION_SELECT_ITEM || CButtonTranslator::GetInstance().GetGlobalAction(action.GetButtonCode()).GetID() == ACTION_SELECT_ITEM))
   {
     // If confirm channel switch is active, channel preview is currently shown
     // and the button that caused this action matches (global) action "Select" (OK)
@@ -72,7 +71,7 @@ bool CGUIWindowVisualisation::OnAction(const CAction &action)
   case ACTION_SHOW_INFO:
     {
       m_initTimer.Stop();
-      CServiceBroker::GetSettings().SetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS, g_infoManager.ToggleShowInfo());
+      CSettings::GetInstance().SetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS, g_infoManager.ToggleShowInfo());
       return true;
     }
     break;
@@ -83,7 +82,7 @@ bool CGUIWindowVisualisation::OnAction(const CAction &action)
 
   case ACTION_SHOW_GUI:
     // save the settings
-    CServiceBroker::GetSettings().Save();
+    CSettings::GetInstance().Save();
     g_windowManager.PreviousWindow();
     return true;
     break;
@@ -113,7 +112,7 @@ bool CGUIWindowVisualisation::OnAction(const CAction &action)
       g_infoManager.SetShowInfo(true);
     }
     break;
-    //! @todo These should be mapped to its own function - at the moment it's overriding
+    //! @todo These should be mapped to it's own function - at the moment it's overriding
     //! the global action of fastforward/rewind and OSD.
 /*  case KEY_BUTTON_Y:
     g_application.m_CdgParser.Pause();
@@ -162,7 +161,7 @@ bool CGUIWindowVisualisation::OnMessage(CGUIMessage& message)
   case GUI_MSG_WINDOW_DEINIT:
     {
       if (IsActive()) // save any changed settings from the OSD
-        CServiceBroker::GetSettings().Save();
+        CSettings::GetInstance().Save();
 
       // close all active modal dialogs
       g_windowManager.CloseInternalModalDialogs(true);
@@ -184,7 +183,7 @@ bool CGUIWindowVisualisation::OnMessage(CGUIMessage& message)
       if (g_infoManager.GetCurrentSongTag())
         m_tag = *g_infoManager.GetCurrentSongTag();
 
-      if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS))
+      if (CSettings::GetInstance().GetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS))
       { // always on
         m_initTimer.Stop();
       }
@@ -210,7 +209,7 @@ EVENT_RESULT CGUIWindowVisualisation::OnMouseEvent(const CPoint &point, const CM
     return EVENT_RESULT_UNHANDLED;
   if (event.m_id != ACTION_MOUSE_MOVE || event.m_offsetX || event.m_offsetY)
   { // some other mouse action has occurred - bring up the OSD
-    CGUIDialog *pOSD = g_windowManager.GetDialog(WINDOW_DIALOG_MUSIC_OSD);
+    CGUIDialog *pOSD = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_MUSIC_OSD);
     if (pOSD)
     {
       pOSD->SetAutoClose(3000);
@@ -235,7 +234,7 @@ void CGUIWindowVisualisation::FrameMove()
   if (m_initTimer.IsRunning() && m_initTimer.GetElapsedSeconds() > (float)g_advancedSettings.m_songInfoDuration)
   {
     m_initTimer.Stop();
-    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS))
+    if (!CSettings::GetInstance().GetBool(CSettings::SETTING_MYMUSIC_SONGTHUMBINVIS))
     { // reached end of fade in, fade out again
       g_infoManager.SetShowInfo(false);
     }

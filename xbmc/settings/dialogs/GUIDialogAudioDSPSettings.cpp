@@ -20,7 +20,6 @@
 
 #include "GUIDialogAudioDSPSettings.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "addons/Skin.h"
 #include "cores/IPlayer.h"
 #include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSPDatabase.h"
@@ -147,7 +146,7 @@ bool CGUIDialogAudioDSPSettings::OnMessage(CGUIMessage &message)
       int iControl = message.GetSenderId();
       if (iControl >= CONTROL_SETTINGS_START_CONTROL && iControl < (int)(CONTROL_SETTINGS_START_CONTROL + m_settingControls.size()))
       {
-        std::shared_ptr<CSetting> setting = GetSettingControl(iControl)->GetSetting();
+        CSetting *setting = GetSettingControl(iControl)->GetSetting();
         if (setting != NULL)
         {
           if (setting->GetId() == SETTING_AUDIO_MAIN_BUTTON_MASTER)
@@ -219,7 +218,7 @@ void CGUIDialogAudioDSPSettings::FrameMove()
   // update the volume setting if necessary
   float newVolume = g_application.GetVolume(false);
   if (newVolume != m_volume)
-    GetSettingsManager()->SetNumber(SETTING_AUDIO_MAIN_VOLUME, newVolume);
+    m_settingsManager->SetNumber(SETTING_AUDIO_MAIN_VOLUME, newVolume);
 
   if (g_application.m_pPlayer->HasPlayer())
   {
@@ -227,7 +226,7 @@ void CGUIDialogAudioDSPSettings::FrameMove()
 
     // these settings can change on the fly
     if (SupportsAudioFeature(IPC_AUD_OFFSET))
-      GetSettingsManager()->SetNumber(SETTING_AUDIO_POST_PROC_AUDIO_DELAY, videoSettings.m_AudioDelay);
+      m_settingsManager->SetNumber(SETTING_AUDIO_POST_PROC_AUDIO_DELAY, videoSettings.m_AudioDelay);
 
     bool forceReload = false;
     unsigned int  streamId = CServiceBroker::GetADSP().GetActiveStreamId();
@@ -261,19 +260,19 @@ void CGUIDialogAudioDSPSettings::FrameMove()
       CMediaSettings::GetInstance().GetCurrentAudioSettings().m_MasterStreamBase                          = usedBaseType;
       CMediaSettings::GetInstance().GetCurrentAudioSettings().m_MasterStreamType                          = streamTypeUsed;
 
-      GetSettingsManager()->SetInt(SETTING_AUDIO_MAIN_MODETYPE, modeUniqueId);
+      m_settingsManager->SetInt(SETTING_AUDIO_MAIN_MODETYPE, modeUniqueId);
     }
 
     // these settings can change on the fly
     if (m_GetCPUUsage)
     {
       m_CPUUsage = StringUtils::Format("%.02f %%", m_ActiveStreamProcess->GetCPUUsage());
-      GetSettingsManager()->SetString(SETTING_STREAM_INFO_CPU_USAGE, m_CPUUsage);
+      m_settingsManager->SetString(SETTING_STREAM_INFO_CPU_USAGE, m_CPUUsage);
       for (unsigned int i = 0; i < m_ActiveModes.size(); i++)
       {
         std::string settingId = StringUtils::Format("%s%i", SETTING_STREAM_INFO_MODE_CPU_USAGE, i);
         m_ActiveModesData[i].CPUUsage = StringUtils::Format("%.02f %%", m_ActiveModes[i]->CPUUsage());
-        GetSettingsManager()->SetString(settingId, m_ActiveModesData[i].CPUUsage);
+        m_settingsManager->SetString(settingId, m_ActiveModesData[i].CPUUsage);
       }
     }
   }
@@ -301,7 +300,7 @@ std::string CGUIDialogAudioDSPSettings::FormatPercentAsDecibel(float value)
   return StringUtils::Format(g_localizeStrings.Get(14054).c_str(), CAEUtil::PercentToGain(value));
 }
 
-void CGUIDialogAudioDSPSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CGUIDialogAudioDSPSettings::OnSettingChanged(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -312,7 +311,7 @@ void CGUIDialogAudioDSPSettings::OnSettingChanged(std::shared_ptr<const CSetting
   const std::string &settingId = setting->GetId();
   if (settingId == SETTING_AUDIO_MAIN_STREAMTYPE)
   {
-    int type = (AE_DSP_STREAMTYPE)std::static_pointer_cast<const CSettingInt>(setting)->GetValue();
+    int type = (AE_DSP_STREAMTYPE)static_cast<const CSettingInt*>(setting)->GetValue();
     CMediaSettings::GetInstance().GetCurrentAudioSettings().m_MasterStreamTypeSel = type;
     if (type == AE_DSP_ASTREAM_AUTO)
       type = m_ActiveStreamProcess->GetDetectedStreamType();
@@ -338,28 +337,28 @@ void CGUIDialogAudioDSPSettings::OnSettingChanged(std::shared_ptr<const CSetting
   }
   else if (settingId == SETTING_AUDIO_MAIN_MODETYPE)
   {
-    m_modeTypeUsed = std::static_pointer_cast<const CSettingInt>(setting)->GetValue();
+    m_modeTypeUsed = static_cast<const CSettingInt*>(setting)->GetValue();
     if (m_ActiveStreamProcess->SetMasterMode(m_streamTypeUsed, m_modeTypeUsed))
       CMediaSettings::GetInstance().GetCurrentAudioSettings().m_MasterModes[m_streamTypeUsed][m_baseTypeUsed] = m_modeTypeUsed;
   }
   else if (settingId == SETTING_AUDIO_MAIN_VOLUME)
   {
-    m_volume = static_cast<float>(std::static_pointer_cast<const CSettingNumber>(setting)->GetValue());
+    m_volume = static_cast<float>(static_cast<const CSettingNumber*>(setting)->GetValue());
     g_application.SetVolume(m_volume, false); // false - value is not in percent
   }
   else if (settingId == SETTING_AUDIO_MAIN_VOLUME_AMPLIFICATION)
   {
-    videoSettings.m_VolumeAmplification = static_cast<float>(std::static_pointer_cast<const CSettingNumber>(setting)->GetValue());
+    videoSettings.m_VolumeAmplification = static_cast<float>(static_cast<const CSettingNumber*>(setting)->GetValue());
     g_application.m_pPlayer->SetDynamicRangeCompression((long)(videoSettings.m_VolumeAmplification * 100));
   }
   else if (settingId == SETTING_AUDIO_POST_PROC_AUDIO_DELAY)
   {
-    videoSettings.m_AudioDelay = static_cast<float>(std::static_pointer_cast<const CSettingNumber>(setting)->GetValue());
+    videoSettings.m_AudioDelay = static_cast<float>(static_cast<const CSettingNumber*>(setting)->GetValue());
     g_application.m_pPlayer->SetAVDelay(videoSettings.m_AudioDelay);
   }
 }
 
-void CGUIDialogAudioDSPSettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
+void CGUIDialogAudioDSPSettings::OnSettingAction(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -373,7 +372,7 @@ void CGUIDialogAudioDSPSettings::OnSettingAction(std::shared_ptr<const CSetting>
 
 void CGUIDialogAudioDSPSettings::Save()
 {
-  if (!g_passwordManager.CheckSettingLevelLock(SettingLevel::Expert) &&
+  if (!g_passwordManager.CheckSettingLevelLock(SettingLevelExpert) &&
       CProfilesManager::GetInstance().GetMasterProfile().getLockMode() != LOCK_MODE_EVERYONE)
     return;
 
@@ -391,7 +390,7 @@ void CGUIDialogAudioDSPSettings::Save()
 
   CMediaSettings::GetInstance().GetDefaultAudioSettings() = CMediaSettings::GetInstance().GetCurrentAudioSettings();
   CMediaSettings::GetInstance().GetDefaultAudioSettings().m_MasterStreamType = AE_DSP_ASTREAM_AUTO;
-  CServiceBroker::GetSettings().Save();
+  CSettings::GetInstance().Save();
 }
 
 void CGUIDialogAudioDSPSettings::SetupView()
@@ -407,7 +406,7 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
 {
   CGUIDialogSettingsManualBase::InitializeSettings();
 
-  const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_MAIN, -1);
+  CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_MAIN, -1);
   if (category == NULL)
   {
     CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodspmainsettings'");
@@ -415,25 +414,25 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
   }
 
   // get all necessary setting groups
-  const std::shared_ptr<CSettingGroup> groupAudioModeSel = AddGroup(category);
+  CSettingGroup *groupAudioModeSel = AddGroup(category);
   if (groupAudioModeSel == NULL)
   {
     CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupAudioModeSel'");
     return;
   }
-  const std::shared_ptr<CSettingGroup> groupAudioVolumeSel = AddGroup(category);
+  CSettingGroup *groupAudioVolumeSel = AddGroup(category);
   if (groupAudioVolumeSel == NULL)
   {
     CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupAudioVolumeSel'");
     return;
   }
-  const std::shared_ptr<CSettingGroup> groupAudioSubmenuSel = AddGroup(category);
+  CSettingGroup *groupAudioSubmenuSel = AddGroup(category);
   if (groupAudioSubmenuSel == NULL)
   {
     CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupAudioSubmenuSel'");
     return;
   }
-  const std::shared_ptr<CSettingGroup> groupSaveAsDefault = AddGroup(category);
+  CSettingGroup *groupSaveAsDefault = AddGroup(category);
   if (groupSaveAsDefault == NULL)
   {
     CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupSaveAsDefault'");
@@ -471,7 +470,7 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
   if (modesAvailable > 0)
   {
     /* about size() > 1, it is always the fallback (ignore of master processing) present. */
-    TranslatableIntegerSettingOptions modeEntries;
+    StaticIntegerSettingOptions modeEntries;
     if (m_MasterModes[AE_DSP_ASTREAM_BASIC].size() > 1)
       modeEntries.push_back(std::pair<int, int>(CServiceBroker::GetADSP().GetStreamTypeName(AE_DSP_ASTREAM_BASIC),   AE_DSP_ASTREAM_BASIC));
     if (m_MasterModes[AE_DSP_ASTREAM_MUSIC].size() > 1)
@@ -517,7 +516,7 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
   }
 
   m_modeTypeUsed = CMediaSettings::GetInstance().GetCurrentAudioSettings().m_MasterModes[m_streamTypeUsed][m_baseTypeUsed];
-  std::shared_ptr<CSettingInt> spinner = AddSpinner(groupAudioModeSel, SETTING_AUDIO_MAIN_MODETYPE, 15022, 0, m_modeTypeUsed, AudioModeOptionFiller);
+  CSettingInt *spinner = AddSpinner(groupAudioModeSel, SETTING_AUDIO_MAIN_MODETYPE, 15022, 0, m_modeTypeUsed, AudioModeOptionFiller);
   spinner->SetOptionsFiller(AudioModeOptionFiller, this);
 
   ///-----------------------
@@ -527,8 +526,8 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
   m_volume = g_application.GetVolume(false);
   if (!g_windowManager.IsWindowActive(WINDOW_DIALOG_AUDIO_OSD_SETTINGS))
   {
-    std::shared_ptr<CSettingNumber> settingAudioVolume = AddSlider(groupAudioVolumeSel, SETTING_AUDIO_MAIN_VOLUME, 13376, 0, m_volume, 14054, VOLUME_MINIMUM, VOLUME_MAXIMUM / 100.0f, VOLUME_MAXIMUM);
-    std::static_pointer_cast<CSettingControlSlider>(settingAudioVolume->GetControl())->SetFormatter(SettingFormatterPercentAsDecibel);
+    CSettingNumber *settingAudioVolume = AddSlider(groupAudioVolumeSel, SETTING_AUDIO_MAIN_VOLUME, 13376, 0, m_volume, 14054, VOLUME_MINIMUM, VOLUME_MAXIMUM / 100.0f, VOLUME_MAXIMUM);
+    static_cast<CSettingControlSlider*>(settingAudioVolume->GetControl())->SetFormatter(SettingFormatterPercentAsDecibel);
   }
 
   // audio volume amplification setting
@@ -537,12 +536,12 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
 
   ///-----------------------
 
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_MASTER,   15025, 0, "", false, AddonMasterModeSetupPresent, -1);
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_OUTPUT,   15026, 0, "", false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_POST_PROCESS) || SupportsAudioFeature(IPC_AUD_OFFSET), -1);
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_RESAMPLE, 15033, 0, "", false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_RESAMPLE), -1);
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_PRE_PROC, 15039, 0, "", false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_PRE_PROCESS), -1);
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_MISC,     15034, 0, "", false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_MISCELLANEOUS), -1);
-  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_INFO,     15027, 0, "", false, true, -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_MASTER,   15025, 0, false, AddonMasterModeSetupPresent, -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_OUTPUT,   15026, 0, false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_POST_PROCESS) || SupportsAudioFeature(IPC_AUD_OFFSET), -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_RESAMPLE, 15033, 0, false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_RESAMPLE), -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_PRE_PROC, 15039, 0, false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_PRE_PROCESS), -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_MISC,     15034, 0, false, HaveActiveMenuHooks(AE_DSP_MENUHOOK_MISCELLANEOUS), -1);
+  AddButton(groupAudioSubmenuSel, SETTING_AUDIO_MAIN_BUTTON_INFO,     15027, 0, false, true, -1);
 
   ///-----------------------
 
@@ -554,14 +553,14 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio Master mode settings Dialog init
    */
   {
-    const std::shared_ptr<CSettingCategory> categoryMaster = AddCategory(SETTING_AUDIO_CAT_MASTER, -1);
+    CSettingCategory *categoryMaster = AddCategory(SETTING_AUDIO_CAT_MASTER, -1);
     if (categoryMaster == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodspmastersettings'");
       return;
     }
 
-    const std::shared_ptr<CSettingGroup> groupMasterMode = AddGroup(categoryMaster);
+    CSettingGroup *groupMasterMode = AddGroup(categoryMaster);
     if (groupMasterMode == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupMasterMode'");
@@ -605,21 +604,21 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio post processing settings Dialog init
    */
   {
-    const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_POST_PROCESS, -1);
+    CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_POST_PROCESS, -1);
     if (category == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodsppostsettings'");
       return;
     }
 
-    const std::shared_ptr<CSettingGroup> groupInternal = AddGroup(category);
+    CSettingGroup *groupInternal = AddGroup(category);
     if (groupInternal == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupInternal'");
       return;
     }
 
-    const std::shared_ptr<CSettingGroup> groupAddon = AddGroup(category);
+    CSettingGroup *groupAddon = AddGroup(category);
     if (groupAddon == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'groupAddon'");
@@ -629,8 +628,8 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
     // audio delay setting
     if (SupportsAudioFeature(IPC_AUD_OFFSET))
     {
-      std::shared_ptr<CSettingNumber> settingAudioDelay = AddSlider(groupInternal, SETTING_AUDIO_POST_PROC_AUDIO_DELAY, 297, 0, videoSettings.m_AudioDelay, 0, -g_advancedSettings.m_videoAudioDelayRange, 0.025f, g_advancedSettings.m_videoAudioDelayRange, 297, usePopup);
-      std::static_pointer_cast<CSettingControlSlider>(settingAudioDelay->GetControl())->SetFormatter(SettingFormatterDelay);
+      CSettingNumber *settingAudioDelay = AddSlider(groupInternal, SETTING_AUDIO_POST_PROC_AUDIO_DELAY, 297, 0, videoSettings.m_AudioDelay, 0, -g_advancedSettings.m_videoAudioDelayRange, 0.025f, g_advancedSettings.m_videoAudioDelayRange, 297, usePopup);
+      static_cast<CSettingControlSlider*>(settingAudioDelay->GetControl())->SetFormatter(SettingFormatterDelay);
     }
     GetAudioDSPMenus(groupAddon, AE_DSP_MENUHOOK_POST_PROCESS);
   }
@@ -639,13 +638,13 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio add-on resampling setting dialog's
    */
   {
-    const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_RESAMPLING, -1);
+    CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_RESAMPLING, -1);
     if (category == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodspresamplesettings'");
       return;
     }
-    const std::shared_ptr<CSettingGroup> group = AddGroup(category);
+    CSettingGroup *group = AddGroup(category);
     if (group == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'group'");
@@ -658,13 +657,13 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio add-on's pre processing setting dialog's
    */
   {
-    const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_PRE_PROCESS, -1);
+    CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_PRE_PROCESS, -1);
     if (category == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodsppresettings'");
       return;
     }
-    const std::shared_ptr<CSettingGroup> group = AddGroup(category);
+    CSettingGroup *group = AddGroup(category);
     if (group == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'group'");
@@ -677,13 +676,13 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio add-on's miscellaneous setting dialog's
    */
   {
-    const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_MISC, -1);
+    CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_MISC, -1);
     if (category == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodspmiscsettings'");
       return;
     }
-    const std::shared_ptr<CSettingGroup> group = AddGroup(category);
+    CSettingGroup *group = AddGroup(category);
     if (group == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group 'group'");
@@ -696,8 +695,8 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
    * Audio Information Dialog init
    */
   {
-    std::shared_ptr<CSettingGroup> group;
-    const std::shared_ptr<CSettingCategory> category = AddCategory(SETTING_AUDIO_CAT_PROC_INFO, -1);
+    CSettingGroup *group;
+    CSettingCategory *category = AddCategory(SETTING_AUDIO_CAT_PROC_INFO, -1);
     if (category == NULL)
     {
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings category 'audiodspprocinfo'");
@@ -714,13 +713,12 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group for '%s'", g_localizeStrings.Get(15089).c_str());
       return;
     }
-//! @todo reimplement this with AudioDSP V2.0
-//    m_InputChannels = StringUtils::Format("%i", m_ActiveStreamProcess->GetInputChannels());
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_CHANNELS, 21444, 0, m_InputChannels);
-//    m_InputChannelNames = m_ActiveStreamProcess->GetInputChannelNames();
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_CHANNEL_NAMES, 15091, 0, m_InputChannelNames);
-//    m_InputSamplerate = StringUtils::Format("%i Hz", (int)m_ActiveStreamProcess->GetInputSamplerate());
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_SAMPLERATE, 613, 0, m_InputSamplerate);
+    m_InputChannels = StringUtils::Format("%i", m_ActiveStreamProcess->GetInputChannels());
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_CHANNELS, 21444, 0, m_InputChannels);
+    m_InputChannelNames = m_ActiveStreamProcess->GetInputChannelNames();
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_CHANNEL_NAMES, 15091, 0, m_InputChannelNames);
+    m_InputSamplerate = StringUtils::Format("%i Hz", (int)m_ActiveStreamProcess->GetInputSamplerate());
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_INPUT_SAMPLERATE, 613, 0, m_InputSamplerate);
 
     group = AddGroup(category, 15090);
     if (group == NULL)
@@ -728,13 +726,12 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
       CLog::Log(LOGERROR, "CGUIDialogAudioDSPSettings: unable to setup settings group for '%s'", g_localizeStrings.Get(15090).c_str());
       return;
     }
-//! @todo reimplement this with AudioDSP V2.0
-//    m_OutputChannels = StringUtils::Format("%i", m_ActiveStreamProcess->GetOutputChannels());
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_CHANNELS, 21444, 0, m_OutputChannels);
-//    m_OutputChannelNames = m_ActiveStreamProcess->GetOutputChannelNames();
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_CHANNEL_NAMES, 15091, 0, m_OutputChannelNames);
-//    m_OutputSamplerate = StringUtils::Format("%i Hz", (int)m_ActiveStreamProcess->GetOutputSamplerate());
-//    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_SAMPLERATE, 613, 0, m_OutputSamplerate);
+    m_OutputChannels = StringUtils::Format("%i", m_ActiveStreamProcess->GetOutputChannels());
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_CHANNELS, 21444, 0, m_OutputChannels);
+    m_OutputChannelNames = m_ActiveStreamProcess->GetOutputChannelNames();
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_CHANNEL_NAMES, 15091, 0, m_OutputChannelNames);
+    m_OutputSamplerate = StringUtils::Format("%i Hz", (int)m_ActiveStreamProcess->GetOutputSamplerate());
+    AddInfoLabelButton(group, SETTING_STREAM_INFO_OUTPUT_SAMPLERATE, 613, 0, m_OutputSamplerate);
 
     group = AddGroup(category, 15081);
     if (group == NULL)
@@ -760,7 +757,7 @@ void CGUIDialogAudioDSPSettings::InitializeSettings()
             break;
           case AE_DSP_MODE_TYPE_OUTPUT_RESAMPLE:
             group = AddGroup(category, 15088, -1, true, true);
-//            label = StringUtils::Format(g_localizeStrings.Get(15083).c_str(), m_ActiveStreamProcess->GetOutputSamplerate());
+            label = StringUtils::Format(g_localizeStrings.Get(15083).c_str(), m_ActiveStreamProcess->GetOutputSamplerate());
             break;
           case AE_DSP_MODE_TYPE_MASTER_PROCESS:
             group = AddGroup(category, 15084, -1, true, true);
@@ -834,7 +831,7 @@ bool CGUIDialogAudioDSPSettings::SupportsAudioFeature(int feature)
   return false;
 }
 
-void CGUIDialogAudioDSPSettings::AudioModeOptionFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CGUIDialogAudioDSPSettings::AudioModeOptionFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
 {
   CGUIDialogAudioDSPSettings *dialog  = (CGUIDialogAudioDSPSettings *)data;
   list = dialog->m_ModeList;
@@ -846,7 +843,7 @@ void CGUIDialogAudioDSPSettings::AudioModeOptionFiller(std::shared_ptr<const CSe
   }
 }
 
-std::string CGUIDialogAudioDSPSettings::SettingFormatterDelay(std::shared_ptr<const CSettingControlSlider> control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum)
+std::string CGUIDialogAudioDSPSettings::SettingFormatterDelay(const CSettingControlSlider *control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum)
 {
   if (!value.isDouble())
     return "";
@@ -862,7 +859,7 @@ std::string CGUIDialogAudioDSPSettings::SettingFormatterDelay(std::shared_ptr<co
   return StringUtils::Format(g_localizeStrings.Get(22005).c_str(), fValue);
 }
 
-std::string CGUIDialogAudioDSPSettings::SettingFormatterPercentAsDecibel(std::shared_ptr<const CSettingControlSlider> control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum)
+std::string CGUIDialogAudioDSPSettings::SettingFormatterPercentAsDecibel(const CSettingControlSlider *control, const CVariant &value, const CVariant &minimum, const CVariant &step, const CVariant &maximum)
 {
   if (control == NULL || !value.isDouble())
     return "";
@@ -901,7 +898,7 @@ bool CGUIDialogAudioDSPSettings::HaveActiveMenuHooks(AE_DSP_MENUHOOK_CAT categor
   return false;
 }
 
-std::string CGUIDialogAudioDSPSettings::GetSettingsLabel(std::shared_ptr<CSetting> pSetting)
+std::string CGUIDialogAudioDSPSettings::GetSettingsLabel(CSetting *pSetting)
 {
   if (pSetting->GetLabel() == 15041)
   {
@@ -930,7 +927,7 @@ std::string CGUIDialogAudioDSPSettings::GetSettingsLabel(std::shared_ptr<CSettin
   return GetLocalizedString(pSetting->GetLabel());
 }
 
-void CGUIDialogAudioDSPSettings::GetAudioDSPMenus(std::shared_ptr<CSettingGroup> group, AE_DSP_MENUHOOK_CAT category)
+void CGUIDialogAudioDSPSettings::GetAudioDSPMenus(CSettingGroup *group, AE_DSP_MENUHOOK_CAT category)
 {
   AE_DSP_ADDONMAP addonMap;
   if (CServiceBroker::GetADSP().GetEnabledAudioDSPAddons(addonMap) > 0)

@@ -39,7 +39,7 @@ class CAlarmClock : public CThread
 {
 public:
   CAlarmClock();
-  ~CAlarmClock() override;
+  ~CAlarmClock();
   void Start(const std::string& strName, float n_secs, const std::string& strCommand, bool bSilent = false, bool bLoop = false);
   inline bool IsRunning() const
   {
@@ -67,7 +67,7 @@ public:
   }
 
   void Stop(const std::string& strName, bool bSilent = false);
-  void Process() override;
+  virtual void Process();
 private:
   std::map<std::string,SAlarmClockEvent> m_event;
   CCriticalSection m_events;

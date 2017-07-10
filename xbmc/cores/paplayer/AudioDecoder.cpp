@@ -23,7 +23,6 @@
 #include "Application.h"
 #include "settings/Settings.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "music/tags/MusicInfoTag.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
@@ -75,13 +74,13 @@ bool CAudioDecoder::Create(const CFileItem &file, int64_t seekOffset)
   m_eof = false;
 
   // get correct cache size
-  unsigned int filecache = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_CACHEAUDIO_INTERNET);
+  unsigned int filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_INTERNET);
   if ( file.IsHD() )
-    filecache = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_CACHE_HARDDISK);
+    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHE_HARDDISK);
   else if ( file.IsOnDVD() )
-    filecache = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_CACHEAUDIO_DVDROM);
+    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_DVDROM);
   else if ( file.IsOnLAN() )
-    filecache = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_CACHEAUDIO_LAN);
+    filecache = CSettings::GetInstance().GetInt(CSettings::SETTING_CACHEAUDIO_LAN);
 
   // create our codec
   m_codec=CodecFactory::CreateCodecDemux(file, filecache * 1024);
@@ -171,7 +170,7 @@ int64_t CAudioDecoder::TotalTime()
   return 0;
 }
 
-unsigned int CAudioDecoder::GetDataSize(bool checkPktSize)
+unsigned int CAudioDecoder::GetDataSize()
 {
   if (m_status == STATUS_QUEUING || m_status == STATUS_NO_FILE)
     return 0;
@@ -179,13 +178,8 @@ unsigned int CAudioDecoder::GetDataSize(bool checkPktSize)
   if (m_codec->m_format.m_dataFormat != AE_FMT_RAW)
   {
     // check for end of file and end of buffer
-    if (m_status == STATUS_ENDING)
-    {
-      if (m_pcmBuffer.getMaxReadSize() == 0)
-        m_status = STATUS_ENDED;
-      else if (checkPktSize && m_pcmBuffer.getMaxReadSize() < PACKET_SIZE)
-        m_status = STATUS_ENDED;
-    }
+    if (m_status == STATUS_ENDING && m_pcmBuffer.getMaxReadSize() < PACKET_SIZE)
+      m_status = STATUS_ENDED;
     return std::min(m_pcmBuffer.getMaxReadSize() / (m_codec->m_bitsPerSample >> 3), (unsigned int)OUTPUT_SAMPLES);
   }
   else
@@ -329,7 +323,7 @@ int CAudioDecoder::ReadSamples(int numsamples)
   return RET_SLEEP; // nothing to do
 }
 
-float CAudioDecoder::GetReplayGain(float &peakVal)
+float CAudioDecoder::GetReplayGain()
 {
 #define REPLAY_GAIN_DEFAULT_LEVEL 89.0f
   const ReplayGainSettings &replayGainSettings = g_application.GetReplayGainSettings();
@@ -338,44 +332,45 @@ float CAudioDecoder::GetReplayGain(float &peakVal)
 
   // Compute amount of gain
   float replaydB = (float)replayGainSettings.iNoGainPreAmp;
-  float peak = 1.0f;
+  float peak = 0.0f;
   const ReplayGain& rgInfo = m_codec->m_tag.GetReplayGain();
   if (replayGainSettings.iType == ReplayGain::ALBUM)
   {
-    if (rgInfo.Get(ReplayGain::ALBUM).HasGain())
+    if (rgInfo.Get(ReplayGain::ALBUM).Valid())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::ALBUM).Gain();
-      if (rgInfo.Get(ReplayGain::ALBUM).HasPeak())
-        peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
+      peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
     }
-    else if (rgInfo.Get(ReplayGain::TRACK).HasGain())
+    else if (rgInfo.Get(ReplayGain::TRACK).Valid())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::TRACK).Gain();
-      if (rgInfo.Get(ReplayGain::TRACK).HasPeak())
-        peak = rgInfo.Get(ReplayGain::TRACK).Peak();
+      peak = rgInfo.Get(ReplayGain::TRACK).Peak();
     }
   }
   else if (replayGainSettings.iType == ReplayGain::TRACK)
   {
-    if (rgInfo.Get(ReplayGain::TRACK).HasGain())
+    if (rgInfo.Get(ReplayGain::TRACK).Valid())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::TRACK).Gain();
-      if (rgInfo.Get(ReplayGain::TRACK).HasPeak())
-        peak = rgInfo.Get(ReplayGain::TRACK).Peak();
+      peak = rgInfo.Get(ReplayGain::TRACK).Peak();
     }
-    else if (rgInfo.Get(ReplayGain::ALBUM).HasGain())
+    else if (rgInfo.Get(ReplayGain::ALBUM).Valid())
     {
       replaydB = (float)replayGainSettings.iPreAmp + rgInfo.Get(ReplayGain::ALBUM).Gain();
-      if (rgInfo.Get(ReplayGain::ALBUM).HasPeak())
-        peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
+      peak = rgInfo.Get(ReplayGain::ALBUM).Peak();
     }
   }
   // convert to a gain type
   float replaygain = pow(10.0f, (replaydB - REPLAY_GAIN_DEFAULT_LEVEL)* 0.05f);
+  // check peaks
+  if (replayGainSettings.bAvoidClipping)
+  {
+    if (fabs(peak * replaygain) > 1.0f)
+      replaygain = 1.0f / fabs(peak);
+  }
 
   CLog::Log(LOGDEBUG, "AudioDecoder::GetReplayGain - Final Replaygain applied: %f, Track/Album Gain %f, Peak %f", replaygain, replaydB, peak);
 
-  peakVal = peak;
   return replaygain;
 }
 

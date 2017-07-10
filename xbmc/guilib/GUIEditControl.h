@@ -60,18 +60,18 @@ public:
                   float width, float height, const CTextureInfo &textureFocus, const CTextureInfo &textureNoFocus,
                   const CLabelInfo& labelInfo, const std::string &text);
   CGUIEditControl(const CGUIButtonControl &button);
-  ~CGUIEditControl(void) override;
-  CGUIEditControl *Clone() const override { return new CGUIEditControl(*this); };
+  virtual ~CGUIEditControl(void);
+  virtual CGUIEditControl *Clone() const { return new CGUIEditControl(*this); };
 
-  bool OnMessage(CGUIMessage &message) override;
-  bool OnAction(const CAction &action) override;
-  void OnClick() override;
+  virtual bool OnMessage(CGUIMessage &message);
+  virtual bool OnAction(const CAction &action);
+  virtual void OnClick();
 
-  void SetLabel(const std::string &text) override;
-  void SetLabel2(const std::string &text) override;
+  virtual void SetLabel(const std::string &text);
+  virtual void SetLabel2(const std::string &text);
   void SetHint(const CGUIInfoLabel& hint);
 
-  std::string GetLabel2() const override;
+  virtual std::string GetLabel2() const;
 
   unsigned int GetCursorPosition() const;
   void SetCursorPosition(unsigned int iPosition);
@@ -86,12 +86,12 @@ public:
   virtual void SetInputValidation(StringValidation::Validator inputValidator, void *data = NULL);
 
 protected:
-  void SetFocus(bool focus) override;
-  void ProcessText(unsigned int currentTime) override;
-  void RenderText() override;
-  CGUILabel::COLOR GetTextColor() const override;
+  virtual void SetFocus(bool focus);
+  virtual void ProcessText(unsigned int currentTime);
+  virtual void RenderText();
+  virtual CGUILabel::COLOR GetTextColor() const;
   std::wstring GetDisplayedText() const;
-  std::string GetDescriptionByIndex(int index) const override;
+  std::string GetDescriptionByIndex(int index) const;
   bool SetStyledText(const std::wstring &text);
   void RecalcLabelPosition();
   void ValidateCursor();

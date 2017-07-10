@@ -38,6 +38,8 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_RIP_CD,
                       CONTEXT_BUTTON_CANCEL_RIP_CD,
                       CONTEXT_BUTTON_RIP_TRACK,
+                      CONTEXT_BUTTON_EJECT_DISC,
+                      CONTEXT_BUTTON_EJECT_DRIVE,
                       CONTEXT_BUTTON_EDIT_SOURCE,
                       CONTEXT_BUTTON_REMOVE_SOURCE,
                       CONTEXT_BUTTON_SET_DEFAULT,
@@ -85,13 +87,23 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_PLAY_OTHER,
                       CONTEXT_BUTTON_SET_ACTOR_THUMB,
                       CONTEXT_BUTTON_UNLINK_BOOKMARK,
+                      CONTEXT_BUTTON_ADD,
                       CONTEXT_BUTTON_ACTIVATE,
+                      CONTEXT_BUTTON_START_RECORD,
+                      CONTEXT_BUTTON_ADD_TIMER,
+                      CONTEXT_BUTTON_STOP_RECORD,
+                      CONTEXT_BUTTON_EDIT_TIMER,
+                      CONTEXT_BUTTON_EDIT_TIMER_RULE,
+                      CONTEXT_BUTTON_DELETE_TIMER,
+                      CONTEXT_BUTTON_DELETE_TIMER_RULE,
                       CONTEXT_BUTTON_GROUP_MANAGER,
                       CONTEXT_BUTTON_CHANNEL_MANAGER,
                       CONTEXT_BUTTON_SET_MOVIESET_ART,
                       CONTEXT_BUTTON_BEGIN,
                       CONTEXT_BUTTON_END,
                       CONTEXT_BUTTON_NOW,
+                      CONTEXT_BUTTON_FIND,
+                      CONTEXT_BUTTON_MENU_HOOKS,
                       CONTEXT_BUTTON_PLAY_AND_QUEUE,
                       CONTEXT_BUTTON_PLAY_ONLY_THIS,
                       CONTEXT_BUTTON_UPDATE_EPG,
@@ -101,6 +113,7 @@ enum CONTEXT_BUTTON { CONTEXT_BUTTON_CANCELLED = 0,
                       CONTEXT_BUTTON_MOVIESET_ADD_REMOVE_ITEMS,
                       CONTEXT_BUTTON_BROWSE_INTO,
                       CONTEXT_BUTTON_EDIT_SORTTITLE,
+                      CONTEXT_BUTTON_UNDELETE,
                       CONTEXT_BUTTON_DELETE_ALL,
                       CONTEXT_BUTTON_HELP,
                       CONTEXT_BUTTON_ACTIVE_ADSP_SETTINGS,
@@ -118,10 +131,10 @@ class CGUIDialogContextMenu :
 {
 public:
   CGUIDialogContextMenu(void);
-  ~CGUIDialogContextMenu(void) override;
-  bool OnMessage(CGUIMessage &message) override;
-  bool OnAction(const CAction& action) override;
-  void SetPosition(float posX, float posY) override;
+  virtual ~CGUIDialogContextMenu(void);
+  virtual bool OnMessage(CGUIMessage &message);
+  virtual bool OnAction(const CAction& action);
+  virtual void SetPosition(float posX, float posY);
 
   static bool SourcesMenu(const std::string &strType, const CFileItemPtr& item, float posX, float posY);
   static void SwitchMedia(const std::string& strType, const std::string& strPath);
@@ -145,11 +158,11 @@ protected:
    */
   void PositionAtCurrentFocus();
 
-  float GetWidth() const override;
-  float GetHeight() const override;
-  void OnInitWindow() override;
-  void OnWindowLoaded() override;
-  void OnDeinitWindow(int nextWindowID) override;
+  virtual float GetWidth() const;
+  virtual float GetHeight() const;
+  virtual void OnInitWindow();
+  virtual void OnWindowLoaded();
+  virtual void OnDeinitWindow(int nextWindowID);
   static std::string GetDefaultShareNameByType(const std::string &strType);
   static void SetDefault(const std::string &strType, const std::string &strDefault);
   static void ClearDefault(const std::string &strType);
@@ -161,5 +174,4 @@ private:
   float m_backgroundImageSize;
   int m_clickedButton;
   CContextButtons m_buttons;
-  const CGUIControl *m_backgroundImage = nullptr;
 };

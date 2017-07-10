@@ -52,7 +52,11 @@ bool CPictureInfoTag::Load(const std::string &path)
 {
   m_isLoaded = false;
 
-  if (process_jpeg(path.c_str(), &m_exifInfo, &m_iptcInfo))
+  DllLibExif exifDll;
+  if (path.empty() || !exifDll.Load())
+    return false;
+
+  if (exifDll.process_jpeg(path.c_str(), &m_exifInfo, &m_iptcInfo))
     m_isLoaded = true;
 
   ConvertDateTime();
@@ -1033,8 +1037,7 @@ void CPictureInfoTag::SetInfo(int info, const std::string& value)
     }
   case SLIDE_EXIF_DATE_TIME:
     {
-      strncpy(m_exifInfo.DateTime, value.c_str(), sizeof(m_exifInfo.DateTime) - 1);
-      m_exifInfo.DateTime[sizeof(m_exifInfo.DateTime) - 1] = '\0';
+      strcpy(m_exifInfo.DateTime, value.c_str());
       m_isInfoSetExternally = true; // Set the internal state to show metadata has been set by call to SetInfo
       ConvertDateTime();
       break;

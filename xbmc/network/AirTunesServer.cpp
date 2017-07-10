@@ -31,7 +31,6 @@
 #include <utility>
 
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "cores/VideoPlayer/DVDDemuxers/DVDDemuxBXA.h"
 #include "FileItem.h"
 #include "filesystem/File.h"
@@ -231,7 +230,7 @@ void CAirTunesServer::Process()
     if (m_streamStarted)
       SetupRemoteControl();// check for remote controls
 
-    m_processActions.WaitMSec(1000);// timeout for being able to stop
+    m_processActions.WaitMSec(1000);// timeout for beeing able to stop
     std::list<CAction> currentActions;
     {
       CSingleLock lock(m_actionQueueLock);// copy and clear the source queue
@@ -365,7 +364,7 @@ void* CAirTunesServer::AudioOutputFunctions::audio_init(void *cls, int bits, int
   XFILE::CPipeFile *pipe=(XFILE::CPipeFile *)cls;
   const CURL pathToUrl(XFILE::PipesManager::GetInstance().GetUniquePipeName());
   pipe->OpenForWrite(pathToUrl);
-  pipe->SetOpenThreshold(300);
+  pipe->SetOpenThreashold(300);
 
   Demux_BXA_FmtHeader header;
   strncpy(header.fourcc, "BXA ", 4);
@@ -466,7 +465,7 @@ void  CAirTunesServer::AudioOutputFunctions::audio_set_volume(void *cls, void *s
 #ifdef HAS_AIRPLAY
   CAirPlayServer::backupVolume();
 #endif
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_SERVICES_AIRPLAYVOLUMECONTROL))
     g_application.SetVolume(volPercent, false);//non-percent volume 0.0-1.0
 }
 
@@ -618,23 +617,13 @@ void CAirTunesServer::StopServer(bool bWait)
   }
 }
 
-bool CAirTunesServer::IsRunning()
-{
-  if (ServerInstance == NULL)
-    return false;
+ bool CAirTunesServer::IsRunning()
+ {
+   if (ServerInstance == NULL)
+     return false;
 
-  return ServerInstance->IsRAOPRunningInternal();
-}
-
-bool CAirTunesServer::IsRAOPRunningInternal()
-{
-  if (m_pLibShairplay != nullptr && m_pRaop != nullptr)
-  {
-    return m_pLibShairplay->raop_is_running(m_pRaop) != 0;
-  }
-  return false;
-}
-
+   return ((CThread*)ServerInstance)->IsRunning();
+ }
 
 CAirTunesServer::CAirTunesServer(int port, bool nonlocal)
 : CThread("AirTunesActionThread"),
@@ -729,7 +718,6 @@ void CAirTunesServer::Deinitialize()
     m_pLibShairplay->raop_stop(m_pRaop);
     m_pLibShairplay->raop_destroy(m_pRaop);
     m_pLibShairplay->Unload();
-    m_pRaop = nullptr;
   }
 }
 

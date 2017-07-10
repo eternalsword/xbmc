@@ -25,11 +25,11 @@
 namespace XBMCAddon
 {
   // just need a place for the vtab
-  LanguageHook::~LanguageHook() = default;
+  LanguageHook::~LanguageHook() {}
 
   static XbmcThreads::ThreadLocal<LanguageHook> addonLanguageHookTls;
-  static bool threadLocalInitialized = false;
-  static xbmcutil::InitFlag initer(threadLocalInitialized);
+  static bool threadLocalInitilialized = false;
+  static xbmcutil::InitFlag initer(threadLocalInitilialized);
 
   void LanguageHook::SetLanguageHook(LanguageHook* languageHook)
   {
@@ -40,7 +40,7 @@ namespace XBMCAddon
 
   LanguageHook* LanguageHook::GetLanguageHook()
   {
-    return threadLocalInitialized ? addonLanguageHookTls.get() : NULL;
+    return threadLocalInitilialized ? addonLanguageHookTls.get() : NULL;
   }
 
   void LanguageHook::ClearLanguageHook()

@@ -36,25 +36,23 @@ class VideoPlayerCodec : public ICodec
 {
 public:
   VideoPlayerCodec();
-  ~VideoPlayerCodec() override;
+  virtual ~VideoPlayerCodec();
 
-  bool Init(const CFileItem &file, unsigned int filecache) override;
-  bool Seek(int64_t iSeekTime) override;
-  int ReadPCM(BYTE *pBuffer, int size, int *actualsize) override;
-  int ReadRaw(uint8_t **pBuffer, int *bufferSize) override;
-  bool CanInit() override;
-  bool CanSeek() override;
+  virtual bool Init(const CFileItem &file, unsigned int filecache) override;
+  virtual void DeInit();
+  virtual bool Seek(int64_t iSeekTime);
+  virtual int ReadPCM(BYTE *pBuffer, int size, int *actualsize);
+  virtual int ReadRaw(uint8_t **pBuffer, int *bufferSize);
+  virtual bool CanInit();
+  virtual bool CanSeek();
+  virtual CAEChannelInfo GetChannelInfo() {return m_srcFormat.m_channelLayout;}
 
-  void DeInit();
   AEAudioFormat GetFormat();
   void SetContentType(const std::string &strContent);
 
   bool NeedConvert(AEDataFormat fmt);
-  void SetPassthroughStreamType(CAEStreamInfo::DataType streamType);
 
 private:
-  CAEStreamInfo::DataType GetPassthroughStreamType(AVCodecID codecId, int samplerate);
-
   CDVDDemux* m_pDemuxer;
   CDVDInputStream* m_pInputStream;
   CDVDAudioCodec* m_pAudioCodec;
@@ -62,6 +60,8 @@ private:
   std::string m_strContentType;
   std::string m_strFileName;
   int m_nAudioStream;
+  int m_audioPos;
+  DemuxPacket* m_pPacket;
   int  m_nDecodedLen;
 
   bool m_bInited;

@@ -22,22 +22,21 @@
 #include <string>
 
 #include "XBDateTime.h"
-#include "filesystem/File.h"
 #include "network/httprequesthandler/IHTTPRequestHandler.h"
 
 class CHTTPFileHandler : public IHTTPRequestHandler
 {
 public:
-  ~CHTTPFileHandler() override = default;
+  virtual ~CHTTPFileHandler() { }
 
-  int HandleRequest() override;
+  virtual int HandleRequest();
 
-  bool CanHandleRanges() const override { return m_canHandleRanges; }
-  bool CanBeCached() const override { return m_canBeCached; }
-  bool GetLastModifiedDate(CDateTime &lastModified) const override;
+  virtual bool CanHandleRanges() const { return m_canHandleRanges; }
+  virtual bool CanBeCached() const { return m_canBeCached; }
+  virtual bool GetLastModifiedDate(CDateTime &lastModified) const;
 
-  std::string GetRedirectUrl() const override { return m_url; }
-  std::string GetResponseFile() const override { return m_url; }
+  virtual std::string GetRedirectUrl() const { return m_url; }
+  virtual std::string GetResponseFile() const { return m_url; }
 
 protected:
   CHTTPFileHandler();
@@ -47,7 +46,7 @@ protected:
 
   void SetCanHandleRanges(bool canHandleRanges) { m_canHandleRanges = canHandleRanges; }
   void SetCanBeCached(bool canBeCached) { m_canBeCached = canBeCached; }
-  void SetLastModifiedDate(const struct __stat64 *buffer);
+  void SetLastModifiedDate(CDateTime lastModified) { m_lastModified = lastModified; }
 
 private:
   std::string m_url;

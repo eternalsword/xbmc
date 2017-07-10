@@ -55,7 +55,6 @@ typedef enum
   NSTimer *m_networkAutoSuspendTimer;
   IOSPlaybackState m_playbackState;
   NSDictionary *nowPlayingInfo;
-  bool nativeKeyboardActive;
 }
 @property (readonly, nonatomic, getter=isAnimating) BOOL animating;
 @property CGPoint lastGesturePoint;
@@ -65,7 +64,6 @@ typedef enum
 @property CGSize screensize;
 @property (nonatomic, retain) NSTimer *m_networkAutoSuspendTimer;
 @property (nonatomic, retain) NSDictionary *nowPlayingInfo;
-@property bool nativeKeyboardActive;
 
 // message from which our instance is obtained
 - (void) pauseAnimation;
@@ -86,7 +84,6 @@ typedef enum
 - (void) createGestureRecognizers;
 - (void) activateKeyboard:(UIView *)view;
 - (void) deactivateKeyboard:(UIView *)view;
-- (void) nativeKeyboardActive: (bool)active;
 
 - (void) disableNetworkAutoSuspend;
 - (void) enableNetworkAutoSuspend:(id)obj;

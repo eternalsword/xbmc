@@ -54,7 +54,7 @@ namespace Shaders {
     // shader attribute handles
     GLint m_hSourceTex;
     GLint m_hStepXY;
-    GLint m_hStretch = 0;
+    GLint m_hStretch;
   };
 
   class ConvolutionFilterShader : public BaseVideoFilterShader

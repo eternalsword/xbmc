@@ -27,9 +27,9 @@ class CGUIWindowStartup :
 {
 public:
   CGUIWindowStartup(void);
-  ~CGUIWindowStartup(void) override;
-  bool OnAction(const CAction &action) override;
+  virtual ~CGUIWindowStartup(void);
+  virtual bool OnAction(const CAction &action);
 
   // specialization of CGUIWindow
-  void OnDeinitWindow(int nextWindowID) override;
+  virtual void OnDeinitWindow(int nextWindowID);
 };

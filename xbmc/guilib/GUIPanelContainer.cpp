@@ -33,7 +33,9 @@ CGUIPanelContainer::CGUIPanelContainer(int parentID, int controlID, float posX, 
   m_itemsPerRow = 1;
 }
 
-CGUIPanelContainer::~CGUIPanelContainer(void) = default;
+CGUIPanelContainer::~CGUIPanelContainer(void)
+{
+}
 
 void CGUIPanelContainer::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {

@@ -31,10 +31,9 @@ class CAddonDatabase : public CDatabase
 {
 public:
   CAddonDatabase();
-  ~CAddonDatabase() override;
-  bool Open() override;
+  virtual ~CAddonDatabase();
+  virtual bool Open();
 
-  /*! @deprecated: use CAddonMgr::FindInstallableById */
   bool GetAddon(const std::string& addonID, ADDON::AddonPtr& addon);
 
   /*! \brief Get an addon with a specific version and repository. */
@@ -43,15 +42,11 @@ public:
   /*! Get the addon IDs that has been set to disabled */
   bool GetDisabled(std::set<std::string>& addons);
 
-  /*! @deprecated: use FindByAddonId */
   bool GetAvailableVersions(const std::string& addonId,
       std::vector<std::pair<ADDON::AddonVersion, std::string>>& versionsInfo);
 
-  /*! @deprecated use CAddonMgr::FindInstallableById */
+  /*! Get the most recent version for an add-on and the repo id it belongs to*/
   std::pair<ADDON::AddonVersion, std::string> GetAddonVersion(const std::string &id);
-
-  /*! Returns all addons in the repositories with id `addonId`. */
-  bool FindByAddonId(const std::string& addonId, ADDON::VECADDONS& addons);
 
   bool UpdateRepositoryContent(const std::string& repositoryId, const ADDON::AddonVersion& version,
       const std::string& checksum, const std::vector<ADDON::AddonPtr>& addons);
@@ -146,12 +141,12 @@ public:
 
 
 protected:
-  void CreateTables() override;
-  void CreateAnalytics() override;
-  void UpdateTables(int version) override;
-  int GetMinSchemaVersion() const override;
-  int GetSchemaVersion() const override;
-  const char *GetBaseDBName() const override { return "Addons"; }
+  virtual void CreateTables();
+  virtual void CreateAnalytics();
+  virtual void UpdateTables(int version);
+  virtual int GetMinSchemaVersion() const;
+  virtual int GetSchemaVersion() const;
+  const char *GetBaseDBName() const { return "Addons"; }
 
   bool GetAddon(int id, ADDON::AddonPtr& addon);
   void DeleteRepository(const std::string& id);

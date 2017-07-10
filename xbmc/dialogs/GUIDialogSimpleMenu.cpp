@@ -20,7 +20,6 @@
 
 
 #include "GUIDialogSimpleMenu.h"
-#include "ServiceBroker.h"
 #include "guilib/GUIWindowManager.h"
 #include "GUIDialogSelect.h"
 #include "settings/DiscSettings.h"
@@ -39,7 +38,7 @@ bool CGUIDialogSimpleMenu::ShowPlaySelection(CFileItem& item)
   if (item.m_lStartOffset || (item.HasVideoInfoTag() && item.GetVideoInfoTag()->m_iBookmarkId > 0))
     return true;
 
-  if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_DISC_PLAYBACK) != BD_PLAYBACK_SIMPLE_MENU)
+  if (CSettings::GetInstance().GetInt(CSettings::SETTING_DISC_PLAYBACK) != BD_PLAYBACK_SIMPLE_MENU)
     return true;
 
   std::string path;
@@ -96,7 +95,7 @@ bool CGUIDialogSimpleMenu::ShowPlaySelection(CFileItem& item, const std::string&
     return true;
   }
 
-  CGUIDialogSelect* dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
+  CGUIDialogSelect* dialog = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
   while (true)
   {
     dialog->Reset();

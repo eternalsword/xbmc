@@ -27,7 +27,6 @@
 #include "PlayListPlayer.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogFileBrowser.h"
-#include "guilib/LocalizeStrings.h"
 #include "interfaces/builtins/Builtins.h"
 #include "music/MusicDatabase.h"
 #include "messaging/ApplicationMessenger.h"
@@ -55,7 +54,6 @@ CMediaSettings::CMediaSettings()
   m_watchedModes["movies"] = WatchedModeAll;
   m_watchedModes["tvshows"] = WatchedModeAll;
   m_watchedModes["musicvideos"] = WatchedModeAll;
-  m_watchedModes["recordings"] = WatchedModeAll;
 
   m_musicPlaylistRepeat = false;
   m_musicPlaylistShuffle = false;
@@ -69,7 +67,8 @@ CMediaSettings::CMediaSettings()
   m_videoNeedsUpdate = 0;
 }
 
-CMediaSettings::~CMediaSettings() = default;
+CMediaSettings::~CMediaSettings()
+{ }
 
 CMediaSettings& CMediaSettings::GetInstance()
 {
@@ -87,7 +86,7 @@ bool CMediaSettings::Load(const TiXmlNode *settings)
   if (pElement != NULL)
   {
     int interlaceMethod;
-    XMLUtils::GetInt(pElement, "interlacemethod", interlaceMethod, VS_INTERLACEMETHOD_NONE, VS_INTERLACEMETHOD_MAX);
+    bool interlaceMethodPresent = XMLUtils::GetInt(pElement, "interlacemethod", interlaceMethod, VS_INTERLACEMETHOD_AUTO, VS_INTERLACEMETHOD_MAX);
 
     m_defaultVideoSettings.m_InterlaceMethod = (EINTERLACEMETHOD)interlaceMethod;
     int scalingMethod;
@@ -95,7 +94,7 @@ bool CMediaSettings::Load(const TiXmlNode *settings)
       scalingMethod = (int)VS_SCALINGMETHOD_LINEAR;
     m_defaultVideoSettings.m_ScalingMethod = (ESCALINGMETHOD)scalingMethod;
 
-    XMLUtils::GetInt(pElement, "viewmode", m_defaultVideoSettings.m_ViewMode, ViewModeNormal, ViewModeZoom110Width);
+    XMLUtils::GetInt(pElement, "viewmode", m_defaultVideoSettings.m_ViewMode, ViewModeNormal, ViewModeCustom);
     if (!XMLUtils::GetFloat(pElement, "zoomamount", m_defaultVideoSettings.m_CustomZoomAmount, 0.5f, 2.0f))
       m_defaultVideoSettings.m_CustomZoomAmount = 1.0f;
     if (!XMLUtils::GetFloat(pElement, "pixelratio", m_defaultVideoSettings.m_CustomPixelRatio, 0.5f, 2.0f))
@@ -153,19 +152,6 @@ bool CMediaSettings::Load(const TiXmlNode *settings)
     }
   }
 
-  m_defaultGameSettings.Reset();
-  pElement = settings->FirstChildElement("defaultgamesettings");
-  if (pElement != nullptr)
-  {
-    int scalingMethod;
-    if (XMLUtils::GetInt(pElement, "scalingmethod", scalingMethod, VS_SCALINGMETHOD_NEAREST, VS_SCALINGMETHOD_MAX))
-      m_defaultGameSettings.SetScalingMethod(static_cast<ESCALINGMETHOD>(scalingMethod));
-
-    int viewMode;
-    if (XMLUtils::GetInt(pElement, "viewmode", viewMode, ViewModeNormal, ViewModeZoom110Width))
-      m_defaultGameSettings.SetViewMode(viewMode);
-  }
-
   // mymusic settings
   pElement = settings->FirstChildElement("mymusic");
   if (pElement != NULL)
@@ -191,8 +177,6 @@ bool CMediaSettings::Load(const TiXmlNode *settings)
       m_watchedModes["tvshows"] = (WatchedMode)tmp;
     if (XMLUtils::GetInt(pElement, "watchmodemusicvideos", tmp, (int)WatchedModeAll, (int)WatchedModeWatched))
       m_watchedModes["musicvideos"] = (WatchedMode)tmp;
-    if (XMLUtils::GetInt(pElement, "watchmoderecordings", tmp, static_cast<int>(WatchedModeAll), static_cast<int>(WatchedModeWatched)))
-      m_watchedModes["recordings"] = static_cast<WatchedMode>(tmp);
 
     const TiXmlElement *pChild = pElement->FirstChildElement("playlist");
     if (pChild != NULL)
@@ -209,10 +193,10 @@ bool CMediaSettings::Load(const TiXmlNode *settings)
 
 void CMediaSettings::OnSettingsLoaded()
 {
-  CServiceBroker::GetPlaylistPlayer().SetRepeat(PLAYLIST_MUSIC, m_musicPlaylistRepeat ? PLAYLIST::REPEAT_ALL : PLAYLIST::REPEAT_NONE);
-  CServiceBroker::GetPlaylistPlayer().SetShuffle(PLAYLIST_MUSIC, m_musicPlaylistShuffle);
-  CServiceBroker::GetPlaylistPlayer().SetRepeat(PLAYLIST_VIDEO, m_videoPlaylistRepeat ? PLAYLIST::REPEAT_ALL : PLAYLIST::REPEAT_NONE);
-  CServiceBroker::GetPlaylistPlayer().SetShuffle(PLAYLIST_VIDEO, m_videoPlaylistShuffle);
+  g_playlistPlayer.SetRepeat(PLAYLIST_MUSIC, m_musicPlaylistRepeat ? PLAYLIST::REPEAT_ALL : PLAYLIST::REPEAT_NONE);
+  g_playlistPlayer.SetShuffle(PLAYLIST_MUSIC, m_musicPlaylistShuffle);
+  g_playlistPlayer.SetRepeat(PLAYLIST_VIDEO, m_videoPlaylistRepeat ? PLAYLIST::REPEAT_ALL : PLAYLIST::REPEAT_NONE);
+  g_playlistPlayer.SetShuffle(PLAYLIST_VIDEO, m_videoPlaylistShuffle);
 }
 
 bool CMediaSettings::Save(TiXmlNode *settings) const
@@ -267,15 +251,6 @@ bool CMediaSettings::Save(TiXmlNode *settings) const
     }
   }
 
-  // Default game settings
-  TiXmlElement gameSettingsNode("defaultgamesettings");
-  pNode = settings->InsertEndChild(gameSettingsNode);
-  if (pNode == nullptr)
-    return false;
-
-  XMLUtils::SetInt(pNode, "scalingmethod", m_defaultGameSettings.ScalingMethod());
-  XMLUtils::SetInt(pNode, "viewmode", m_defaultGameSettings.ViewMode());
-
   // mymusic
   pNode = settings->FirstChild("mymusic");
   if (pNode == NULL)
@@ -308,7 +283,6 @@ bool CMediaSettings::Save(TiXmlNode *settings) const
   XMLUtils::SetInt(pNode, "watchmodemovies", m_watchedModes.find("movies")->second);
   XMLUtils::SetInt(pNode, "watchmodetvshows", m_watchedModes.find("tvshows")->second);
   XMLUtils::SetInt(pNode, "watchmodemusicvideos", m_watchedModes.find("musicvideos")->second);
-  XMLUtils::SetInt(pNode, "watchmoderecordings", m_watchedModes.find("recordings")->second);
 
   TiXmlElement videoPlaylistNode("playlist");
   playlistNode = pNode->InsertEndChild(videoPlaylistNode);
@@ -322,7 +296,7 @@ bool CMediaSettings::Save(TiXmlNode *settings) const
   return true;
 }
 
-void CMediaSettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
+void CMediaSettings::OnSettingAction(const CSetting *setting)
 {
   if (setting == NULL)
     return;

@@ -47,16 +47,17 @@ class CUPowerSyscall : public CAbstractPowerSyscall
 {
 public:
   CUPowerSyscall();
-  bool Powerdown() override;
-  bool Suspend() override;
-  bool Hibernate() override;
-  bool Reboot() override;
-  bool CanPowerdown() override;
-  bool CanSuspend() override;
-  bool CanHibernate() override;
-  bool CanReboot() override;
-  int  BatteryLevel() override;
-  bool PumpPowerEvents(IPowerEventsCallback *callback) override;
+  virtual ~CUPowerSyscall();
+  virtual bool Powerdown();
+  virtual bool Suspend();
+  virtual bool Hibernate();
+  virtual bool Reboot();
+  virtual bool CanPowerdown();
+  virtual bool CanSuspend();
+  virtual bool CanHibernate();
+  virtual bool CanReboot();
+  virtual int  BatteryLevel();
+  virtual bool PumpPowerEvents(IPowerEventsCallback *callback);
   static bool HasUPower();
 protected:
   bool m_CanPowerdown;
@@ -67,7 +68,8 @@ protected:
   void UpdateCapabilities();
 private:
   std::list<CUPowerSource> m_powerSources;
-  CDBusConnection m_connection;
+  DBusConnection *m_connection;
+  DBusError m_error;
 
   bool m_lowBattery;
   void EnumeratePowerSources();

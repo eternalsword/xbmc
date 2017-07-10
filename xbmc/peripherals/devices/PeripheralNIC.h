@@ -26,7 +26,7 @@ namespace PERIPHERALS
   class CPeripheralNIC : public CPeripheral
   {
   public:
-    CPeripheralNIC(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
-    ~CPeripheralNIC(void) override = default;
+    CPeripheralNIC(const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    virtual ~CPeripheralNIC(void) {};
   };
 }

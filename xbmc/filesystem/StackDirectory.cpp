@@ -29,9 +29,13 @@
 
 namespace XFILE
 {
-  CStackDirectory::CStackDirectory() = default;
+  CStackDirectory::CStackDirectory()
+  {
+  }
 
-  CStackDirectory::~CStackDirectory() = default;
+  CStackDirectory::~CStackDirectory()
+  {
+  }
 
   bool CStackDirectory::GetDirectory(const CURL& url, CFileItemList& items)
   {
@@ -182,7 +186,7 @@ namespace XFILE
     if (vecPaths.empty())
       return false;
 
-    // because " , " is used as a separator any "," in the real paths are double escaped
+    // because " , " is used as a seperator any "," in the real paths are double escaped
     for (std::vector<std::string>::iterator itPath = vecPaths.begin(); itPath != vecPaths.end(); ++itPath)
       StringUtils::Replace(*itPath, ",,", ",");
 

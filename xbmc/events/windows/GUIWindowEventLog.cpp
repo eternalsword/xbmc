@@ -21,7 +21,6 @@
 #include "GUIWindowEventLog.h"
 #include "FileItem.h"
 #include "GUIUserMessages.h"
-#include "ServiceBroker.h"
 #include "URL.h"
 #include "events/EventLog.h"
 #include "filesystem/EventsDirectory.h"
@@ -42,7 +41,8 @@ CGUIWindowEventLog::CGUIWindowEventLog()
   : CGUIMediaWindow(WINDOW_EVENT_LOG, "EventLog.xml")
 { }
 
-CGUIWindowEventLog::~CGUIWindowEventLog() = default;
+CGUIWindowEventLog::~CGUIWindowEventLog()
+{ }
 
 bool CGUIWindowEventLog::OnMessage(CGUIMessage& message)
 {
@@ -67,7 +67,7 @@ bool CGUIWindowEventLog::OnMessage(CGUIMessage& message)
     {
       // update the event level
       CViewStateSettings::GetInstance().CycleEventLevel();
-      CServiceBroker::GetSettings().Save();
+      CSettings::GetInstance().Save();
 
       // update the listing
       Refresh();
@@ -79,7 +79,7 @@ bool CGUIWindowEventLog::OnMessage(CGUIMessage& message)
     {
       // update whether to show higher event levels
       CViewStateSettings::GetInstance().ToggleShowHigherEventLevels();
-      CServiceBroker::GetSettings().Save();
+      CSettings::GetInstance().Save();
 
       // update the listing
       Refresh();

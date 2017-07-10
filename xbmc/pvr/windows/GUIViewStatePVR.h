@@ -29,8 +29,7 @@ namespace PVR
     CGUIViewStatePVR(const int windowId, const CFileItemList& items) : CGUIViewState(items) { m_windowId = windowId; }
 
   protected:
-    bool HideParentDirItems(void) override { return true; }
-
+    virtual bool HideParentDirItems(void) { return true; };
     int m_windowId;
   };
 
@@ -40,7 +39,7 @@ namespace PVR
     CGUIViewStateWindowPVRChannels(const int windowId, const CFileItemList& items);
 
   protected:
-    void SaveViewState() override;
+    virtual void SaveViewState();
   };
 
   class CGUIViewStateWindowPVRRecordings : public CGUIViewStatePVR
@@ -49,8 +48,8 @@ namespace PVR
     CGUIViewStateWindowPVRRecordings(const int windowId, const CFileItemList& items);
 
   protected:
-    void SaveViewState() override;
-    bool HideParentDirItems(void) override;
+    virtual void SaveViewState();
+    virtual bool HideParentDirItems(void);
   };
 
   class CGUIViewStateWindowPVRGuide : public CGUIViewStatePVR
@@ -59,7 +58,7 @@ namespace PVR
     CGUIViewStateWindowPVRGuide(const int windowId, const CFileItemList& items);
 
   protected:
-    void SaveViewState() override;
+    virtual void SaveViewState();
   };
 
   class CGUIViewStateWindowPVRTimers : public CGUIViewStatePVR
@@ -68,8 +67,8 @@ namespace PVR
     CGUIViewStateWindowPVRTimers(const int windowId, const CFileItemList& items);
 
   protected:
-    void SaveViewState() override;
-    bool HideParentDirItems(void) override;
+    virtual void SaveViewState();
+    virtual bool HideParentDirItems(void);
   };
 
   class CGUIViewStateWindowPVRSearch : public CGUIViewStatePVR
@@ -78,6 +77,6 @@ namespace PVR
     CGUIViewStateWindowPVRSearch(const int windowId, const CFileItemList& items);
 
   protected:
-    void SaveViewState() override;
+    virtual void SaveViewState();
   };
 }

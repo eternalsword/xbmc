@@ -75,7 +75,7 @@ namespace XBMCAddon
 #endif
 
       Keyboard(const String& line = emptyString, const String& heading = emptyString, bool hidden = false);
-      ~Keyboard() override;
+      virtual ~Keyboard();
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///

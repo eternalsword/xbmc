@@ -39,9 +39,13 @@ using namespace CDDB;
 #define CDTEXT_GENRE CDTEXT_FIELD_GENRE
 #endif
 
-CMusicInfoTagLoaderCDDA::CMusicInfoTagLoaderCDDA(void) = default;
+CMusicInfoTagLoaderCDDA::CMusicInfoTagLoaderCDDA(void)
+{
+}
 
-CMusicInfoTagLoaderCDDA::~CMusicInfoTagLoaderCDDA() = default;
+CMusicInfoTagLoaderCDDA::~CMusicInfoTagLoaderCDDA()
+{
+}
 
 bool CMusicInfoTagLoaderCDDA::Load(const std::string& strFileName, CMusicInfoTag& tag, EmbeddedArt *art)
 {

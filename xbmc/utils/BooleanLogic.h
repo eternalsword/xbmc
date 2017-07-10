@@ -37,9 +37,9 @@ public:
   CBooleanLogicValue(const std::string &value = "", bool negated = false)
     : m_value(value), m_negated(negated)
   { }
-  ~CBooleanLogicValue() override = default;
+  virtual ~CBooleanLogicValue() { }
 
-  bool Deserialize(const TiXmlNode *node) override;
+  virtual bool Deserialize(const TiXmlNode *node);
 
   virtual const std::string& GetValue() const { return m_value; }
   virtual bool IsNegated() const { return m_negated; }
@@ -66,9 +66,9 @@ public:
   CBooleanLogicOperation(BooleanLogicOperation op = BooleanLogicOperationAnd)
     : m_operation(op)
   { }
-  ~CBooleanLogicOperation() override;
+  virtual ~CBooleanLogicOperation();
 
-  bool Deserialize(const TiXmlNode *node) override;
+  virtual bool Deserialize(const TiXmlNode *node);
 
   virtual BooleanLogicOperation GetOperation() const { return m_operation; }
   virtual const CBooleanLogicOperations& GetOperations() const { return m_operations; }
@@ -88,10 +88,10 @@ protected:
 class CBooleanLogic : public IXmlDeserializable
 {
 public:
-  CBooleanLogic() = default;
-  ~CBooleanLogic() override = default;
+  CBooleanLogic() { }
+  virtual ~CBooleanLogic() { }
 
-  bool Deserialize(const TiXmlNode *node) override;
+  virtual bool Deserialize(const TiXmlNode *node);
 
   virtual const CBooleanLogicOperationPtr& Get() const { return m_operation; }
   virtual CBooleanLogicOperationPtr Get() { return m_operation; }

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2013-2017 Team Kodi
- *      http://kodi.tv
+ *      Copyright (C) 2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,21 +35,14 @@ class IListProvider
 {
 public:
   IListProvider(int parentID) : m_parentID(parentID) {}
-  virtual ~IListProvider() = default;
+  virtual ~IListProvider() {}
 
   /*! \brief Factory to create list providers.
-   \param parent a parent TiXmlNode for the container.
+   \param node a TiXmlNode to create.
    \param parentID id of parent window for context.
    \return the list provider, NULL if none.
    */
-  static IListProvider *Create(const TiXmlNode *parent, int parentID);
-
-  /*! \brief Factory to create list providers.  Cannot create a multi-provider.
-   \param content the TiXmlNode for the content to create.
-   \param parentID id of parent window for context.
-   \return the list provider, NULL if none.
-   */
-  static IListProvider *CreateSingle(const TiXmlNode *content, int parentID);
+  static IListProvider *Create(const TiXmlNode *node, int parentID);
 
   /*! \brief Update the list content
    \return true if the content has changed, false otherwise.
@@ -59,7 +52,7 @@ public:
   /*! \brief Fetch the current list of items.
    \param items [out] the list to be filled.
    */
-  virtual void Fetch(std::vector<CGUIListItemPtr> &items)=0;
+  virtual void Fetch(std::vector<CGUIListItemPtr> &items) const=0;
 
   /*! \brief Check whether the list provider is updating content.
    \return true if in the processing of updating, false otherwise.
@@ -68,8 +61,9 @@ public:
 
   /*! \brief Reset the current list of items.
    Derived classes may choose to ignore this.
+   \param immediately whether the content of the provider should be cleared.
    */
-  virtual void Reset() {};
+  virtual void Reset(bool immediately = false) {};
 
   /*! \brief Click event on an item.
    \param item the item that was clicked.

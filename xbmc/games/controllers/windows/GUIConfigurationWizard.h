@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -23,37 +23,27 @@
 #include "input/joysticks/DriverPrimitive.h"
 #include "input/joysticks/IButtonMapper.h"
 #include "input/keyboard/IKeyboardHandler.h"
-#include "input/mouse/IMouseInputHandler.h"
 #include "threads/CriticalSection.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
 #include "utils/Observer.h"
 
-#include <memory>
 #include <set>
 #include <string>
 #include <vector>
-
-namespace KODI
-{
-namespace KEYBOARD
-{
-  class IActionMap;
-}
 
 namespace GAME
 {
   class CGUIConfigurationWizard : public IConfigurationWizard,
                                   public JOYSTICK::IButtonMapper,
                                   public KEYBOARD::IKeyboardHandler,
-                                  public MOUSE::IMouseInputHandler,
                                   public Observer,
                                   protected CThread
   {
   public:
-    CGUIConfigurationWizard(bool bEmulation, unsigned int controllerNumber = 0);
+    CGUIConfigurationWizard();
 
-    virtual ~CGUIConfigurationWizard(void);
+    virtual ~CGUIConfigurationWizard(void) { }
 
     // implementation of IConfigurationWizard
     virtual void Run(const std::string& strControllerId, const std::vector<IFeatureButton*>& buttons) override;
@@ -62,23 +52,11 @@ namespace GAME
 
     // implementation of IButtonMapper
     virtual std::string ControllerID(void) const override { return m_strControllerId; }
-    virtual bool NeedsCooldown(void) const override { return true; }
-    virtual bool Emulation(void) const override { return m_bEmulation; }
-    virtual unsigned int ControllerNumber(void) const override { return m_controllerNumber; }
-    virtual bool MapPrimitive(JOYSTICK::IButtonMap* buttonMap,
-                              IKeymap* keymap,
-                              const JOYSTICK::CDriverPrimitive& primitive) override;
-    virtual void OnEventFrame(const JOYSTICK::IButtonMap* buttonMap, bool bMotion) override;
-    virtual void OnLateAxis(const JOYSTICK::IButtonMap* buttonMap, unsigned int axisIndex) override;
+    virtual bool MapPrimitive(JOYSTICK::IButtonMap* buttonMap, const JOYSTICK::CDriverPrimitive& primitive) override;
 
     // implementation of IKeyboardHandler
     virtual bool OnKeyPress(const CKey& key) override;
     virtual void OnKeyRelease(const CKey& key) override { }
-
-    // implementation of IMouseInputHandler
-    virtual bool OnMotion(const std::string& relpointer, int dx, int dy) override { return false; }
-    virtual bool OnButtonPress(const std::string& button) override;
-    virtual void OnButtonRelease(const std::string& button) override { }
 
     // implementation of Observer
     virtual void Notify(const Observable& obs, const ObservableMessage msg) override;
@@ -93,13 +71,6 @@ namespace GAME
     void InstallHooks(void);
     void RemoveHooks(void);
 
-    void OnMotion(const JOYSTICK::IButtonMap* buttonMap);
-    void OnMotionless(const JOYSTICK::IButtonMap* buttonMap);
-
-    // Construction parameters
-    const bool                           m_bEmulation;
-    const unsigned int                   m_controllerNumber;
-
     // Run() parameters
     std::string                          m_strControllerId;
     std::vector<IFeatureButton*>         m_buttons;
@@ -108,17 +79,9 @@ namespace GAME
     IFeatureButton*                      m_currentButton;
     JOYSTICK::ANALOG_STICK_DIRECTION     m_currentDirection;
     std::set<JOYSTICK::CDriverPrimitive> m_history; // History to avoid repeated features
-    bool                                 m_lateAxisDetected; // Set to true if an axis is detected during button mapping
     CCriticalSection                     m_stateMutex;
 
-    // Synchronization events
+    // Synchronization event
     CEvent                               m_inputEvent;
-    CEvent                               m_motionlessEvent;
-    CCriticalSection                     m_motionMutex;
-    std::set<const JOYSTICK::IButtonMap*> m_bInMotion;
-
-    // Keyboard handling
-    std::unique_ptr<KEYBOARD::IActionMap> m_actionMap;
   };
-}
 }

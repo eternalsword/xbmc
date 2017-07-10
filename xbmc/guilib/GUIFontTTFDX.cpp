@@ -128,7 +128,7 @@ void CGUIFontTTFDX::LastEnd()
 
     // Store current GPU transform
     XMMATRIX view = pGUIShader->GetView();
-    // Store current scissor
+    // Store currect scissor
     CRect scissor = g_graphicsContext.StereoCorrection(g_graphicsContext.GetScissors());
 
     for (size_t i = 0; i < m_vertexTrans.size(); i++)
@@ -263,14 +263,15 @@ bool CGUIFontTTFDX::CopyCharToTexture(FT_BitmapGlyph bitGlyph, unsigned int x1, 
   FT_Bitmap bitmap = bitGlyph->bitmap;
 
   ID3D11DeviceContext* pContext = g_Windowing.GetImmediateContext();
-  if (m_speedupTexture && m_speedupTexture->Get() && pContext && bitmap.buffer)
+  if (m_speedupTexture && pContext)
   {
     CD3D11_BOX dstBox(x1, y1, 0, x2, y2, 1);
     pContext->UpdateSubresource(m_speedupTexture->Get(), 0, &dstBox, bitmap.buffer, bitmap.pitch, 0);
-    return true;
   }
+  else
+    return false;
 
-  return false;
+  return TRUE;
 }
 
 void CGUIFontTTFDX::DeleteHardwareTexture()
@@ -348,7 +349,7 @@ void CGUIFontTTFDX::CreateStaticIndexBuffer(void)
 bool CGUIFontTTFDX::m_staticIndexBufferCreated = false;
 ID3D11Buffer* CGUIFontTTFDX::m_staticIndexBuffer = nullptr;
 
-void CGUIFontTTFDX::OnDestroyDevice(bool fatal)
+void CGUIFontTTFDX::OnDestroyDevice(void)
 {
   SAFE_RELEASE(m_staticIndexBuffer);
   m_staticIndexBufferCreated = false;

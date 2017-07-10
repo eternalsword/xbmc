@@ -27,7 +27,7 @@ class CGUIDialogMusicOSD :
 {
 public:
   CGUIDialogMusicOSD(void);
-  ~CGUIDialogMusicOSD(void) override;
+  virtual ~CGUIDialogMusicOSD(void);
   bool OnMessage(CGUIMessage &message) override;
   bool OnAction(const CAction &action) override;
   void FrameMove() override;

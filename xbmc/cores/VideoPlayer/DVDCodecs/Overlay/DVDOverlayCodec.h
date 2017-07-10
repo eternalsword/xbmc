@@ -41,7 +41,7 @@ public:
 
   CDVDOverlayCodec(const char* name) : m_codecName(name) {}
 
-  virtual ~CDVDOverlayCodec() = default;
+  virtual ~CDVDOverlayCodec() {}
 
   /*
    * Open the decoder, returns true on success

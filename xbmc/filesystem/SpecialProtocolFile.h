@@ -27,9 +27,9 @@ class CSpecialProtocolFile : public COverrideFile
 {
 public:
   CSpecialProtocolFile(void);
-  ~CSpecialProtocolFile(void) override;
+  virtual ~CSpecialProtocolFile(void);
 
 protected:
-  std::string TranslatePath(const CURL& url) override;
+  virtual std::string TranslatePath(const CURL& url);
 };
 }

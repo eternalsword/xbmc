@@ -37,12 +37,12 @@ class CWinSystemX11 : public CWinSystemBase
 {
 public:
   CWinSystemX11();
-  ~CWinSystemX11() override;
+  virtual ~CWinSystemX11();
 
   // CWinSystemBase
   bool InitWindowSystem() override;
   bool DestroyWindowSystem() override;
-  bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res) override;
+  bool CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction) override;
   bool DestroyWindow() override;
   bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
@@ -50,6 +50,8 @@ public:
   int  GetNumScreens() override { return 1; }
   int  GetCurrentScreen() override { return m_nScreen; }
   void ShowOSMouse(bool show) override;
+  void ResetOSScreensaver() override;
+  void EnableSystemScreenSaver(bool bEnable) override;
 
   void NotifyAppActiveChange(bool bActivated) override;
   void NotifyAppFocusChange(bool bGaining) override;
@@ -71,8 +73,6 @@ public:
   int GetCrtc() { return m_crtc; }
 
 protected:
-  std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
-
   virtual bool SetWindow(int width, int height, bool fullscreen, const std::string &output, int *winstate = NULL) = 0;
   virtual XVisualInfo* GetVisual() = 0;
 
@@ -103,4 +103,6 @@ private:
   bool CreateIconPixmap();
   bool HasWindowManager();
   void UpdateCrtc();
+
+  CStopWatch m_screensaverReset;
 };

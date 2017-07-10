@@ -46,7 +46,7 @@ class CStereoscopicsManager : public ISettingCallback,
 {
 public:
   CStereoscopicsManager(void);
-  ~CStereoscopicsManager(void) override;
+  virtual ~CStereoscopicsManager(void);
 
   /*!
    * @return static instance of CStereoscopicsManager
@@ -79,8 +79,8 @@ public:
    */
   CAction ConvertActionCommandToAction(const std::string &command, const std::string &parameter);
   std::string NormalizeStereoMode(const std::string &mode);
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
-  bool OnMessage(CGUIMessage &message) override;
+  virtual void OnSettingChanged(const CSetting *setting) override;
+  virtual bool OnMessage(CGUIMessage &message) override;
   /*!
    * @brief Handle 3D specific cActions
    * @param action The action to process

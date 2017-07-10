@@ -23,20 +23,26 @@
 
 #pragma once
 
+#include "utils/Observer.h"
 #include "XBMC_events.h"
 
-class IWinEvents
+typedef bool (* PHANDLE_EVENT_FUNC)(XBMC_Event& newEvent);
+
+class IWinEvents : public Observer
 {
   public:
-    virtual       ~IWinEvents() = default;
+    virtual       ~IWinEvents() {};
     virtual bool  MessagePump()   = 0;
+    virtual size_t GetQueueSize()  = 0;
     virtual void  MessagePush(XBMC_Event* ev) {};
+    virtual void  Notify(const Observable &obs, const ObservableMessage msg) {};
 };
 class CWinEvents
 {
   public:
     static void MessagePush(XBMC_Event* ev);
     static bool MessagePump();
+    static size_t GetQueueSize();
 };
 
 #endif // WINDOW_EVENTS_H

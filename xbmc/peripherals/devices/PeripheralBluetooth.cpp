@@ -22,8 +22,8 @@
 
 using namespace PERIPHERALS;
 
-CPeripheralBluetooth::CPeripheralBluetooth(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
-  CPeripheral(manager, scanResult, bus)
+CPeripheralBluetooth::CPeripheralBluetooth(const PeripheralScanResult& scanResult, CPeripheralBus* bus) :
+  CPeripheral(scanResult, bus)
 {
   m_features.push_back(FEATURE_BLUETOOTH);
 }

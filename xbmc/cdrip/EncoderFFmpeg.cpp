@@ -27,7 +27,6 @@
 #include "stdint.h"
 
 #include "EncoderFFmpeg.h"
-#include "ServiceBroker.h"
 #include "utils/log.h"
 #include "settings/Settings.h"
 #include "utils/SystemInfo.h"
@@ -57,9 +56,9 @@ CEncoderFFmpeg::CEncoderFFmpeg():
   memset(&m_callbacks, 0, sizeof(m_callbacks));
 }
 
-bool CEncoderFFmpeg::Init(AddonToKodiFuncTable_AudioEncoder& callbacks)
+bool CEncoderFFmpeg::Init(audioenc_callbacks &callbacks)
 {
-  if (!callbacks.kodiInstance || !callbacks.write || !callbacks.seek)
+  if (!callbacks.opaque || !callbacks.write || !callbacks.seek)
     return false;
 
   m_callbacks = callbacks;
@@ -89,7 +88,7 @@ bool CEncoderFFmpeg::Init(AddonToKodiFuncTable_AudioEncoder& callbacks)
   }
 
   AddonPtr addon;
-  CAddonMgr::GetInstance().GetAddon(CServiceBroker::GetSettings().GetString(CSettings::SETTING_AUDIOCDS_ENCODER), addon);
+  CAddonMgr::GetInstance().GetAddon(CSettings::GetInstance().GetString(CSettings::SETTING_AUDIOCDS_ENCODER), addon);
   if (addon)
   {
     m_Format->bit_rate = (128+32*strtol(addon->GetSetting("bitrate").c_str(), NULL, 10))*1000;
@@ -248,8 +247,8 @@ void CEncoderFFmpeg::SetTag(const std::string &tag, const std::string &value)
 
 int CEncoderFFmpeg::avio_write_callback(void *opaque, uint8_t *buf, int buf_size)
 {
-  CEncoderFFmpeg *enc = static_cast<CEncoderFFmpeg*>(opaque);
-  if(enc->m_callbacks.write(enc->m_callbacks.kodiInstance, buf, buf_size) != buf_size)
+  CEncoderFFmpeg *enc = (CEncoderFFmpeg*)opaque;
+  if(enc->m_callbacks.write(enc->m_callbacks.opaque, buf, buf_size) != buf_size)
   {
     CLog::Log(LOGERROR, "Error writing FFmpeg buffer to file");
     return -1;
@@ -259,8 +258,8 @@ int CEncoderFFmpeg::avio_write_callback(void *opaque, uint8_t *buf, int buf_size
 
 int64_t CEncoderFFmpeg::avio_seek_callback(void *opaque, int64_t offset, int whence)
 {
-  CEncoderFFmpeg *enc = static_cast<CEncoderFFmpeg*>(opaque);
-  return enc->m_callbacks.seek(enc->m_callbacks.kodiInstance, offset, whence);
+  CEncoderFFmpeg *enc = (CEncoderFFmpeg*)opaque;
+  return enc->m_callbacks.seek(enc->m_callbacks.opaque, offset, whence);
 }
 
 int CEncoderFFmpeg::Encode(int nNumBytesRead, uint8_t* pbtStream)

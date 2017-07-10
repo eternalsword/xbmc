@@ -34,20 +34,20 @@ class CMusicThumbLoader : public CThumbLoader
 {
 public:
   CMusicThumbLoader();
-  ~CMusicThumbLoader() override;
+  virtual ~CMusicThumbLoader();
 
-  void OnLoaderStart() override;
-  void OnLoaderFinish() override;
+  virtual void OnLoaderStart();
+  virtual void OnLoaderFinish();
 
-  bool LoadItem(CFileItem* pItem) override;
-  bool LoadItemCached(CFileItem* pItem) override;
-  bool LoadItemLookup(CFileItem* pItem) override;
+  virtual bool LoadItem(CFileItem* pItem);
+  virtual bool LoadItemCached(CFileItem* pItem);
+  virtual bool LoadItemLookup(CFileItem* pItem);
 
   /*! \brief helper function to fill the art for a video library item
    \param item a video CFileItem
    \return true if we fill art, false otherwise
    */
-  bool FillLibraryArt(CFileItem &item) override;
+  virtual bool FillLibraryArt(CFileItem &item);
   
   /*! \brief Fill the thumb of a music file/folder item
    First uses a cached thumb from a previous run, then checks for a local thumb

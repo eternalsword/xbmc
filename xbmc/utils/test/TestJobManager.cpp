@@ -18,7 +18,6 @@
  *
  */
 
-#include "ServiceBroker.h"
 #include "utils/JobManager.h"
 #include "settings/Settings.h"
 #include "utils/SystemInfo.h"
@@ -33,27 +32,27 @@ protected:
   {
     //! @todo implement
     /*
-    CSettingsCategory* net = CServiceBroker::GetSettings().AddCategory(4, "network", 798);
-    CServiceBroker::GetSettings().AddBool(net, CSettings::SETTING_NETWORK_USEHTTPPROXY, 708, false);
-    CServiceBroker::GetSettings().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYSERVER, 706, "",
+    CSettingsCategory* net = CSettings::GetInstance().AddCategory(4, "network", 798);
+    CSettings::GetInstance().AddBool(net, CSettings::SETTING_NETWORK_USEHTTPPROXY, 708, false);
+    CSettings::GetInstance().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYSERVER, 706, "",
                             EDIT_CONTROL_INPUT);
-    CServiceBroker::GetSettings().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYPORT, 730, "8080",
+    CSettings::GetInstance().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYPORT, 730, "8080",
                             EDIT_CONTROL_NUMBER_INPUT, false, 707);
-    CServiceBroker::GetSettings().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME, 1048, "",
+    CSettings::GetInstance().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYUSERNAME, 1048, "",
                             EDIT_CONTROL_INPUT);
-    CServiceBroker::GetSettings().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD, 733, "",
+    CSettings::GetInstance().AddString(net, CSettings::SETTING_NETWORK_HTTPPROXYPASSWORD, 733, "",
                             EDIT_CONTROL_HIDDEN_INPUT,true,733);
-    CServiceBroker::GetSettings().AddInt(net, CSettings::SETTING_NETWORK_BANDWIDTH, 14041, 0, 0, 512, 100*1024,
+    CSettings::GetInstance().AddInt(net, CSettings::SETTING_NETWORK_BANDWIDTH, 14041, 0, 0, 512, 100*1024,
                          SPIN_CONTROL_INT_PLUS, 14048, 351);
     */
   }
 
-  ~TestJobManager() override
+  ~TestJobManager()
   {
     /* Always cancel jobs test completion */
     CJobManager::GetInstance().CancelJobs();
     CJobManager::GetInstance().Restart();
-    CServiceBroker::GetSettings().Unload();
+    CSettings::GetInstance().Unload();
   }
 };
 
@@ -111,12 +110,12 @@ public:
     m_block.notifyAll();
   }
 
-  const char * GetType() const override
+  const char * GetType() const
   {
     return "BroadcastingJob";
   }
 
-  bool DoWork() override
+  bool DoWork()
   {
     {
       CSingleLock lock(m_package.jobCreatedMutex);

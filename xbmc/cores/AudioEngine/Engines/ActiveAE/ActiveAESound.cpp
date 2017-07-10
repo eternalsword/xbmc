@@ -19,6 +19,8 @@
  */
 
 #include "cores/AudioEngine/Interfaces/AESound.h"
+
+#include "cores/AudioEngine/AEFactory.h"
 #include "ActiveAE.h"
 #include "ActiveAESound.h"
 #include "utils/log.h"
@@ -30,7 +32,10 @@ extern "C" {
 using namespace ActiveAE;
 using namespace XFILE;
 
-CActiveAESound::CActiveAESound(const std::string &filename, CActiveAE *ae) :
+/* typecast AE to CActiveAE */
+#define AE (*((CActiveAE*)CAEFactory::GetEngine()))
+
+CActiveAESound::CActiveAESound(const std::string &filename) :
   IAESound         (filename),
   m_filename       (filename),
   m_volume         (1.0f    ),
@@ -42,7 +47,6 @@ CActiveAESound::CActiveAESound(const std::string &filename, CActiveAE *ae) :
   m_isSeekPossible = false;
   m_fileSize = 0;
   m_isConverted = false;
-  m_activeAE = ae;
 }
 
 CActiveAESound::~CActiveAESound()
@@ -54,13 +58,12 @@ CActiveAESound::~CActiveAESound()
 
 void CActiveAESound::Play()
 {
-  m_activeAE->PlaySound(this);
-
+  AE.PlaySound(this);
 }
 
 void CActiveAESound::Stop()
 {
-  m_activeAE->StopSound(this);
+  AE.StopSound(this);
 }
 
 bool CActiveAESound::IsPlaying()

@@ -26,9 +26,13 @@
 
 using namespace XFILE;
 
-CSFTPDirectory::CSFTPDirectory(void) = default;
+CSFTPDirectory::CSFTPDirectory(void)
+{
+}
 
-CSFTPDirectory::~CSFTPDirectory(void) = default;
+CSFTPDirectory::~CSFTPDirectory(void)
+{
+}
 
 bool CSFTPDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {

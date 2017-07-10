@@ -21,9 +21,11 @@
 #include "VideoLibraryJob.h"
 #include "video/VideoDatabase.h"
 
-CVideoLibraryJob::CVideoLibraryJob() = default;
+CVideoLibraryJob::CVideoLibraryJob()
+{ }
 
-CVideoLibraryJob::~CVideoLibraryJob() = default;
+CVideoLibraryJob::~CVideoLibraryJob()
+{ }
 
 bool CVideoLibraryJob::DoWork()
 {

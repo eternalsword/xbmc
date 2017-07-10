@@ -71,11 +71,11 @@ public:
   AEAudioFormat GetFormat();
   unsigned int GetChannels() { return GetFormat().m_channelLayout.Count(); }
   // Data management
-  unsigned int GetDataSize(bool checkPktSize);
+  unsigned int GetDataSize();
   void *GetData(unsigned int samples);
   uint8_t* GetRawData(int &size);
   ICodec *GetCodec() const { return m_codec; }
-  float GetReplayGain(float &peakVal);
+  float GetReplayGain();
 
 private:
   // pcm buffer

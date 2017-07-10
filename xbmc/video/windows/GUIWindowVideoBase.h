@@ -40,9 +40,9 @@ class CGUIWindowVideoBase : public CGUIMediaWindow, public IBackgroundLoaderObse
 {
 public:
   CGUIWindowVideoBase(int id, const std::string &xmlFile);
-  ~CGUIWindowVideoBase(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  bool OnAction(const CAction &action) override;
+  virtual ~CGUIWindowVideoBase(void);
+  virtual bool OnMessage(CGUIMessage& message) override;
+  virtual bool OnAction(const CAction &action) override;
 
   void PlayMovie(const CFileItem *item, const std::string &player = "");
   static void GetResumeItemOffset(const CFileItem *item, int& startoffset, int& partNumber);
@@ -87,21 +87,21 @@ public:
 
 protected:
   void OnScan(const std::string& strPath, bool scanAll = false);
-  bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
-  bool GetDirectory(const std::string &strDirectory, CFileItemList &items) override;
-  void OnItemLoaded(CFileItem* pItem) override {};
-  void GetGroupedItems(CFileItemList &items) override;
+  virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+  virtual bool GetDirectory(const std::string &strDirectory, CFileItemList &items) override;
+  virtual void OnItemLoaded(CFileItem* pItem) override {};
+  virtual void GetGroupedItems(CFileItemList &items) override;
 
-  bool CheckFilterAdvanced(CFileItemList &items) const override;
-  bool CanContainFilter(const std::string &strDirectory) const override;
+  virtual bool CheckFilterAdvanced(CFileItemList &items) const override;
+  virtual bool CanContainFilter(const std::string &strDirectory) const override;
 
-  void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
-  bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
+  virtual void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+  virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
   virtual void OnQueueItem(int iItem);
   virtual void OnDeleteItem(CFileItemPtr pItem);
-  void OnDeleteItem(int iItem) override;
+  virtual void OnDeleteItem(int iItem) override;
   virtual void DoSearch(const std::string& strSearch, CFileItemList& items) {};
-  std::string GetStartFolder(const std::string &dir) override;
+  virtual std::string GetStartFolder(const std::string &dir) override;
 
   bool OnClick(int iItem, const std::string &player = "") override;
   bool OnSelect(int iItem) override;
@@ -120,9 +120,8 @@ protected:
   void OnRestartItem(int iItem, const std::string &player = "");
   bool OnResumeItem(int iItem, const std::string &player = "");
   void PlayItem(int iItem, const std::string &player = "");
-  bool OnPlayMedia(int iItem, const std::string &player = "") override;
-  bool OnPlayAndQueueMedia(const CFileItemPtr &item, std::string player = "") override;
-  using CGUIMediaWindow::LoadPlayList;
+  virtual bool OnPlayMedia(int iItem, const std::string &player = "") override;
+  virtual bool OnPlayAndQueueMedia(const CFileItemPtr &item, std::string player = "") override;
   void LoadPlayList(const std::string& strPlayList, int iPlayList = PLAYLIST_VIDEO);
 
   bool ShowIMDB(CFileItemPtr item, const ADDON::ScraperPtr& content, bool fromDB);

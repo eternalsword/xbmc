@@ -79,6 +79,7 @@ private:
 
     std::string _data;
     unsigned _headerStart;
+    unsigned _bodyStart;
     unsigned _parsedTo;
     int _state;
     unsigned _keyIndex;

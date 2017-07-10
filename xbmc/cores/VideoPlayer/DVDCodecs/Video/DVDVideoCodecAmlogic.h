@@ -24,7 +24,6 @@
 #include "threads/CriticalSection.h"
 
 #include <set>
-#include <atomic>
 
 class CAMLCodec;
 struct frame_queue;
@@ -37,7 +36,7 @@ class CDVDVideoCodecAmlogic;
 class CDVDAmlogicInfo
 {
 public:
-  CDVDAmlogicInfo(CDVDVideoCodecAmlogic *codec, CAMLCodec *amlcodec, int omxPts, int amlDuration, uint32_t bufferIndex);
+  CDVDAmlogicInfo(CDVDVideoCodecAmlogic *codec, CAMLCodec *amlcodec, int omxPts);
 
   // reference counting
   CDVDAmlogicInfo* Retain();
@@ -45,11 +44,7 @@ public:
 
   CAMLCodec *getAmlCodec() const;
   int GetOmxPts() const { return m_omxPts; }
-  int GetAmlDuration() const { return m_amlDuration; }
-  uint32_t GetBufferIndex() const { return m_bufferIndex; };
   void invalidate();
-  void SetRendered() { m_rendered = true; };
-  bool IsRendered() { return m_rendered; };
 
 protected:
   long m_refs;
@@ -57,9 +52,7 @@ protected:
 
   CDVDVideoCodecAmlogic* m_codec;
   CAMLCodec* m_amlCodec;
-  int m_omxPts, m_amlDuration;
-  uint32_t m_bufferIndex;
-  bool m_rendered;
+  int m_omxPts;
 };
 
 class CDVDVideoCodecAmlogic : public CDVDVideoCodec
@@ -71,13 +64,16 @@ public:
   virtual ~CDVDVideoCodecAmlogic();
 
   // Required overrides
-  virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) override;
-  virtual bool AddData(const DemuxPacket &packet) override;
-  virtual void Reset() override;
-  virtual VCReturn GetPicture(VideoPicture* pVideoPicture) override;
-  virtual void SetSpeed(int iSpeed) override;
-  virtual void SetCodecControl(int flags) override;
-  virtual const char* GetName(void) override { return (const char*)m_pFormatName; }
+  virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
+  virtual int  Decode(uint8_t *pData, int iSize, double dts, double pts);
+  virtual void Reset(void);
+  virtual bool GetPicture(DVDVideoPicture *pDvdVideoPicture);
+  virtual bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
+  virtual void SetSpeed(int iSpeed);
+  virtual void SetDropState(bool bDrop);
+  virtual int  GetDataSize(void);
+  virtual double GetTimeSize(void);
+  virtual const char* GetName(void) { return (const char*)m_pFormatName; }
 
 protected:
   void            Dispose(void);
@@ -89,9 +85,8 @@ protected:
   CAMLCodec      *m_Codec;
   std::set<CDVDAmlogicInfo*> m_inflight;
   const char     *m_pFormatName;
-  VideoPicture m_videobuffer;
+  DVDVideoPicture m_videobuffer;
   bool            m_opened;
-  int             m_codecControlFlags;
   CDVDStreamInfo  m_hints;
   double          m_last_pts;
   frame_queue    *m_frame_queue;
@@ -102,11 +97,9 @@ protected:
   float           m_aspect_ratio;
   mpeg2_sequence *m_mpeg2_sequence;
   double          m_mpeg2_sequence_pts;
-  bool            m_has_keyframe;
 
   CBitstreamParser *m_bitparser;
   CBitstreamConverter *m_bitstream;
 private:
   CCriticalSection    m_secure;
-  static std::atomic<bool> m_InstanceGuard;
 };

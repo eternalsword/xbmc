@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,15 +26,13 @@
 #include "peripherals/addons/AddonButtonMap.h"
 #include "peripherals/devices/PeripheralJoystick.h"
 #include "peripherals/Peripherals.h"
-#include "utils/log.h"
 
-using namespace KODI;
 using namespace JOYSTICK;
 using namespace PERIPHERALS;
 
-CAddonInputHandling::CAddonInputHandling(CPeripherals& manager, CPeripheral* peripheral, IInputHandler* handler, IDriverReceiver* receiver)
+CAddonInputHandling::CAddonInputHandling(CPeripheral* peripheral, IInputHandler* handler, IDriverReceiver* receiver)
 {
-  PeripheralAddonPtr addon = manager.GetAddonWithButtonMap(peripheral);
+  PeripheralAddonPtr addon = g_peripherals.GetAddonWithButtonMap(peripheral);
 
   if (!addon)
   {
@@ -85,10 +83,10 @@ bool CAddonInputHandling::OnHatMotion(unsigned int hatIndex, HAT_STATE state)
   return false;
 }
 
-bool CAddonInputHandling::OnAxisMotion(unsigned int axisIndex, float position, int center, unsigned int range)
+bool CAddonInputHandling::OnAxisMotion(unsigned int axisIndex, float position)
 {
   if (m_driverHandler)
-    return m_driverHandler->OnAxisMotion(axisIndex, position, center, range);
+    return m_driverHandler->OnAxisMotion(axisIndex, position);
 
   return false;
 }

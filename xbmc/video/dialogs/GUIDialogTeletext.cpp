@@ -21,7 +21,6 @@
 #include "GUIDialogTeletext.h"
 #include "utils/log.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "guilib/GUITexture.h"
 #include "guilib/Texture.h"
 #include "guilib/LocalizeStrings.h"
@@ -37,7 +36,9 @@ CGUIDialogTeletext::CGUIDialogTeletext()
   m_renderOrder = RENDER_ORDER_DIALOG_TELETEXT;
 }
 
-CGUIDialogTeletext::~CGUIDialogTeletext() = default;
+CGUIDialogTeletext::~CGUIDialogTeletext()
+{
+}
 
 bool CGUIDialogTeletext::OnAction(const CAction& action)
 {
@@ -176,7 +177,7 @@ void CGUIDialogTeletext::SetCoordinates()
   top = g_graphicsContext.ScaleFinalYCoord(0, 0);
   bottom = g_graphicsContext.ScaleFinalYCoord(0, (float)m_coordsRes.iHeight);
 
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_TELETEXTSCALE))
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_TELETEXTSCALE))
   {
     /* Fixed aspect ratio to 4:3 for teletext */
     float width = right - left;

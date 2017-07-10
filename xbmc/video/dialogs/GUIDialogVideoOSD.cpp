@@ -22,10 +22,8 @@
 #include "Application.h"
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/WindowIDs.h"
-#include "input/ActionIDs.h"
+#include "input/Key.h"
 #include "input/InputManager.h"
-#include "ServiceBroker.h"
 
 using namespace PVR;
 
@@ -35,21 +33,23 @@ CGUIDialogVideoOSD::CGUIDialogVideoOSD(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogVideoOSD::~CGUIDialogVideoOSD(void) = default;
+CGUIDialogVideoOSD::~CGUIDialogVideoOSD(void)
+{
+}
 
 void CGUIDialogVideoOSD::FrameMove()
 {
   if (m_autoClosing)
   {
     // check for movement of mouse or a submenu open
-    if (CServiceBroker::GetInputManager().IsMouseActive()
+    if (CInputManager::GetInstance().IsMouseActive()
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_AUDIO_OSD_SETTINGS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_AUDIO_DSP_OSD_SETTINGS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_VIDEO_OSD_SETTINGS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_CMS_OSD_SETTINGS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_VIDEO_BOOKMARKS)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CHANNELS)
-                           || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_CHANNEL_GUIDE)
+                           || g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_GUIDE)
                            || g_windowManager.IsWindowActive(WINDOW_DIALOG_OSD_TELETEXT))
       // extend show time by original value
       SetAutoClose(m_showDuration);
@@ -95,10 +95,10 @@ bool CGUIDialogVideoOSD::OnMessage(CGUIMessage& message)
   case GUI_MSG_WINDOW_DEINIT:  // fired when OSD is hidden
     {
       // Remove our subdialogs if visible
-      CGUIDialog *pDialog = g_windowManager.GetDialog(WINDOW_DIALOG_AUDIO_DSP_OSD_SETTINGS);
+      CGUIDialog *pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_AUDIO_DSP_OSD_SETTINGS);
       if (pDialog && pDialog->IsDialogRunning())
         pDialog->Close(true);
-      pDialog = g_windowManager.GetDialog(WINDOW_DIALOG_AUDIO_OSD_SETTINGS);
+      pDialog = (CGUIDialog *)g_windowManager.GetWindow(WINDOW_DIALOG_AUDIO_OSD_SETTINGS);
       if (pDialog && pDialog->IsDialogRunning())
         pDialog->Close(true);
     }

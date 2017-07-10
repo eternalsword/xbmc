@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2017 Team Kodi
+ *      Copyright (C) 2015-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,12 +21,9 @@
 
 #include "IDriverHandler.h"
 
-namespace KODI
-{
 namespace JOYSTICK
 {
   /*!
-   * \ingroup joystick
    * \brief Monitors joystick input and resets screensaver/shutdown timers
    *        whenever motion occurs.
    */
@@ -36,7 +33,7 @@ namespace JOYSTICK
     // implementation of IDriverHandler
     virtual bool OnButtonMotion(unsigned int buttonIndex, bool bPressed) override;
     virtual bool OnHatMotion(unsigned int hatIndex, HAT_STATE state) override;
-    virtual bool OnAxisMotion(unsigned int axisIndex, float position, int center, unsigned int range) override;
+    virtual bool OnAxisMotion(unsigned int axisIndex, float position) override;
     virtual void ProcessAxisMotions(void) override { }
 
   private:
@@ -46,5 +43,4 @@ namespace JOYSTICK
      */
     bool ResetTimers(void);
   };
-}
 }

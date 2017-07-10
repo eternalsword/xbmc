@@ -43,7 +43,7 @@ public:
 
   virtual bool  InitWindowSystem();
   virtual bool  DestroyWindowSystem();
-  virtual bool  CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res);
+  virtual bool  CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction);
   virtual bool  DestroyWindow();
   virtual bool  ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop);
   virtual bool  SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays);
@@ -69,9 +69,6 @@ public:
 
   EGLDisplay    GetEGLDisplay();
   EGLContext    GetEGLContext();
-
-  // videosync
-  virtual std::unique_ptr<CVideoSync> GetVideoSync(void *clock) override;
 protected:
   virtual void  PresentRenderImpl(bool rendered);
   virtual void  SetVSyncImpl(bool enable);

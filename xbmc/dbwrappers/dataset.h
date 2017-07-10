@@ -151,7 +151,7 @@ public:
 
   /*! \brief Prepare a SQL statement for execution or querying using C printf nomenclature.
    \param format - C printf compliant format string
-   \param ... - optional comma separated list of variables for substitution in format string placeholders.
+   \param ... - optional comma seperated list of variables for substitution in format string placeholders.
    \return escaped and formatted string.
    */
   virtual std::string prepare(const char *format, ...);
@@ -222,21 +222,21 @@ protected:
    Example:
    update  wt_story set idobject set idobject=:NEW_idobject,body=:NEW_body
    where idobject=:OLD_idobject
-   Essentially fields idobject and body must present in the
+   Essentually fields idobject and body must present in the
    result set (select_sql statement) */
 
   StringList insert_sql; 		// May be an array in complex queries
 /* Field values for inserting must has prefix :NEW_ and field name
    Example:
    insert into wt_story (idobject, body) values (:NEW_idobject, :NEW_body)
-   Essentially fields idobject and body must present in the
+   Essentually fields idobject and body must present in the
    result set (select_sql statement) */
 
   StringList delete_sql; 		// May be an array in complex queries
 /* Field values for deleing must has prefix :OLD_ and field name
    Example:
    delete from wt_story where idobject=:OLD_idobject
-   Essentially field idobject must present in the
+   Essentually field idobject must present in the
    result set (select_sql statement) */
 
 
@@ -306,7 +306,7 @@ public:
   virtual int  exec (const std::string &sql) = 0;
   virtual int  exec() = 0;
   virtual const void* getExecRes()=0;
-/* as open, but with our query exec Sql */
+/* as open, but with our query exept Sql */
   virtual bool query(const std::string &sql) = 0;
 /* Close SQL Query*/
   virtual void close();
@@ -332,14 +332,14 @@ public:
   virtual void first();
 /* Go to next record in dataset */
   virtual void next();
-/* Go to previous record */
+/* Go to porevious record */
   virtual void prev();
 /* Go to last record in dataset */
   virtual void last();
 
 /* Check for Ending dataset */
   virtual bool eof(void) { return feof; }
-/* Check for Beginning dataset */
+/* Check for Begining dataset */
   virtual bool bof(void) { return fbof; }
 
 /* Start the insert mode */
@@ -355,7 +355,7 @@ public:
   virtual void deletion();
 /* Cancel changes, made in insert or edit states of dataset */
   virtual void cancel() {};
-/* interrupt any pending database operation  */
+/* interupt any pending database operation  */
 	virtual void interrupt() {};
 
   virtual void setParamList(const ParamList &params);

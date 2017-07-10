@@ -44,8 +44,30 @@ bool CConsoleUPowerSyscall::Reboot()
 
 bool CConsoleUPowerSyscall::HasConsoleKitAndUPower()
 {
-  return CDBusUtil::TryMethodCall(DBUS_BUS_SYSTEM, "org.freedesktop.ConsoleKit", "/org/freedesktop/ConsoleKit/Manager", "org.freedesktop.ConsoleKit.Manager", "CanStop")
-    && HasUPower();
+  bool hasConsoleKitManager = false;
+  CDBusMessage consoleKitMessage("org.freedesktop.ConsoleKit", "/org/freedesktop/ConsoleKit/Manager", "org.freedesktop.ConsoleKit.Manager", "CanStop");
+
+  DBusError error;
+  dbus_error_init (&error);
+  DBusConnection *con = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+
+  if (dbus_error_is_set(&error))
+  {
+    CLog::Log(LOGDEBUG, "ConsoleUPowerSyscall: %s - %s", error.name, error.message);
+    dbus_error_free(&error);
+    return false;
+  }
+
+  consoleKitMessage.Send(con, &error);
+
+  if (!dbus_error_is_set(&error))
+    hasConsoleKitManager = true;
+  else
+    CLog::Log(LOGDEBUG, "ConsoleKit.Manager: %s - %s", error.name, error.message);
+
+  dbus_error_free (&error);
+
+  return HasUPower() && hasConsoleKitManager;
 }
 
 bool CConsoleUPowerSyscall::ConsoleKitMethodCall(const char *method)

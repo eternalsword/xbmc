@@ -31,9 +31,10 @@
 #include "peripherals/devices/PeripheralHID.h"
 #include "threads/SystemClock.h"
 #include "utils/log.h"
-#include "ServiceBroker.h"
 
 #define HOLD_THRESHOLD 250
+
+using namespace PERIPHERALS;
 
 bool operator==(const XBMC_keysym& lhs, const XBMC_keysym& rhs)
 {
@@ -49,7 +50,9 @@ CKeyboardStat::CKeyboardStat()
   m_lastKeyTime = 0;
 }
 
-CKeyboardStat::~CKeyboardStat() = default;
+CKeyboardStat::~CKeyboardStat()
+{
+}
 
 void CKeyboardStat::Initialize()
 {
@@ -57,15 +60,13 @@ void CKeyboardStat::Initialize()
 
 bool CKeyboardStat::LookupSymAndUnicodePeripherals(XBMC_keysym &keysym, uint8_t *key, char *unicode)
 {
-  using namespace PERIPHERALS;
-
-  PeripheralVector hidDevices;
-  if (CServiceBroker::GetPeripherals().GetPeripheralsWithFeature(hidDevices, FEATURE_HID))
+  std::vector<CPeripheral *> hidDevices;
+  if (g_peripherals.GetPeripheralsWithFeature(hidDevices, FEATURE_HID))
   {
-    for (auto& peripheral : hidDevices)
+    for (unsigned int iDevicePtr = 0; iDevicePtr < hidDevices.size(); iDevicePtr++)
     {
-      std::shared_ptr<CPeripheralHID> hidDevice = std::static_pointer_cast<CPeripheralHID>(peripheral);
-      if (hidDevice->LookupSymAndUnicode(keysym, key, unicode))
+      CPeripheralHID *hidDevice = (CPeripheralHID *) hidDevices.at(iDevicePtr);
+      if (hidDevice && hidDevice->LookupSymAndUnicode(keysym, key, unicode))
         return true;
     }
   }
@@ -196,7 +197,7 @@ void CKeyboardStat::ProcessKeyUp(void)
 }
 
 // Return the key name given a key ID
-// Used to make the debug log more intelligible
+// Used to make the debug log more intelligable
 // The KeyID includes the flags for ctrl, alt etc
 
 std::string CKeyboardStat::GetKeyName(int KeyID)
@@ -231,7 +232,7 @@ std::string CKeyboardStat::GetKeyName(int KeyID)
     keyname += StringUtils::Format("%i", keyid);
   
   // in case this might be an universalremote keyid
-  // we also print the possible corresponding obc code
+  // we also print the possile corresponding obc code
   // so users can easily find it in their universalremote
   // map xml
   if (VKeyFound || keyid > 255)

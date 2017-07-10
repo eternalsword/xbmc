@@ -27,7 +27,9 @@ CGUIDialogFullScreenInfo::CGUIDialogFullScreenInfo(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogFullScreenInfo::~CGUIDialogFullScreenInfo(void) = default;
+CGUIDialogFullScreenInfo::~CGUIDialogFullScreenInfo(void)
+{
+}
 
 bool CGUIDialogFullScreenInfo::OnAction(const CAction &action)
 {

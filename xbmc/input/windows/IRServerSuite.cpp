@@ -20,9 +20,8 @@
 
 #include "IRServerSuite.h"
 #include "IrssMessage.h"
-#include "input/InputManager.h"
+#include "input/ButtonTranslator.h"
 #include "utils/log.h"
-#include "ServiceBroker.h"
 #include <Ws2tcpip.h>
 
 #define IRSS_PORT 24000
@@ -358,9 +357,9 @@ bool CRemoteControl::HandleRemoteEvent(CIrssMessage& message)
     deviceName[devicenamelength] = '\0';
     keycode[keycodelength] = '\0';
     //translate to a buttoncode xbmc understands
-    m_button = CServiceBroker::GetInputManager().TranslateLircRemoteString(deviceName, keycode);
+    m_button = CButtonTranslator::GetInstance().TranslateLircRemoteString(deviceName, keycode);
     CLog::Log(LOGDEBUG, "IRServerSuite, RemoteEvent: %s %s", deviceName, keycode);
-
+    
     delete[] deviceName;
     delete[] keycode;
     return true;

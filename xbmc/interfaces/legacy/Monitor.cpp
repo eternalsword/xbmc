@@ -32,7 +32,6 @@ namespace XBMCAddon
       if (languageHook)
       {
         Id = languageHook->GetAddonId();
-        invokerId = languageHook->GetInvokerId();
         languageHook->RegisterMonitorCallback(this);
       }
     }

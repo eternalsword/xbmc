@@ -18,78 +18,56 @@
  *
  */
 #include "DBusMessage.h"
-#include "DBusUtil.h"
+#ifdef HAS_DBUS
 #include "utils/log.h"
 #include "settings/AdvancedSettings.h"
 
 CDBusMessage::CDBusMessage(const char *destination, const char *object, const char *interface, const char *method)
 {
-  m_reply = nullptr;
-  m_message.reset(dbus_message_new_method_call(destination, object, interface, method));
-  if (!m_message)
-  {
-    // Fails only due to memory allocation failure
-    throw std::runtime_error("dbus_message_new_method_call");
-  }
+  m_reply = NULL;
+  m_message = dbus_message_new_method_call (destination, object, interface, method);
   m_haveArgs = false;
 
   if (g_advancedSettings.CanLogComponent(LOGDBUS))
     CLog::Log(LOGDEBUG, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
 }
 
-CDBusMessage::CDBusMessage(const std::string& destination, const std::string& object, const std::string& interface, const std::string& method)
-: CDBusMessage(destination.c_str(), object.c_str(), interface.c_str(), method.c_str())
+CDBusMessage::~CDBusMessage()
 {
+  Close();
 }
 
-void DBusMessageDeleter::operator()(DBusMessage* message) const
+bool CDBusMessage::AppendObjectPath(const char *object)
 {
-  dbus_message_unref(message);
+  PrepareArgument();
+  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_OBJECT_PATH, &object);
 }
 
-void CDBusMessage::AppendObjectPath(const char *object)
+bool CDBusMessage::AppendArgument(const char *string)
 {
-  AppendWithType(DBUS_TYPE_OBJECT_PATH, &object);
+  PrepareArgument();
+  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_STRING, &string);
 }
 
-template<>
-void CDBusMessage::AppendArgument<bool>(const bool arg)
+bool CDBusMessage::AppendArgument(const bool b)
 {
-  // dbus_bool_t width might not match C++ bool width
-  dbus_bool_t convArg = (arg == true);
-  AppendWithType(DBUS_TYPE_BOOLEAN, &convArg);
+  dbus_bool_t arg = (b == true);
+  PrepareArgument();
+  return dbus_message_iter_append_basic(&m_args, DBUS_TYPE_BOOLEAN, &arg);
 }
 
-void CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)
+bool CDBusMessage::AppendArgument(const char **arrayString, unsigned int length)
 {
   PrepareArgument();
   DBusMessageIter sub;
-  if (!dbus_message_iter_open_container(&m_args, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &sub))
-  {
-    throw std::runtime_error("dbus_message_iter_open_container");
-  }
+  bool success = dbus_message_iter_open_container(&m_args, DBUS_TYPE_ARRAY, DBUS_TYPE_STRING_AS_STRING, &sub);
 
-  for (unsigned int i = 0; i < length; i++)
-  {
-    if (!dbus_message_iter_append_basic(&sub, DBUS_TYPE_STRING, &arrayString[i]))
-    {
-      throw std::runtime_error("dbus_message_iter_append_basic");
-    }
-  }
+  for (unsigned int i = 0; i < length && success; i++)
+    success &= dbus_message_iter_append_basic(&sub, DBUS_TYPE_STRING, &arrayString[i]);
 
-  if (!dbus_message_iter_close_container(&m_args, &sub))
-  {
-    throw std::runtime_error("dbus_message_iter_close_container");
-  }
-}
+  success &= dbus_message_iter_close_container(&m_args, &sub);
 
-void CDBusMessage::AppendWithType(int type, const void* value)
-{
-  PrepareArgument();
-  if (!dbus_message_iter_append_basic(&m_args, type, value))
-  {
-    throw std::runtime_error("dbus_message_iter_append_basic");
-  }
+  return success;
 }
 
 DBusMessage *CDBusMessage::SendSystem()
@@ -100,16 +78,6 @@ DBusMessage *CDBusMessage::SendSystem()
 DBusMessage *CDBusMessage::SendSession()
 {
   return Send(DBUS_BUS_SESSION);
-}
-
-DBusMessage *CDBusMessage::SendSystem(CDBusError& error)
-{
-  return Send(DBUS_BUS_SYSTEM, error);
-}
-
-DBusMessage *CDBusMessage::SendSession(CDBusError& error)
-{
-  return Send(DBUS_BUS_SESSION, error);
 }
 
 bool CDBusMessage::SendAsyncSystem()
@@ -124,49 +92,65 @@ bool CDBusMessage::SendAsyncSession()
 
 DBusMessage *CDBusMessage::Send(DBusBusType type)
 {
-  CDBusError error;
-  CDBusConnection con;
-  if (!con.Connect(type))
-    return nullptr;
+  DBusError error;
+  dbus_error_init (&error);
+  DBusConnection *con = dbus_bus_get(type, &error);
 
-  DBusMessage *returnMessage = Send(con, error);
+  DBusMessage *returnMessage = Send(con, &error);
 
-  if (error)
-    error.Log();
+  if (dbus_error_is_set(&error))
+    CLog::Log(LOGERROR, "DBus: Error %s - %s", error.name, error.message);
 
-  return returnMessage;
-}
-
-DBusMessage *CDBusMessage::Send(DBusBusType type, CDBusError& error)
-{
-  CDBusConnection con;
-  if (!con.Connect(type, error))
-    return nullptr;
-  
-  DBusMessage *returnMessage = Send(con, error);
+  dbus_error_free (&error);
+  dbus_connection_unref(con);
 
   return returnMessage;
 }
 
 bool CDBusMessage::SendAsync(DBusBusType type)
 {
-  CDBusConnection con;
-  if (!con.Connect(type))
-    return false;
+  DBusError error;
+  dbus_error_init (&error);
+  DBusConnection *con = dbus_bus_get(type, &error);
 
-  return dbus_connection_send(con, m_message.get(), nullptr);
+  bool result;
+  if (con && m_message)
+    result = dbus_connection_send(con, m_message, NULL);
+  else
+    result = false;
+
+  dbus_error_free (&error);
+  dbus_connection_unref(con);
+  return result;
 }
 
-DBusMessage *CDBusMessage::Send(DBusConnection *con, CDBusError& error)
+DBusMessage *CDBusMessage::Send(DBusConnection *con, DBusError *error)
 {
-  m_reply.reset(dbus_connection_send_with_reply_and_block(con, m_message.get(), -1, error));
-  return m_reply.get();
+  if (con && m_message)
+  {
+    if (m_reply)
+      dbus_message_unref(m_reply);
+
+    m_reply = dbus_connection_send_with_reply_and_block(con, m_message, -1, error);
+  }
+
+  return m_reply;
+}
+
+void CDBusMessage::Close()
+{
+  if (m_message)
+    dbus_message_unref(m_message);
+
+  if (m_reply)
+    dbus_message_unref(m_reply);
 }
 
 void CDBusMessage::PrepareArgument()
 {
   if (!m_haveArgs)
-    dbus_message_iter_init_append(m_message.get(), &m_args);
+    dbus_message_iter_init_append(m_message, &m_args);
 
   m_haveArgs = true;
 }
+#endif

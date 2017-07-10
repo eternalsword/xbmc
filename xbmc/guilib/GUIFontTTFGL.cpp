@@ -53,7 +53,6 @@ CGUIFontTTFGL::~CGUIFontTTFGL(void)
   // destructed before the CGUIFontTTFGL goes out of scope, because
   // our virtual methods won't be accessible after this point
   m_dynamicCache.Flush();
-  DeleteHardwareTexture();
 }
 
 bool CGUIFontTTFGL::FirstBegin()
@@ -210,7 +209,7 @@ void CGUIFontTTFGL::LastEnd()
 
     // Bind our pre-calculated array to GL_ELEMENT_ARRAY_BUFFER
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_elementArrayHandle);
-    // Store current scissor
+    // Store currect scissor
     CRect scissor = g_graphicsContext.StereoCorrection(g_graphicsContext.GetScissors());
 
     for (size_t i = 0; i < m_vertexTrans.size(); i++)

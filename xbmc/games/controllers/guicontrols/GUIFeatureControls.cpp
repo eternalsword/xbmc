@@ -21,7 +21,6 @@
 #include "GUIFeatureControls.h"
 #include "games/controllers/windows/GUIControllerDefines.h"
 
-using namespace KODI;
 using namespace GAME;
 
 CGUIFeatureGroupTitle::CGUIFeatureGroupTitle(const CGUILabelControl& groupTitleTemplate, const std::string& groupName, unsigned int featureIndex) :

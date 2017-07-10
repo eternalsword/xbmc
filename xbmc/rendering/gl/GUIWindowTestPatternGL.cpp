@@ -30,7 +30,9 @@ CGUIWindowTestPatternGL::CGUIWindowTestPatternGL(void) : CGUIWindowTestPattern()
 {
 }
 
-CGUIWindowTestPatternGL::~CGUIWindowTestPatternGL(void) = default;
+CGUIWindowTestPatternGL::~CGUIWindowTestPatternGL(void)
+{
+}
 
 void CGUIWindowTestPatternGL::DrawVerticalLines(int top, int left, int bottom, int right)
 {

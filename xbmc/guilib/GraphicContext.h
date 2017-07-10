@@ -26,7 +26,7 @@
 #pragma once
 
 #ifdef __GNUC__
-// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even with optimizations.
+// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even whith optimizations.
 #define XBMC_FORCE_INLINE __attribute__((always_inline))
 #else
 #define XBMC_FORCE_INLINE
@@ -73,9 +73,9 @@ class CGraphicContext : public CCriticalSection,
 {
 public:
   CGraphicContext(void);
-  ~CGraphicContext(void) override;
+  virtual ~CGraphicContext(void);
 
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting *setting) override;
 
   int GetWidth() const { return m_iScreenWidth; }
   int GetHeight() const { return m_iScreenHeight; }

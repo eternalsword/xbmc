@@ -56,10 +56,6 @@
 #include <cstdlib>
 #include <memory>
 
-extern "C" {
-#include "libavformat/avformat.h"
-}
-
 bool CDVDFileInfo::GetFileDuration(const std::string &path, int& duration)
 {
   std::unique_ptr<CDVDInputStream> input;
@@ -203,7 +199,7 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
     std::unique_ptr<CProcessInfo> pProcessInfo(CProcessInfo::CreateInstance());
 
     CDVDStreamInfo hint(*pDemuxer->GetStream(demuxerId, nVideoStream), true);
-    hint.codecOptions = CODEC_FORCE_SOFTWARE;
+    hint.software = true;
 
     pVideoCodec = CDVDFactoryCodec::CreateVideoCodec(hint, *pProcessInfo);
 
@@ -215,8 +211,8 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
       CLog::Log(LOGDEBUG,"%s - seeking to pos %dms (total: %dms) in %s", __FUNCTION__, nSeekTo, nTotalLen, redactPath.c_str());
       if (pDemuxer->SeekTime(nSeekTo, true))
       {
-        CDVDVideoCodec::VCReturn iDecoderState = CDVDVideoCodec::VC_NONE;
-        VideoPicture picture;
+        int iDecoderState = VC_ERROR;
+        DVDVideoPicture picture;
 
         memset(&picture, 0, sizeof(picture));
 
@@ -236,25 +232,25 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
             continue;
           }
 
-          pVideoCodec->AddData(*pPacket);
+          iDecoderState = pVideoCodec->Decode(pPacket->pData, pPacket->iSize, pPacket->dts, pPacket->pts);
           CDVDDemuxUtils::FreeDemuxPacket(pPacket);
 
-          iDecoderState = CDVDVideoCodec::VC_NONE;
-          while (iDecoderState == CDVDVideoCodec::VC_NONE)
-          {
-            memset(&picture, 0, sizeof(VideoPicture));
-            iDecoderState = pVideoCodec->GetPicture(&picture);
-          }
+          if (iDecoderState & VC_ERROR)
+            break;
 
-          if (iDecoderState == CDVDVideoCodec::VC_PICTURE)
+          if (iDecoderState & VC_PICTURE)
           {
-            if(!(picture.iFlags & DVP_FLAG_DROPPED))
-              break;
+            memset(&picture, 0, sizeof(DVDVideoPicture));
+            if (pVideoCodec->GetPicture(&picture))
+            {
+              if(!(picture.iFlags & DVP_FLAG_DROPPED))
+                break;
+            }
           }
 
         } while (abort_index--);
 
-        if (iDecoderState == CDVDVideoCodec::VC_PICTURE && !(picture.iFlags & DVP_FLAG_DROPPED))
+        if (iDecoderState & VC_PICTURE && !(picture.iFlags & DVP_FLAG_DROPPED))
         {
           {
             unsigned int nWidth = g_advancedSettings.m_imageRes;
@@ -312,7 +308,7 @@ bool CDVDFileInfo::ExtractThumb(const std::string &strPath,
 }
 
 /**
- * \brief Open the item pointed to by pItem and extract streamdetails
+ * \brief Open the item pointed to by pItem and extact streamdetails
  * \return true if the stream details have changed
  */
 bool CDVDFileInfo::GetFileStreamDetails(CFileItem *pItem)
@@ -475,7 +471,7 @@ bool CDVDFileInfo::AddExternalSubtitleToDetails(const std::string &path, CStream
     {
       CStreamDetailSubtitle *dsub = new CStreamDetailSubtitle();
       std::string lang = stream->language;
-      dsub->m_strLanguage = g_LangCodeExpander.ConvertToISO6392B(lang);
+      dsub->m_strLanguage = g_LangCodeExpander.ConvertToISO6392T(lang);
       details.AddStream(dsub);
     }
     return true;
@@ -488,8 +484,9 @@ bool CDVDFileInfo::AddExternalSubtitleToDetails(const std::string &path, CStream
   }
 
   CStreamDetailSubtitle *dsub = new CStreamDetailSubtitle();
-  ExternalStreamInfo info = CUtil::GetExternalStreamDetailsFromFilename(path, filename);
-  dsub->m_strLanguage = g_LangCodeExpander.ConvertToISO6392B(info.language);
+  ExternalStreamInfo info;
+  CUtil::GetExternalStreamDetailsFromFilename(path, filename, info);
+  dsub->m_strLanguage = g_LangCodeExpander.ConvertToISO6392T(info.language);
   details.AddStream(dsub);
 
   return true;

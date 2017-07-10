@@ -48,7 +48,7 @@
 class CBaseTexture;
 class CMMALBuffer;
 
-struct VideoPicture;
+struct DVDVideoPicture;
 
 class CMMALPool : public std::enable_shared_from_this<CMMALPool>
 {
@@ -62,16 +62,13 @@ public:
   void ReleaseBuffer(CGPUMEM *gmem);
   void Close();
   void Prime();
-  void SetDecoder(void *dec) { m_dec = dec; }
-  void SetProcessInfo(CProcessInfo *processInfo) { m_processInfo = processInfo; }
+  void SetDecoder(CMMALVideo *dec) { m_dec = dec; }
   void SetFormat(uint32_t mmal_format, uint32_t width, uint32_t height, uint32_t aligned_width, uint32_t aligned_height, uint32_t size, AVCodecContext *avctx)
-    { m_mmal_format = mmal_format; m_width = width; m_height = height; m_aligned_width = aligned_width; m_aligned_height = aligned_height; m_size = size, m_avctx = avctx; m_software = true; }
-  bool IsSoftware() { return m_software; }
-  void SetVideoDeintMethod(std::string method) { if (m_processInfo) m_processInfo->SetVideoDeintMethod(method); }
+    { m_mmal_format = mmal_format; m_width = width; m_height = height; m_aligned_width = aligned_width; m_aligned_height = aligned_height; m_size = size, m_avctx = avctx; }
 protected:
   uint32_t m_mmal_format, m_width, m_height, m_aligned_width, m_aligned_height, m_size;
   AVCodecContext *m_avctx;
-  void *m_dec;
+  CMMALVideo *m_dec;
   MMALState m_state;
   bool m_input;
   MMAL_POOL_T *m_mmal_pool;
@@ -79,8 +76,6 @@ protected:
   CCriticalSection m_section;
   std::deque<CGPUMEM *> m_freeBuffers;
   bool m_closing;
-  bool m_software;
-  CProcessInfo *m_processInfo;
 };
 
 class CMMALRenderer : public CBaseRenderer, public CThread, public IRunnable
@@ -94,7 +89,8 @@ public:
 
   bool RenderCapture(CRenderCapture* capture);
 
-  virtual bool         Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void* hwPic, unsigned int orientation);
+  // Player functions
+  virtual bool         Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format, unsigned int orientation);
   virtual int          GetImage(YV12Image *image, int source = AUTOSOURCE, bool readonly = false);
   virtual void         ReleaseImage(int source, bool preserve = false);
   virtual void         ReleaseBuffer(int idx);
@@ -104,7 +100,7 @@ public:
   virtual void         Reset(); /* resets renderer after seek for example */
   virtual void         Flush();
   virtual bool         IsConfigured() { return m_bConfigured; }
-  virtual void         AddVideoPictureHW(VideoPicture& pic, int index);
+  virtual void         AddVideoPictureHW(DVDVideoPicture& pic, int index);
   virtual CRenderInfo GetRenderInfo();
 
   virtual bool         SupportsMultiPassRendering() { return false; };
@@ -132,8 +128,6 @@ protected:
   unsigned int         m_extended_format;
   int                  m_neededBuffers;
 
-  CRect                     m_cachedSourceRect;
-  CRect                     m_cachedDestRect;
   CRect                     m_src_rect;
   CRect                     m_dst_rect;
   RENDER_STEREO_MODE        m_video_stereo_mode;
@@ -148,9 +142,7 @@ protected:
   CThread m_processThread;
   MMAL_BUFFER_HEADER_T m_quitpacket;
   double m_error;
-  double m_lastPts;
-  double m_frameInterval;
-  double m_frameIntervalDiff;
+
   uint32_t m_vout_width, m_vout_height, m_vout_aligned_width, m_vout_aligned_height;
   // deinterlace
   MMAL_COMPONENT_T *m_deint;
@@ -168,6 +160,5 @@ protected:
   uint32_t m_vsync_count;
   void ReleaseBuffers();
   void UnInitMMAL();
-  void UpdateFramerateStats(double pts);
   virtual void Run() override;
 };

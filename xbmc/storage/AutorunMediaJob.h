@@ -27,7 +27,7 @@ class CAutorunMediaJob : public CJob
 public:
   CAutorunMediaJob(const std::string &label, const std::string &path);
 
-  bool DoWork() override;
+  virtual bool DoWork();
 private:
   const char *GetWindowString(int selection);
 

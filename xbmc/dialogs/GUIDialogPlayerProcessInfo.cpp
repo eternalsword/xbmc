@@ -28,7 +28,9 @@ CGUIDialogPlayerProcessInfo::CGUIDialogPlayerProcessInfo(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogPlayerProcessInfo::~CGUIDialogPlayerProcessInfo(void) = default;
+CGUIDialogPlayerProcessInfo::~CGUIDialogPlayerProcessInfo(void)
+{
+}
 
 bool CGUIDialogPlayerProcessInfo::OnAction(const CAction &action)
 {

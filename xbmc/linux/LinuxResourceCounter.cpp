@@ -29,7 +29,9 @@ CLinuxResourceCounter::CLinuxResourceCounter()
   Reset();
 }
 
-CLinuxResourceCounter::~CLinuxResourceCounter() = default;
+CLinuxResourceCounter::~CLinuxResourceCounter()
+{
+}
 
 double CLinuxResourceCounter::GetCPUUsage()
 {

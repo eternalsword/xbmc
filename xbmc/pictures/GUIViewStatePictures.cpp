@@ -20,7 +20,6 @@
 
 #include "GUIViewStatePictures.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "view/ViewState.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/MediaSourceSettings.h"
@@ -73,8 +72,8 @@ std::string CGUIViewStateWindowPictures::GetLockType()
 
 std::string CGUIViewStateWindowPictures::GetExtensions()
 {
-  std::string extensions = g_advancedSettings.GetPictureExtensions();
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PICTURES_SHOWVIDEOS))
+  std::string extensions = g_advancedSettings.m_pictureExtensions;
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_PICTURES_SHOWVIDEOS))
     extensions += "|" + g_advancedSettings.m_videoExtensions;
 
   return extensions;
@@ -83,20 +82,8 @@ std::string CGUIViewStateWindowPictures::GetExtensions()
 VECSOURCES& CGUIViewStateWindowPictures::GetSources()
 {
   VECSOURCES *pictureSources = CMediaSourceSettings::GetInstance().GetSources("pictures");
-
-  // Guard against source type not existing
-  if (pictureSources == nullptr)
-  {
-    static VECSOURCES empty;
-    return empty;
-  }
-
-  // Picture add-ons
   AddAddonsSource("image", g_localizeStrings.Get(1039), "DefaultAddonPicture.png");
-
-  // Global sources
   AddOrReplace(*pictureSources, CGUIViewState::GetSources());
-
   return *pictureSources;
 }
 

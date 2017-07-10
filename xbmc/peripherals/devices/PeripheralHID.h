@@ -27,11 +27,11 @@ namespace PERIPHERALS
   class CPeripheralHID : public CPeripheral
   {
   public:
-    CPeripheralHID(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
-    ~CPeripheralHID(void) override;
-    bool InitialiseFeature(const PeripheralFeature feature) override;
+    CPeripheralHID(const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    virtual ~CPeripheralHID(void);
+    virtual bool InitialiseFeature(const PeripheralFeature feature);
     virtual bool LookupSymAndUnicode(XBMC_keysym &keysym, uint8_t *key, char *unicode) { return false; }
-    void OnSettingChanged(const std::string &strChangedSetting) override;
+    virtual void OnSettingChanged(const std::string &strChangedSetting);
 
   protected:
     std::string m_strKeymap;

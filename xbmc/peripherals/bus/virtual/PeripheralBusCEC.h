@@ -40,13 +40,13 @@ namespace PERIPHERALS
   class CPeripheralBusCEC : public CPeripheralBus
   {
   public:
-    CPeripheralBusCEC(CPeripherals& manager);
-    ~CPeripheralBusCEC(void) override;
+    CPeripheralBusCEC(CPeripherals *manager);
+    virtual ~CPeripheralBusCEC(void);
 
     /*!
      * @see PeripheralBus::PerformDeviceScan()
      */
-    bool PerformDeviceScan(PeripheralScanResults &results) override;
+    bool PerformDeviceScan(PeripheralScanResults &results);
 
   private:
     DllLibCEC*                m_dll;

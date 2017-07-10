@@ -19,7 +19,6 @@
  *
  */
 
-#include "addons/AddonEvents.h"
 #include "addons/Repository.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "threads/CriticalSection.h"
@@ -34,8 +33,9 @@ namespace ADDON
 class CRepositoryUpdater : private ITimerCallback, private IJobCallback, public ISettingCallback
 {
 public:
-  explicit CRepositoryUpdater(CAddonMgr& addonMgr);
-  ~CRepositoryUpdater() override;
+  static CRepositoryUpdater& GetInstance();
+
+  virtual ~CRepositoryUpdater() {}
 
   void Start();
 
@@ -67,29 +67,27 @@ public:
   CDateTime LastUpdated() const;
 
 
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting* setting) override;
 
   struct RepositoryUpdated { };
 
   CEventStream<RepositoryUpdated>& Events() { return m_events; }
 
 private:
+  CRepositoryUpdater();
   CRepositoryUpdater(const CRepositoryUpdater&) = delete;
   CRepositoryUpdater(CRepositoryUpdater&&) = delete;
   CRepositoryUpdater& operator=(const CRepositoryUpdater&) = delete;
   CRepositoryUpdater& operator=(CRepositoryUpdater&&) = delete;
 
-  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
+  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
-  void OnTimeout() override;
-
-  void OnEvent(const ADDON::AddonEvent& event);
+  virtual void OnTimeout() override;
 
   CCriticalSection m_criticalSection;
   CTimer m_timer;
   CEvent m_doneEvent;
   std::vector<CRepositoryUpdateJob*> m_jobs;
-  CAddonMgr& m_addonMgr;
 
   CEventSource<RepositoryUpdated> m_events;
 };

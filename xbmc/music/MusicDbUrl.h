@@ -29,7 +29,7 @@ class CMusicDbUrl : public CDbUrl
 {
 public:
   CMusicDbUrl();
-  ~CMusicDbUrl() override;
+  virtual ~CMusicDbUrl();
 
 protected:
   bool parse() override;

@@ -31,9 +31,12 @@ CThumbnailCache* CThumbnailCache::m_pCacheInstance = NULL;
 
 CCriticalSection CThumbnailCache::m_cs;
 
-CThumbnailCache::~CThumbnailCache() = default;
+CThumbnailCache::~CThumbnailCache()
+{}
 
-CThumbnailCache::CThumbnailCache() = default;
+CThumbnailCache::CThumbnailCache()
+{
+}
 
 CThumbnailCache* CThumbnailCache::GetThumbnailCache()
 {

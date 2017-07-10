@@ -26,7 +26,8 @@ CDbUrl::CDbUrl()
   Reset();
 }
 
-CDbUrl::~CDbUrl() = default;
+CDbUrl::~CDbUrl()
+{ }
 
 void CDbUrl::Reset()
 {

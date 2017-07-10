@@ -29,9 +29,13 @@
 
 using namespace XFILE;
 
-CUDFDirectory::CUDFDirectory(void) = default;
+CUDFDirectory::CUDFDirectory(void)
+{
+}
 
-CUDFDirectory::~CUDFDirectory(void) = default;
+CUDFDirectory::~CUDFDirectory(void)
+{
+}
 
 bool CUDFDirectory::GetDirectory(const CURL& url,
                                  CFileItemList &items)

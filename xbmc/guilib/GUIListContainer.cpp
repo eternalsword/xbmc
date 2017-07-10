@@ -30,7 +30,9 @@ CGUIListContainer::CGUIListContainer(int parentID, int controlID, float posX, fl
   m_type = VIEW_TYPE_LIST;
 }
 
-CGUIListContainer::~CGUIListContainer(void) = default;
+CGUIListContainer::~CGUIListContainer(void)
+{
+}
 
 bool CGUIListContainer::OnAction(const CAction &action)
 {

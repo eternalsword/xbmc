@@ -35,7 +35,7 @@ typedef std::vector<EventPtr> Events;
 class CEventLog : public ISettingCallback
 {
 public:
-  ~CEventLog() override = default;
+  virtual ~CEventLog() { }
 
   static CEventLog& GetInstance();
 
@@ -63,12 +63,12 @@ public:
   void ShowFullEventLog(EventLevel level = EventLevel::Basic, bool includeHigherLevels = true);
 
 protected:
-  CEventLog() = default;
+  CEventLog() { }
   CEventLog(const CEventLog&);
   CEventLog const& operator=(CEventLog const&);
 
   // implementation of ISettingCallback
-  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingAction(const CSetting *setting) override;
 
 private:
   void SendMessage(const EventPtr& event, int message);

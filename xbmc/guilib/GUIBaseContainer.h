@@ -43,20 +43,20 @@ class CGUIBaseContainer : public IGUIContainer
 {
 public:
   CGUIBaseContainer(int parentID, int controlID, float posX, float posY, float width, float height, ORIENTATION orientation, const CScroller& scroller, int preloadItems);
-  ~CGUIBaseContainer(void) override;
+  virtual ~CGUIBaseContainer(void);
 
-  bool OnAction(const CAction &action) override;
-  void OnDown() override;
-  void OnUp() override;
-  void OnLeft() override;
-  void OnRight() override;
-  bool OnMouseOver(const CPoint &point) override;
-  bool CanFocus() const override;
-  bool OnMessage(CGUIMessage& message) override;
-  void SetFocus(bool bOnOff) override;
-  void AllocResources() override;
-  void FreeResources(bool immediately = false) override;
-  void UpdateVisibility(const CGUIListItem *item = NULL) override;
+  virtual bool OnAction(const CAction &action);
+  virtual void OnDown();
+  virtual void OnUp();
+  virtual void OnLeft();
+  virtual void OnRight();
+  virtual bool OnMouseOver(const CPoint &point);
+  virtual bool CanFocus() const;
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual void SetFocus(bool bOnOff);
+  virtual void AllocResources();
+  virtual void FreeResources(bool immediately = false);
+  virtual void UpdateVisibility(const CGUIListItem *item = NULL);
 
   virtual unsigned int GetRows() const;
 
@@ -65,20 +65,20 @@ public:
 
   void SetPageControl(int id);
 
-  std::string GetDescription() const override;
-  void SaveStates(std::vector<CControlState> &states) override;
+  virtual std::string GetDescription() const;
+  virtual void SaveStates(std::vector<CControlState> &states);
   virtual int GetSelectedItem() const;
 
-  void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  virtual void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
 
   void LoadLayout(TiXmlElement *layout);
   void LoadListProvider(TiXmlElement *content, int defaultItem, bool defaultAlways);
 
-  CGUIListItemPtr GetListItem(int offset, unsigned int flag = 0) const override;
+  virtual CGUIListItemPtr GetListItem(int offset, unsigned int flag = 0) const;
 
-  bool GetCondition(int condition, int data) const override;
-  std::string GetLabel(int info) const override;
+  virtual bool GetCondition(int condition, int data) const;
+  virtual std::string GetLabel(int info) const;
 
   /*! \brief Set the list provider for this container (for python).
    \param provider the list provider to use for this container.
@@ -101,15 +101,15 @@ public:
   void UpdateAutoScrolling(unsigned int currentTime);
 
 #ifdef _DEBUG
-  void DumpTextureUse() override;
+  virtual void DumpTextureUse();
 #endif
 protected:
-  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
   bool OnClick(int actionID);
 
   virtual void ProcessItem(float posX, float posY, CGUIListItemPtr& item, bool focused, unsigned int currentTime, CDirtyRegionList &dirtyregions);
 
-  void Render() override;
+  virtual void Render();
   virtual void RenderItem(float posX, float posY, CGUIListItem *item, bool focused);
   virtual void Scroll(int amount);
   virtual bool MoveDown(bool wrapAround);
@@ -128,8 +128,8 @@ protected:
   virtual unsigned int GetNumItems() const { return m_items.size(); };
   virtual int GetCurrentPage() const;
   bool InsideLayout(const CGUIListItemLayout *layout, const CPoint &point) const;
-  void OnFocus() override;
-  void OnUnFocus() override;
+  virtual void OnFocus();
+  virtual void OnUnFocus();
   void UpdateListProvider(bool forceRefresh = false);
 
   int ScrollCorrectionRange() const;
@@ -158,8 +158,6 @@ protected:
 
   CGUIListItemLayout *m_layout;
   CGUIListItemLayout *m_focusedLayout;
-  bool m_layoutCondition = false;
-  bool m_focusedLayoutCondition = false;
 
   void ScrollToOffset(int offset);
   void SetContainerMoving(int direction);

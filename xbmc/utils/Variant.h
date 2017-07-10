@@ -48,8 +48,7 @@ public:
     VariantTypeConstNull
   };
 
-  CVariant();
-  CVariant(VariantType type);
+  CVariant(VariantType type = VariantTypeNull);
   CVariant(int integer);
   CVariant(int64_t integer);
   CVariant(unsigned int unsignedinteger);
@@ -75,7 +74,6 @@ public:
 
   
   bool isInteger() const;
-  bool isSignedInteger() const;
   bool isUnsignedInteger() const;
   bool isBoolean() const;
   bool isString() const;
@@ -161,7 +159,4 @@ private:
 
   VariantType m_type;
   VariantUnion m_data;
-
-  static VariantArray EMPTY_ARRAY;
-  static VariantMap EMPTY_MAP;
 };

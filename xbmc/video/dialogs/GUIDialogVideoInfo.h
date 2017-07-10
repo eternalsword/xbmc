@@ -30,9 +30,9 @@ class CGUIDialogVideoInfo :
 {
 public:
   CGUIDialogVideoInfo(void);
-  ~CGUIDialogVideoInfo(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  bool OnAction(const CAction &action) override;
+  virtual ~CGUIDialogVideoInfo(void);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnAction(const CAction &action);
   void SetMovie(const CFileItem *item);
   bool NeedRefresh() const;
   bool RefreshAll() const;
@@ -40,9 +40,9 @@ public:
   bool HasUpdatedUserrating() const { return m_hasUpdatedUserrating; };
 
   std::string GetThumbnail() const;
-  CFileItemPtr GetCurrentListItem(int offset = 0) override { return m_movieItem; }
+  virtual CFileItemPtr GetCurrentListItem(int offset = 0) { return m_movieItem; }
   const CFileItemList& CurrentDirectory() const { return *m_castList; };
-  bool HasListItems() const override { return true; };
+  virtual bool HasListItems() const { return true; };
 
   static std::string ChooseArtType(const CFileItem &item, std::map<std::string, std::string> &currentArt);
   static void AddItemPathToFileBrowserSources(VECSOURCES &sources, const CFileItem &item);
@@ -69,33 +69,20 @@ public:
   static void ShowFor(const CFileItem& item);
 
 protected:
-  void OnInitWindow() override;
+  virtual void OnInitWindow();
   void Update();
   void SetLabel(int iControl, const std::string& strLabel);
-  void SetUserrating(int userrating) const;
+  void SetUserrating(int userrating);
 
   // link cast to movies
   void ClearCastList();
-  /**
-   * \brief Search the current directory for a string got from the virtual keyboard
-   * \param strSearch The search string
-   */
   void OnSearch(std::string& strSearch);
-  /**
-   * \brief Make the actual search for the OnSearch function.
-   * \param strSearch The search string
-   * \param items Items Found
-   */
-  void DoSearch(std::string& strSearch, CFileItemList& items) const;
-  /**
-   * \brief React on the selected search item
-   * \param pItem Search result item
-   */
+  void DoSearch(std::string& strSearch, CFileItemList& items);
   void OnSearchItemFound(const CFileItem* pItem);
   void Play(bool resume = false);
   void OnGetArt();
   void OnGetFanart();
-  void OnSetUserrating() const;
+  void OnSetUserrating();
   void PlayTrailer();
 
   static bool UpdateVideoItemSortTitle(const CFileItemPtr &pItem);

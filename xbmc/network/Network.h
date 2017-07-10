@@ -72,7 +72,7 @@ private:
 class CNetworkInterface
 {
 public:
-   virtual ~CNetworkInterface() = default;
+   virtual ~CNetworkInterface() {};
 
    virtual std::string& GetName(void) = 0;
 
@@ -149,9 +149,6 @@ public:
 
    // Return true if given name or ip address corresponds to localhost
    bool IsLocalHost(const std::string& hostname);
-
-   // Waits for the first network interface to become available
-   void WaitForNet();
 };
 
 #ifdef HAS_LINUX_NETWORK

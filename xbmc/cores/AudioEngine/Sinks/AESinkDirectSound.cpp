@@ -35,9 +35,7 @@
 #include <Rpc.h>
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "utils/StringUtils.h"
-#include "platform/win32/CharsetConverter.h"
 #pragma comment(lib, "Rpcrt4.lib")
-
 
 extern HWND g_hWnd;
 
@@ -98,7 +96,15 @@ static BOOL CALLBACK DSEnumCallback(LPGUID lpGuid, LPCTSTR lpcstrDescription, LP
   DSDevice dev;
   std::list<DSDevice> &enumerator = *static_cast<std::list<DSDevice>*>(lpContext);
 
-  dev.name = KODI::PLATFORM::WINDOWS::FromW(lpcstrDescription);
+  int bufSize = MultiByteToWideChar(CP_ACP, 0, lpcstrDescription, -1, NULL, 0);
+  wchar_t *strW = new wchar_t[bufSize+1];
+  if ( bufSize == 0 || MultiByteToWideChar(CP_ACP, 0, lpcstrDescription, -1, strW, bufSize) != bufSize )
+    strW[0] = 0;
+  else
+    strW[bufSize] = 0;
+
+  dev.name = localWideToUtf(strW);
+  delete[] strW;
 
   dev.lpGuid = lpGuid;
 
@@ -137,8 +143,8 @@ bool CAESinkDirectSound::Initialize(AEAudioFormat &format, std::string &device)
   if (m_initialized)
     return false;
 
-  LPGUID deviceGUID = nullptr;
-  RPC_WSTR wszUuid  = nullptr;
+  LPGUID deviceGUID = NULL;
+  RPC_CSTR wszUuid  = NULL;
   HRESULT hr = E_FAIL;
   std::string strDeviceGUID = device;
   std::list<DSDevice> DSDeviceList;
@@ -153,7 +159,7 @@ bool CAESinkDirectSound::Initialize(AEAudioFormat &format, std::string &device)
     if ((*itt).lpGuid)
     {
       hr = (UuidToString((*itt).lpGuid, &wszUuid));
-      std::string sztmp = KODI::PLATFORM::WINDOWS::FromW(reinterpret_cast<wchar_t*>(wszUuid));
+      std::string sztmp = (char*)wszUuid;
       std::string szGUID = "{" + std::string(sztmp.begin(), sztmp.end()) + "}";
       if (strcasecmp(szGUID.c_str(), strDeviceGUID.c_str()) == 0)
       {
@@ -200,12 +206,9 @@ bool CAESinkDirectSound::Initialize(AEAudioFormat &format, std::string &device)
 
   WAVEFORMATEXTENSIBLE wfxex = {0};
 
-  // clamp samplerate between 44100 and 192000
+  // clamp samplerate to a minimum
   if (format.m_sampleRate < 44100)
     format.m_sampleRate = 44100;
-
-  if (format.m_sampleRate > 192000)
-    format.m_sampleRate = 192000;
 
   //fill waveformatex
   ZeroMemory(&wfxex, sizeof(WAVEFORMATEXTENSIBLE));

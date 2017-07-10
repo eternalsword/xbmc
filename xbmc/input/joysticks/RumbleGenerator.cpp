@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016-2017 Team Kodi
+ *      Copyright (C) 2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,34 +19,21 @@
  */
 
 #include "RumbleGenerator.h"
+#include "addons/AddonManager.h"
 #include "games/controllers/Controller.h"
-#include "games/controllers/ControllerManager.h"
+#include "games/controllers/ControllerFeature.h"
 #include "input/joysticks/IInputReceiver.h"
-#include "input/joysticks/JoystickIDs.h"
-#include "ServiceBroker.h"
 
-#include <algorithm>
+#define RUMBLE_DURATION_MS     1000
 
-#define RUMBLE_TEST_DURATION_MS          1000 // Per motor
-#define RUMBLE_NOTIFICATION_DURATION_MS  300
-
- // From game.controller.default profile
-#define WEAK_MOTOR_NAME        "rightmotor"
-
-using namespace KODI;
 using namespace JOYSTICK;
 
-CRumbleGenerator::CRumbleGenerator() :
+CRumbleGenerator::CRumbleGenerator(const std::string& controllerId) :
   CThread("RumbleGenerator"),
-  m_motors(GetMotors(ControllerID())),
+  m_motors(GetMotors(controllerId)),
   m_receiver(nullptr),
   m_type(RUMBLE_UNKNOWN)
 {
-}
-
-std::string CRumbleGenerator::ControllerID() const
-{
-  return DEFAULT_CONTROLLER_ID;
 }
 
 void CRumbleGenerator::NotifyUser(IInputReceiver* receiver)
@@ -84,22 +71,15 @@ void CRumbleGenerator::Process(void)
   {
   case RUMBLE_NOTIFICATION:
   {
-    std::vector<std::string> motors;
-
-    if (std::find(m_motors.begin(), m_motors.end(), WEAK_MOTOR_NAME) != m_motors.end())
-      motors.push_back(WEAK_MOTOR_NAME);
-    else
-      motors = m_motors; // Not using default profile? Just rumble all motors
-
-    for (const std::string& motor : motors)
+    for (const std::string& motor : m_motors)
       m_receiver->SetRumbleState(motor, 1.0f);
 
-    Sleep(RUMBLE_NOTIFICATION_DURATION_MS);
+    Sleep(1000);
 
     if (m_bStop)
       break;
 
-    for (const std::string& motor : motors)
+    for (const std::string& motor : m_motors)
       m_receiver->SetRumbleState(motor, 0.0f);
 
     break;
@@ -110,7 +90,7 @@ void CRumbleGenerator::Process(void)
     {
       m_receiver->SetRumbleState(motor, 1.0f);
 
-      Sleep(RUMBLE_TEST_DURATION_MS);
+      Sleep(1000);
 
       if (m_bStop)
         break;
@@ -126,14 +106,24 @@ void CRumbleGenerator::Process(void)
 
 std::vector<std::string> CRumbleGenerator::GetMotors(const std::string& controllerId)
 {
+  using namespace ADDON;
   using namespace GAME;
 
   std::vector<std::string> motors;
 
-  CControllerManager& controllerManager = CServiceBroker::GetGameControllerManager();
-  ControllerPtr controller = controllerManager.GetController(controllerId);
-  if (controller)
-    controller->GetFeatures(motors, FEATURE_TYPE::MOTOR);
- 
+  AddonPtr addon;
+  if (CAddonMgr::GetInstance().GetAddon(controllerId, addon, ADDON_GAME_CONTROLLER))
+  {
+    ControllerPtr controller = std::static_pointer_cast<CController>(addon);
+    if (controller->LoadLayout())
+    {
+      for (const CControllerFeature& feature : controller->Layout().Features())
+      {
+        if (feature.Type() == JOYSTICK::FEATURE_TYPE::MOTOR)
+          motors.push_back(feature.Name());
+      }
+    }
+  }
+
   return motors;
 }

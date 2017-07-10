@@ -30,7 +30,9 @@ CGUIDialogYesNo::CGUIDialogYesNo(int overrideId /* = -1 */)
   m_bCanceled = false;
 }
 
-CGUIDialogYesNo::~CGUIDialogYesNo() = default;
+CGUIDialogYesNo::~CGUIDialogYesNo()
+{
+}
 
 bool CGUIDialogYesNo::OnMessage(CGUIMessage& message)
 {
@@ -90,7 +92,7 @@ bool CGUIDialogYesNo::ShowAndGetInput(CVariant heading, CVariant line0, CVariant
 
 bool CGUIDialogYesNo::ShowAndGetInput(CVariant heading, CVariant line0, CVariant line1, CVariant line2, bool &bCanceled, CVariant noLabel, CVariant yesLabel, unsigned int autoCloseTime)
 {
-  CGUIDialogYesNo *dialog = g_windowManager.GetWindow<CGUIDialogYesNo>(WINDOW_DIALOG_YES_NO);
+  CGUIDialogYesNo *dialog = static_cast<CGUIDialogYesNo *>(g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO));
   if (!dialog)
     return false;
 
@@ -117,7 +119,7 @@ bool CGUIDialogYesNo::ShowAndGetInput(CVariant heading, CVariant text)
 
 bool CGUIDialogYesNo::ShowAndGetInput(CVariant heading, CVariant text, bool &bCanceled, CVariant noLabel /* = "" */, CVariant yesLabel /* = "" */, unsigned int autoCloseTime)
 {
-  CGUIDialogYesNo *dialog = g_windowManager.GetWindow<CGUIDialogYesNo>(WINDOW_DIALOG_YES_NO);
+  CGUIDialogYesNo *dialog = static_cast<CGUIDialogYesNo *>(g_windowManager.GetWindow(WINDOW_DIALOG_YES_NO));
   if (!dialog)
     return false;
 

@@ -19,12 +19,11 @@
  */
 
 #include "DVDVideoCodec.h"
-#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "settings/lib/Setting.h"
 #include "windowing/WindowingFactory.h"
 
-bool CDVDVideoCodec::IsSettingVisible(const std::string &condition, const std::string &value, SettingConstPtr setting, void *data)
+bool CDVDVideoCodec::IsSettingVisible(const std::string &condition, const std::string &value, const CSetting *setting, void *data)
 {
   if (setting == NULL || value.empty())
     return false;
@@ -66,9 +65,9 @@ bool CDVDVideoCodec::IsCodecDisabled(const std::map<AVCodecID, std::string> &map
   auto codec = map.find(id);
   if (codec != map.end())
   {
-    return (!CServiceBroker::GetSettings().GetBool(codec->second) ||
+    return (!CSettings::GetInstance().GetBool(codec->second) ||
             !CDVDVideoCodec::IsSettingVisible("unused", "unused",
-                                              CServiceBroker::GetSettings().GetSetting(codec->second),
+                                              CSettings::GetInstance().GetSetting(codec->second),
                                               NULL));
   }
   return false; // don't disable what we don't have

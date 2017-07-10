@@ -63,11 +63,6 @@ public:
   void SetRenderClockSync(bool enabled);
   bool IsRenderClockSync();
 
-  // player states
-  void SetStateSeeking(bool active);
-  bool IsSeeking();
-  bool IsPlayerStateChanged();
-
 protected:
   std::atomic_bool m_hasAVInfoChanges;
 
@@ -98,11 +93,4 @@ protected:
   {
     bool m_isClockSync;
   } m_renderInfo;
-
-  CCriticalSection m_stateSection;
-  bool m_playerStateChanged = false;
-  struct SStateInfo
-  {
-    bool m_stateSeeking;
-  } m_stateInfo;
 };

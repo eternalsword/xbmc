@@ -31,7 +31,6 @@
 
 #include "threads/SingleLock.h"
 
-#include <memory>
 #include <vector>
 
 #ifdef TARGET_WINDOWS
@@ -69,15 +68,12 @@ namespace XBMCAddonUtils
   };
 
 #define LOCKGUI XBMCAddonUtils::GuiLock __gl
-#define LOCKGUIIF(cond) std::unique_ptr<XBMCAddonUtils::GuiLock> __gl; \
-                        if (!(cond)) \
-                          __gl.reset(new XBMCAddonUtils::GuiLock)
 
   /*
    * Looks in references.xml for image name
    * If none exist return default image name
    */
-  const char *getDefaultImage(char* cControlType, char* cTextureType);
+  const char *getDefaultImage(char* cControlType, char* cTextureType, char* cDefault);
 
 #ifdef ENABLE_XBMC_TRACE_API
   class TraceGuard

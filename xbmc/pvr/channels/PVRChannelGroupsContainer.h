@@ -27,8 +27,16 @@ class CURL;
 
 namespace PVR
 {
+  class CPVRManager;
+  class CPVRChannelsUpdateJob;
+  class CPVRChannelGroupsUpdateJob;
+
   class CPVRChannelGroupsContainer
   {
+    friend class CPVRManager;
+    friend class CPVRChannelsUpdateJob;
+    friend class CPVRChannelGroupsUpdateJob;
+
   public:
     /*!
      * @brief Create a new container for all channel groups
@@ -56,13 +64,6 @@ namespace PVR
      * @brief Unload and destruct all channel groups and all channels in them.
      */
     void Unload(void);
-
-    /*!
-     * @brief Update the contents of all the groups in this container.
-     * @param bChannelsOnly Set to true to only update channels, not the groups themselves.
-     * @return True if the update was successful, false otherwise.
-     */
-    bool Update(bool bChannelsOnly = false);
 
     /*!
      * @brief Get the TV channel groups.
@@ -128,7 +129,7 @@ namespace PVR
      * @param strBase The directory path.
      * @param results The file list to store the results in.
      * @param bRadio Get radio channels or tv channels.
-     * @return True if the list was filled successfully.
+     * @return True if the list was filled succesfully.
      */
     bool GetGroupsDirectory(CFileItemList *results, bool bRadio) const;
 
@@ -182,7 +183,7 @@ namespace PVR
 
     /*!
      * @brief Create EPG tags for channels in all internal channel groups.
-     * @return True if EPG tags were created successfully.
+     * @return True if EPG tags were created succesfully.
      */
     bool CreateChannelEpgs(void);
 
@@ -196,9 +197,16 @@ namespace PVR
      * @brief Set the last played group.
      * @param The last played group
      */
-    void SetLastPlayedGroup(const CPVRChannelGroupPtr &group);
+    void SetLastPlayedGroup(CPVRChannelGroupPtr group);
 
   protected:
+    /*!
+     * @brief Update the contents of all the groups in this container.
+     * @param bChannelsOnly Set to true to only update channels, not the groups themselves.
+     * @return True if the update was successful, false otherwise.
+     */
+    bool Update(bool bChannelsOnly = false);
+
     CPVRChannelGroups *m_groupsRadio; /*!< all radio channel groups */
     CPVRChannelGroups *m_groupsTV;    /*!< all TV channel groups */
     CCriticalSection   m_critSection;

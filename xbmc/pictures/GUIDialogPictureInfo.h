@@ -29,14 +29,14 @@ class CGUIDialogPictureInfo :
 {
 public:
   CGUIDialogPictureInfo(void);
-  ~CGUIDialogPictureInfo(void) override;
+  virtual ~CGUIDialogPictureInfo(void);
   void SetPicture(CFileItem *item);
-  void FrameMove() override;
+  virtual void FrameMove();
 
 protected:
-  void OnInitWindow() override;
-  void OnDeinitWindow(int nextWindowID) override;
-  bool OnAction(const CAction& action) override;
+  virtual void OnInitWindow();
+  virtual void OnDeinitWindow(int nextWindowID);
+  virtual bool OnAction(const CAction& action);
   void UpdatePictureInfo();
 
   CFileItemList* m_pictureInfo;

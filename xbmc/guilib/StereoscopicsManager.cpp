@@ -27,7 +27,6 @@
 #include "StereoscopicsManager.h"
 
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogSelect.h"
@@ -103,7 +102,9 @@ CStereoscopicsManager::CStereoscopicsManager(void)
   m_lastStereoModeSetByUser = RENDER_STEREO_MODE_UNDEFINED;
 }
 
-CStereoscopicsManager::~CStereoscopicsManager(void) = default;
+CStereoscopicsManager::~CStereoscopicsManager(void)
+{
+}
 
 CStereoscopicsManager& CStereoscopicsManager::GetInstance()
 {
@@ -119,7 +120,7 @@ void CStereoscopicsManager::Initialize(void)
 
 RENDER_STEREO_MODE CStereoscopicsManager::GetStereoMode(void)
 {
-  return (RENDER_STEREO_MODE) CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE);
+  return (RENDER_STEREO_MODE) CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE);
 }
 
 void CStereoscopicsManager::SetStereoModeByUser(const RENDER_STEREO_MODE &mode)
@@ -145,7 +146,7 @@ void CStereoscopicsManager::SetStereoMode(const RENDER_STEREO_MODE &mode)
   {
     if (!g_Windowing.SupportsStereo(applyMode))
       return;
-    CServiceBroker::GetSettings().SetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE, applyMode);
+    CSettings::GetInstance().SetInt(CSettings::SETTING_VIDEOSCREEN_STEREOSCOPICMODE, applyMode);
   }
 }
 
@@ -206,7 +207,7 @@ RENDER_STEREO_MODE CStereoscopicsManager::GetStereoModeByUserChoice(const std::s
   if (mode == RENDER_STEREO_MODE_OFF)
     mode = GetStereoModeOfPlayingVideo();
 
-  CGUIDialogSelect* pDlgSelect = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
+  CGUIDialogSelect* pDlgSelect = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
   pDlgSelect->Reset();
   if (heading.empty())
     pDlgSelect->SetHeading(CVariant{g_localizeStrings.Get(36528)});
@@ -292,7 +293,7 @@ const std::string &CStereoscopicsManager::GetLabelForStereoMode(const RENDER_STE
 
 RENDER_STEREO_MODE CStereoscopicsManager::GetPreferredPlaybackMode(void)
 {
-  return (RENDER_STEREO_MODE) CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE);
+  return (RENDER_STEREO_MODE) CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE);
 }
 
 int CStereoscopicsManager::ConvertVideoToGuiStereoMode(const std::string &mode)
@@ -375,7 +376,7 @@ CAction CStereoscopicsManager::ConvertActionCommandToAction(const std::string &c
   return CAction(ACTION_NONE);
 }
 
-void CStereoscopicsManager::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CStereoscopicsManager::OnSettingChanged(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -456,7 +457,7 @@ bool CStereoscopicsManager::OnAction(const CAction &action)
     {
       RENDER_STEREO_MODE targetMode = GetPreferredPlaybackMode();
 
-      // if we have an old userdefined stereomode, use that one as toggle target
+      // if we have an old userdefined steremode, use that one as toggle target
       if (m_stereoModeSetByUser != RENDER_STEREO_MODE_UNDEFINED)
       {
         // if user mode is set to OFF, he manually turned it off before. In this case use the last user applied mode
@@ -518,7 +519,7 @@ bool CStereoscopicsManager::IsVideoStereoscopic()
 
 void CStereoscopicsManager::OnPlaybackStarted(void)
 {
-  STEREOSCOPIC_PLAYBACK_MODE playbackMode = (STEREOSCOPIC_PLAYBACK_MODE) CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_STEREOSCOPICPLAYBACKMODE);
+  STEREOSCOPIC_PLAYBACK_MODE playbackMode = (STEREOSCOPIC_PLAYBACK_MODE) CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_STEREOSCOPICPLAYBACKMODE);
   RENDER_STEREO_MODE mode = GetStereoMode();
 
   // early return if playback mode should be ignored and we're in no stereoscopic mode right now
@@ -529,7 +530,7 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
   {
     // exit stereo mode if started item is not stereoscopic
     // and if user prefers to stop 3D playback when movie is finished
-    if (mode != RENDER_STEREO_MODE_OFF && CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP))
+    if (mode != RENDER_STEREO_MODE_OFF && CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP))
       SetStereoMode(RENDER_STEREO_MODE_OFF);
     return;
   }
@@ -550,7 +551,7 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
     // users selecting this option usually have to manually switch their TV into 3D mode
     // and would be annoyed by having to switch TV modes when next movies comes up
     // @todo probably add a new setting for just this behavior
-    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP) == false)
+    if (CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP) == false)
       return;
 
     // only change to new stereo mode if not yet in preferred stereo mode
@@ -564,7 +565,7 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
     {
       CApplicationMessenger::GetInstance().SendMsg(TMSG_MEDIA_PAUSE);
 
-      CGUIDialogSelect* pDlgSelect = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
+      CGUIDialogSelect* pDlgSelect = (CGUIDialogSelect*)g_windowManager.GetWindow(WINDOW_DIALOG_SELECT);
       pDlgSelect->Reset();
       pDlgSelect->SetHeading(CVariant{g_localizeStrings.Get(36527)});
 
@@ -616,7 +617,7 @@ void CStereoscopicsManager::OnPlaybackStarted(void)
 void CStereoscopicsManager::OnPlaybackStopped(void)
 {
   RENDER_STEREO_MODE mode = GetStereoMode();
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP) && mode != RENDER_STEREO_MODE_OFF)
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP) && mode != RENDER_STEREO_MODE_OFF)
     SetStereoMode(RENDER_STEREO_MODE_OFF);
   // reset user modes on playback end to start over new on next playback and not end up in a probably unwanted mode
   if (m_stereoModeSetByUser != RENDER_STEREO_MODE_OFF)

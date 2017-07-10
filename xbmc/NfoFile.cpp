@@ -24,20 +24,17 @@
 #include "NfoFile.h"
 #include "video/VideoInfoDownloader.h"
 #include "addons/AddonManager.h"
-#include "addons/AddonSystemSettings.h"
 #include "filesystem/File.h"
 #include "FileItem.h"
 #include "music/Album.h"
 #include "music/Artist.h"
 
 #include <vector>
-#include <string>
 
 using namespace XFILE;
 using namespace ADDON;
 
-CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
-                                     const ScraperPtr& info, int episode)
+CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath, const ScraperPtr& info, int episode)
 {
   m_info = info; // assume we can use these settings
   m_type = ScraperTypeFromContent(info->Content());
@@ -49,7 +46,7 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
 
   AddonPtr addon;
   ScraperPtr defaultScraper;
-  if (CAddonSystemSettings::GetInstance().GetActive(m_type, addon))
+  if (CAddonMgr::GetInstance().GetDefault(m_type, addon))
     defaultScraper = std::dynamic_pointer_cast<CScraper>(addon);
 
   if (m_type == ADDON_SCRAPER_ALBUMS)
@@ -62,8 +59,7 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
     CArtist artist;
     bNfo = GetDetails(artist);
   }
-  else if (m_type == ADDON_SCRAPER_TVSHOWS || m_type == ADDON_SCRAPER_MOVIES
-           || m_type == ADDON_SCRAPER_MUSICVIDEOS)
+  else if (m_type == ADDON_SCRAPER_TVSHOWS || m_type == ADDON_SCRAPER_MOVIES || m_type == ADDON_SCRAPER_MUSICVIDEOS)
   {
     // first check if it's an XML file with the info we need
     CVideoInfoTag details;
@@ -93,7 +89,7 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
 
   std::vector<ScraperPtr> vecScrapers;
 
-  // add selected scraper - first priority
+  // add selected scraper - first proirity
   if (m_info)
     vecScrapers.push_back(m_info);
 
@@ -109,8 +105,7 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
     if (scraper->RequiresSettings() && !scraper->HasUserSettings())
       continue;
 
-    if( (!m_info || m_info->ID() != scraper->ID())
-        && (!defaultScraper || defaultScraper->ID() != scraper->ID()) )
+    if( (!m_info || m_info->ID() != scraper->ID()) && (!defaultScraper || defaultScraper->ID() != scraper->ID()) )
       vecScrapers.push_back(scraper);
   }
 
@@ -121,24 +116,14 @@ CNfoFile::NFOResult CNfoFile::Create(const std::string& strPath,
 
   // search ..
   int res = -1;
-  for (unsigned int i=0; i<vecScrapers.size(); ++i)
+  for (unsigned int i=0;i<vecScrapers.size();++i)
     if ((res = Scrape(vecScrapers[i])) == 0 || res == 2)
       break;
 
   if (res == 2)
     return ERROR_NFO;
   if (bNfo)
-  {
-    if (m_scurl.m_url.empty())
-    {
-      if (m_doc.find("[scrape url]") != std::string::npos)
-        return PARTIAL_NFO;
-      else
-        return FULL_NFO;
-    }
-    else
-      return COMBINED_NFO;
-  }
+    return m_scurl.m_url.empty() ? FULL_NFO : COMBINED_NFO;
   return m_scurl.m_url.empty() ? NO_NFO : URL_NFO;
 }
 

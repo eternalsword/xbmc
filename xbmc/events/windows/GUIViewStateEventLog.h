@@ -25,16 +25,16 @@ class CGUIViewStateEventLog : public CGUIViewState
 {
 public:
   CGUIViewStateEventLog(const CFileItemList& items);
-  ~CGUIViewStateEventLog() override = default;
+  ~CGUIViewStateEventLog() { }
 
   // specializations of CGUIViewState
-  bool HideExtensions() override { return true; }
-  bool HideParentDirItems() override { return true; }
-  bool DisableAddSourceButtons() override { return true; }
+  virtual bool HideExtensions() { return true; }
+  virtual bool HideParentDirItems() { return true; }
+  virtual bool DisableAddSourceButtons() { return true; }
 
 protected:
   // specializations of CGUIViewState
-  void SaveViewState() override;
-  std::string GetExtensions() override;
+  virtual void SaveViewState();
+  virtual std::string GetExtensions();
 };
 

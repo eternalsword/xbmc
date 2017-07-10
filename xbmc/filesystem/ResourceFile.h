@@ -27,12 +27,12 @@ class CResourceFile : public COverrideFile
 {
 public:
   CResourceFile();
-  ~CResourceFile() override;
+  virtual ~CResourceFile();
 
   static bool TranslatePath(const std::string &path, std::string &translatedPath);
   static bool TranslatePath(const CURL &url, std::string &translatedPath);
 
 protected:
-  std::string TranslatePath(const CURL &url) override;
+  virtual std::string TranslatePath(const CURL &url);
 };
 }

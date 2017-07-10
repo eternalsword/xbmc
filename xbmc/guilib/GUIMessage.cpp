@@ -59,7 +59,8 @@ CGUIMessage::CGUIMessage(const CGUIMessage& msg)
   *this = msg;
 }
 
-CGUIMessage::~CGUIMessage(void) = default;
+CGUIMessage::~CGUIMessage(void)
+{}
 
 
 int CGUIMessage::GetControlId() const

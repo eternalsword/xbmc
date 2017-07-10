@@ -61,7 +61,7 @@ enum AEQuality
 
   /* Optional quality levels */
   AE_QUALITY_REALLYHIGH = 100, /* Uncompromised optional quality level,
-                               usually with unmeasurable and unnoticeable improvement */
+                               usually with unmeasurable and unnoticeable improvement */ 
   AE_QUALITY_GPU        = 101, /* GPU acceleration */
 };
 
@@ -71,9 +71,10 @@ enum AEQuality
 class IAE
 {
 protected:
+  friend class CAEFactory;
 
-  IAE() = default;
-  virtual ~IAE() = default;
+  IAE() {}
+  virtual ~IAE() {}
 
   /**
    * Returns true when it should be possible to initialize this engine, if it returns false
@@ -113,7 +114,7 @@ public:
    * @return True if processing suspended
    */
   virtual bool IsSuspended() {return true;}
-
+  
   /**
    * Callback to alert the AudioEngine of setting changes
    * @param setting The name of the setting that was changed
@@ -263,3 +264,4 @@ public:
    */
   virtual bool GetCurrentSinkFormat(AEAudioFormat &SinkFormat) { return false; }
 };
+

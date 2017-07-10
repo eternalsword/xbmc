@@ -33,7 +33,7 @@ class CFileItemList;
 class IBackgroundLoaderObserver
 {
 public:
-  virtual ~IBackgroundLoaderObserver() = default;
+  virtual ~IBackgroundLoaderObserver() {}
   virtual void OnItemLoaded(CFileItem* pItem) = 0;
 };
 
@@ -41,11 +41,11 @@ class CBackgroundInfoLoader : public IRunnable
 {
 public:
   CBackgroundInfoLoader();
-  ~CBackgroundInfoLoader() override;
+  virtual ~CBackgroundInfoLoader();
 
   void Load(CFileItemList& items);
   bool IsLoading();
-  void Run() override;
+  virtual void Run();
   void SetObserver(IBackgroundLoaderObserver* pObserver);
   void SetProgressCallback(IProgressCallback* pCallback);
   virtual bool LoadItem(CFileItem* pItem) { return false; };

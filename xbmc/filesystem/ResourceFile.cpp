@@ -32,7 +32,8 @@ CResourceFile::CResourceFile()
   : COverrideFile(false)
 { }
 
-CResourceFile::~CResourceFile() = default;
+CResourceFile::~CResourceFile()
+{ }
 
 bool CResourceFile::TranslatePath(const std::string &path, std::string &translatedPath)
 {

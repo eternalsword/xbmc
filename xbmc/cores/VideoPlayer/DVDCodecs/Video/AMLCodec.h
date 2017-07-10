@@ -23,11 +23,9 @@
 #include "cores/VideoPlayer/DVDStreamInfo.h"
 #include "cores/IPlayer.h"
 #include "guilib/Geometry.h"
-#include "guilib/Resolution.h"
 #include "rendering/RenderSystem.h"
-
+#include "threads/Thread.h"
 #include <deque>
-#include <atomic>
 
 typedef struct am_private_t am_private_t;
 
@@ -36,7 +34,7 @@ class DllLibAmCodec;
 class PosixFile;
 typedef std::shared_ptr<PosixFile> PosixFilePtr;
 
-class CAMLCodec
+class CAMLCodec : public CThread
 {
 public:
   CAMLCodec();
@@ -46,23 +44,18 @@ public:
   void          CloseDecoder();
   void          Reset();
 
-  bool          AddData(uint8_t *pData, size_t size, double dts, double pts);
-  CDVDVideoCodec::VCReturn GetPicture(VideoPicture* pVideoPicture);
+  int           Decode(uint8_t *pData, size_t size, double dts, double pts);
 
+  bool          GetPicture(DVDVideoPicture* pDvdVideoPicture);
   void          SetSpeed(int speed);
-  void          SetDrain(bool drain){m_drain = drain;};
+  int           GetDataSize();
+  double        GetTimeSize();
   void          SetVideoRect(const CRect &SrcRect, const CRect &DestRect);
-  void          SetVideoRate(int videoRate);
-  int64_t       GetCurPts() const { return m_cur_pts + m_start_adj; }
-  int           GetOMXPts() const { return static_cast<int>(m_cur_pts); }
-  uint32_t      GetBufferIndex() const { return m_bufferIndex; };
-  static float  OMXPtsToSeconds(int omxpts);
-  static int    OMXDurationToNs(int duration);
-  int           GetAmlDuration() const;
-  int           ReleaseFrame(const uint32_t index, bool bDrop = false);
+  int64_t       GetCurPts() const { return m_cur_pts; }
+  int       	GetOMXPts() const { return static_cast<int>(m_cur_pts - m_start_pts); }
 
-  static int    PollFrame();
-  static void   SetPollDevice(int device);
+protected:
+  virtual void  Process();
 
 private:
   void          ShowMainVideo(const bool show);
@@ -76,43 +69,33 @@ private:
   void          CloseAmlVideo();
   std::string   GetVfmMap(const std::string &name);
   void          SetVfmMap(const std::string &name, const std::string &map);
-  int           DequeueBuffer();
-  float         GetTimeSize();
+  int           DequeueBuffer(int64_t &pts);
 
   DllLibAmCodec   *m_dll;
   bool             m_opened;
-  bool             m_ptsIs64us;
-  bool             m_drain = false;
   am_private_t    *am_private;
   CDVDStreamInfo   m_hints;
-  int              m_speed;
-  int64_t          m_cur_pts;
-  int64_t          m_start_adj = 0;
-  int64_t          m_last_pts;
-  uint32_t         m_bufferIndex;
+  volatile int     m_speed;
+  volatile int64_t m_1st_pts;
+  volatile int64_t m_cur_pts;
+  volatile double  m_timesize;
+  volatile int64_t m_vbufsize;
+  int64_t          m_start_dts;
+  int64_t          m_start_pts;
+  CEvent           m_ready_event;
 
   CRect            m_dst_rect;
   CRect            m_display_rect;
 
-  int              m_view_mode = -1;
-  RENDER_STEREO_MODE m_stereo_mode = RENDER_STEREO_MODE_OFF;
-  RENDER_STEREO_VIEW m_stereo_view = RENDER_STEREO_VIEW_OFF;
-  float            m_zoom = -1.0f;
-  int              m_contrast = -1;
-  int              m_brightness = -1;
-  RESOLUTION       m_video_res = RES_INVALID;
-
-  static const unsigned int STATE_PREFILLED  = 1;
-  static const unsigned int STATE_HASPTS     = 2;
-
-  unsigned int m_state;
+  int              m_view_mode;
+  RENDER_STEREO_MODE m_stereo_mode;
+  RENDER_STEREO_VIEW m_stereo_view;
+  float            m_zoom;
+  int              m_contrast;
+  int              m_brightness;
 
   PosixFilePtr     m_amlVideoFile;
   std::string      m_defaultVfmMap;
-
-  std::deque<uint32_t> m_frameSizes;
-  std::uint32_t m_frameSizeSum;
-
-  static std::atomic_flag  m_pollSync;
-  static int m_pollDevice;
+  std::deque<int64_t>  m_ptsQueue;
+  CCriticalSection m_ptsQueueMutex;
 };

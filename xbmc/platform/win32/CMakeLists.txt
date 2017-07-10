@@ -1,8 +1,7 @@
-set(SOURCES CharsetConverter.cpp
-            MessagePrinter.cpp
+set(SOURCES MessagePrinter.cpp
+            WinMain.cpp
             crts_caller.cpp
             dxerr.cpp
-            Filesystem.cpp
             pch.cpp
             stat_utf8.cpp
             stdio_utf8.cpp
@@ -10,8 +9,7 @@ set(SOURCES CharsetConverter.cpp
             WIN32Util.cpp
             WindowHelper.cpp)
 
-set(HEADERS CharsetConverter.h
-            crts_caller.h
+set(HEADERS crts_caller.h
             dirent.h
             dxerr.h
             IMMNotificationClient.h

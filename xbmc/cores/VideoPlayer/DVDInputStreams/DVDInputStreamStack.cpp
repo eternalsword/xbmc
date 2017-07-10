@@ -96,7 +96,7 @@ bool CDVDInputStreamStack::Open()
   return true;
 }
 
-// close file and reset everything
+// close file and reset everyting
 void CDVDInputStreamStack::Close()
 {
   CDVDInputStream::Close();

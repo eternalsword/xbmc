@@ -70,7 +70,6 @@ TEST(TestStopWatch, Reset)
   a.StartZero();
   thread.Sleep(2);
   EXPECT_GT(a.GetElapsedMilliseconds(), 1);
-  thread.Sleep(3);
   a.Reset();
-  EXPECT_LT(a.GetElapsedMilliseconds(), 5);
+  EXPECT_LT(a.GetElapsedMilliseconds(), 1);
 }

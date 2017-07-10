@@ -19,9 +19,6 @@
  */
 
 #include "system.h"
-#include "FileItem.h"
-#include "messaging/ApplicationMessenger.h"
-#include "PlayListPlayer.h"
 #include "XBApplicationEx.h"
 #include "utils/log.h"
 #include "threads/SystemClock.h"
@@ -34,7 +31,6 @@
 #ifdef TARGET_POSIX
 #include "linux/XTimeUtils.h"
 #endif
-#include "AppParamParser.h"
 
 // Put this here for easy enable and disable
 #ifndef _DEBUG
@@ -50,7 +46,27 @@ CXBApplicationEx::CXBApplicationEx()
   m_renderGUI = false;
 }
 
-CXBApplicationEx::~CXBApplicationEx() = default;
+CXBApplicationEx::~CXBApplicationEx()
+{
+}
+
+/* Create the app */
+bool CXBApplicationEx::Create()
+{
+  // Variables to perform app timing
+  m_bStop = false;
+  m_AppFocused = true;
+  m_ExitCode = EXITCODE_QUIT;
+
+  // Initialize the app's device-dependent objects
+  if (!Initialize())
+  {
+    CLog::Log(LOGERROR, "XBAppEx: Call to Initialize() failed!" );
+    return false;
+  }
+
+  return true;
+}
 
 /* Destroy the app */
 VOID CXBApplicationEx::Destroy()
@@ -61,20 +77,13 @@ VOID CXBApplicationEx::Destroy()
 }
 
 /* Function that runs the application */
-INT CXBApplicationEx::Run(const CAppParamParser &params)
+INT CXBApplicationEx::Run()
 {
   CLog::Log(LOGNOTICE, "Running the application..." );
 
   unsigned int lastFrameTime = 0;
   unsigned int frameTime = 0;
   const unsigned int noRenderFrameTime = 15;  // Simulates ~66fps
-
-  if (params.Playlist().Size() > 0)
-  {
-    CServiceBroker::GetPlaylistPlayer().Add(0, params.Playlist());
-    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(0);
-    KODI::MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_PLAYLISTPLAYER_PLAY, -1);
-  }
 
   // Run xbmc
   while (!m_bStop)
@@ -111,11 +120,7 @@ INT CXBApplicationEx::Run(const CAppParamParser &params)
     try
     {
 #endif
-      if (!m_bStop)
-      {
-        FrameMove(true, m_renderGUI);
-      }
-
+      if (!m_bStop) FrameMove(true, m_renderGUI);
       //reset exception count
 #ifdef XBMC_TRACK_EXCEPTIONS
     }
@@ -136,10 +141,7 @@ INT CXBApplicationEx::Run(const CAppParamParser &params)
     try
     {
 #endif
-      if (m_renderGUI && !m_bStop)
-      {
-        Render();
-      }
+      if (m_renderGUI && !m_bStop) Render();
       else if (!m_renderGUI)
       {
         frameTime = XbmcThreads::SystemClockMillis() - lastFrameTime;

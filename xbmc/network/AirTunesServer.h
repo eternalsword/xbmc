@@ -47,20 +47,19 @@ class CAirTunesServer : public ANNOUNCEMENT::IAnnouncer, public IActionListener,
 {
 public:
   // ANNOUNCEMENT::IAnnouncer
-  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+  virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
 
   void RegisterActionListener(bool doRegister);
   static void EnableActionProcessing(bool enable);
   // IACtionListener
-  bool OnAction(const CAction &action) override;
+  virtual bool OnAction(const CAction &action);
   
   //CThread
-  void Process() override;
+  virtual void Process();
 
   static bool StartServer(int port, bool nonlocal, bool usePassword, const std::string &password="");
   static void StopServer(bool bWait);
   static bool IsRunning();
-  bool IsRAOPRunningInternal();
   static void SetMetadataFromBuffer(const char *buffer, unsigned int size);
   static void SetCoverArtFromBuffer(const char *buffer, unsigned int size);
   static void SetupRemoteControl();
@@ -68,7 +67,7 @@ public:
 
 private:
   CAirTunesServer(int port, bool nonlocal);
-  ~CAirTunesServer() override;
+  ~CAirTunesServer();
   bool Initialize(const std::string &password);
   void Deinitialize();
   static void RefreshCoverArt(const char *outputFilename = NULL);

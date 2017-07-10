@@ -30,19 +30,19 @@ class CPlayList
 {
 public:
   CPlayList(int id = -1);
-  virtual ~CPlayList(void) = default;
+  virtual ~CPlayList(void) {};
   virtual bool Load(const std::string& strFileName);
   virtual bool LoadData(std::istream &stream);
   virtual bool LoadData(const std::string& strData);
   virtual void Save(const std::string& strFileName) const {};
 
-  void Add(const CPlayList& playlist);
+  void Add(CPlayList& playlist);
   void Add(const CFileItemPtr &pItem);
-  void Add(const CFileItemList& items);
+  void Add(CFileItemList& items);
 
   // for Party Mode
-  void Insert(const CPlayList& playlist, int iPosition = -1);
-  void Insert(const CFileItemList& items, int iPosition = -1);
+  void Insert(CPlayList& playlist, int iPosition = -1);
+  void Insert(CFileItemList& items, int iPosition = -1);
   void Insert(const CFileItemPtr& item, int iPosition = -1);
 
   int FindOrder(int iOrder) const;

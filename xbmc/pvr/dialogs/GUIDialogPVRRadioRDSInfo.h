@@ -27,18 +27,18 @@ namespace PVR
   {
   public:
     CGUIDialogPVRRadioRDSInfo(void);
-    ~CGUIDialogPVRRadioRDSInfo(void) override = default;
-    bool OnMessage(CGUIMessage& message) override;
-    bool HasListItems() const override { return true; }
-    CFileItemPtr GetCurrentListItem(int offset = 0) override;
+    virtual ~CGUIDialogPVRRadioRDSInfo(void) {}
+    virtual bool OnMessage(CGUIMessage& message);
+    virtual bool HasListItems() const { return true; };
+    virtual CFileItemPtr GetCurrentListItem(int offset = 0);
 
   protected:
-    void OnInitWindow() override;
-    void OnDeinitWindow(int nextWindowID) override;
+    virtual void OnInitWindow();
+    virtual void OnDeinitWindow(int nextWindowID);
 
-  private:
     CFileItemPtr m_rdsItem;
 
+  private:
     bool m_InfoPresent;
     bool m_LabelInfoNewsPresent;
     std::string m_LabelInfoNews;

@@ -29,7 +29,7 @@ extern "C" {
 }
 
 /**
- * Callback interface for VideoPlayer clock needed by AE for sync
+ * Callback interafce for VideoPlayer clock needed by AE for sync
  */
 class IAEClockCallback
 {
@@ -63,8 +63,8 @@ class IAEStream
 {
 protected:
   friend class IAE;
-  IAEStream() = default;
-  virtual ~IAEStream() = default;
+  IAEStream() {}
+  virtual ~IAEStream() {}
 
 public:
   /**

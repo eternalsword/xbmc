@@ -33,8 +33,8 @@ namespace XFILE
   {
   public:
     CVirtualDirectory(void);
-    ~CVirtualDirectory(void) override;
-    bool GetDirectory(const CURL& url, CFileItemList &items) override;
+    virtual ~CVirtualDirectory(void);
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
     bool GetDirectory(const CURL& url, CFileItemList &items, bool bUseFileDirectories);
     void SetSources(const VECSOURCES& vecSources);
     inline unsigned int GetNumberOfSources() 

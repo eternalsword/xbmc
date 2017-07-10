@@ -34,10 +34,11 @@ CGUILabelControl::CGUILabelControl(int parentID, int controlID, float posX, floa
   m_startHighlight = m_endHighlight = 0;
   m_startSelection = m_endSelection = 0;
   m_minWidth = 0;
-  m_label.SetScrollLoopCount(2);
 }
 
-CGUILabelControl::~CGUILabelControl(void) = default;
+CGUILabelControl::~CGUILabelControl(void)
+{
+}
 
 void CGUILabelControl::ShowCursor(bool bShow)
 {
@@ -201,7 +202,7 @@ void CGUILabelControl::SetWidth(float width)
 
 bool CGUILabelControl::OnMessage(CGUIMessage& message)
 {
-  if (message.GetControlId() == GetID())
+  if ( message.GetControlId() == GetID() )
   {
     if (message.GetMessage() == GUI_MSG_LABEL_SET)
     {
@@ -209,8 +210,6 @@ bool CGUILabelControl::OnMessage(CGUIMessage& message)
       return true;
     }
   }
-  if (message.GetMessage() == GUI_MSG_REFRESH_TIMER && IsVisible())
-    UpdateInfo();
 
   return CGUIControl::OnMessage(message);
 }

@@ -20,8 +20,9 @@
 
 #include "system.h"
 
+#if defined(HAVE_X11)
+
 #include "WinSystemX11.h"
-#include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "settings/lib/Setting.h"
@@ -35,18 +36,17 @@
 #include "threads/SingleLock.h"
 #include "utils/TimeUtils.h"
 #include "utils/StringUtils.h"
+#include "settings/Settings.h"
 #include "windowing/WindowingFactory.h"
 #include "CompileInfo.h"
 #include "messaging/ApplicationMessenger.h"
 #include <X11/Xatom.h>
 #include <X11/extensions/Xrandr.h>
 
-#include "WinEventsX11.h"
+#include "../WinEventsX11.h"
 #include "input/InputManager.h"
-#include "OSScreenSaverX11.h"
 
 using namespace KODI::MESSAGING;
-using namespace KODI::WINDOWING;
 
 #define EGL_NO_CONFIG (EGLConfig)0
 
@@ -66,7 +66,9 @@ CWinSystemX11::CWinSystemX11() : CWinSystemBase()
   XSetErrorHandler(XErrorHandler);
 }
 
-CWinSystemX11::~CWinSystemX11() = default;
+CWinSystemX11::~CWinSystemX11()
+{
+}
 
 bool CWinSystemX11::InitWindowSystem()
 {
@@ -99,7 +101,7 @@ bool CWinSystemX11::DestroyWindowSystem()
   return true;
 }
 
-bool CWinSystemX11::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res)
+bool CWinSystemX11::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res, PHANDLE_EVENT_FUNC userFunction)
 {
   if(!SetFullScreen(fullScreen, res, false))
     return false;
@@ -136,7 +138,7 @@ bool CWinSystemX11::DestroyWindow()
 
 bool CWinSystemX11::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
 {
-  m_userOutput = CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  m_userOutput = CSettings::GetInstance().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   XOutput *out = NULL;
   if (m_userOutput.compare("Default") != 0)
   {
@@ -245,7 +247,7 @@ bool CWinSystemX11::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool bl
         OnLostDevice();
         m_bIsInternalXrr = true;
         g_xrandr.SetMode(out, mode);
-        int delay = CServiceBroker::GetSettings().GetInt("videoscreen.delayrefreshchange");
+        int delay = CSettings::GetInstance().GetInt("videoscreen.delayrefreshchange");
         if (delay > 0)
         {
           m_delayDispReset = true;
@@ -274,8 +276,8 @@ void CWinSystemX11::UpdateResolutions()
   int numScreens = XScreenCount(m_dpy);
   g_xrandr.SetNumScreens(numScreens);
 
-  bool switchOnOff = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
-  m_userOutput = CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  bool switchOnOff = CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
+  m_userOutput = CSettings::GetInstance().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   if (m_userOutput.compare("Default") == 0)
     switchOnOff = false;
 
@@ -451,14 +453,50 @@ void CWinSystemX11::ShowOSMouse(bool show)
     XDefineCursor(m_dpy,m_mainWindow, m_invisibleCursor);
 }
 
-std::unique_ptr<IOSScreenSaver> CWinSystemX11::GetOSScreenSaverImpl()
+void CWinSystemX11::ResetOSScreensaver()
 {
-  std::unique_ptr<IOSScreenSaver> ret;
-  if (m_dpy)
+  if (m_bFullScreen)
   {
-    ret.reset(new COSScreenSaverX11(m_dpy));
+    //disallow the screensaver when we're fullscreen by periodically calling XResetScreenSaver(),
+    //normally SDL does this but we disable that in CApplication::Create()
+    //for some reason setting a 0 timeout with XSetScreenSaver doesn't work with gnome
+    if (!m_screensaverReset.IsRunning() || m_screensaverReset.GetElapsedSeconds() > 5.0f)
+    {
+      m_screensaverReset.StartZero();
+      XResetScreenSaver(m_dpy);
+    }
   }
-  return ret;
+  else
+  {
+    m_screensaverReset.Stop();
+  }
+}
+
+void CWinSystemX11::EnableSystemScreenSaver(bool bEnable)
+{
+  if (!m_dpy)
+    return;
+
+  if (bEnable)
+    XForceScreenSaver(m_dpy, ScreenSaverActive);
+  else
+  {
+    Window root_return, child_return;
+    int root_x_return, root_y_return;
+    int win_x_return, win_y_return;
+    unsigned int mask_return;
+    XQueryPointer(m_dpy, RootWindow(m_dpy, m_nScreen), &root_return, &child_return,
+                  &root_x_return, &root_y_return,
+                  &win_x_return, &win_y_return,
+                  &mask_return);
+
+    XWarpPointer(m_dpy, None, RootWindow(m_dpy, m_nScreen), 0, 0, 0, 0, root_x_return+300, root_y_return+300);
+    XSync(m_dpy, FALSE);
+    XWarpPointer(m_dpy, None, RootWindow(m_dpy, m_nScreen), 0, 0, 0, 0, 0, 0);
+    XSync(m_dpy, FALSE);
+    XWarpPointer(m_dpy, None, RootWindow(m_dpy, m_nScreen), 0, 0, 0, 0, root_x_return, root_y_return);
+    XSync(m_dpy, FALSE);
+  }
 }
 
 void CWinSystemX11::NotifyAppActiveChange(bool bActivated)
@@ -626,7 +664,7 @@ bool CWinSystemX11::SetWindow(int width, int height, bool fullscreen, const std:
 
   if (!m_mainWindow)
   {
-    CServiceBroker::GetInputManager().SetMouseActive(false);
+    CInputManager::GetInstance().SetMouseActive(false);
   }
 
   if (m_mainWindow && ((m_bFullScreen != fullscreen) || m_currentOutput.compare(output) != 0 || m_windowDirty))
@@ -656,7 +694,7 @@ bool CWinSystemX11::SetWindow(int width, int height, bool fullscreen, const std:
       }
     }
 
-    CServiceBroker::GetInputManager().SetMouseActive(false);
+    CInputManager::GetInstance().SetMouseActive(false);
     OnLostDevice();
     DestroyWindow();
     m_windowDirty = true;
@@ -665,6 +703,8 @@ bool CWinSystemX11::SetWindow(int width, int height, bool fullscreen, const std:
   // create main window
   if (!m_mainWindow)
   {
+    EnableSystemScreenSaver(false);
+
     Colormap cmap;
     XSetWindowAttributes swa;
     XVisualInfo *vi;
@@ -1030,4 +1070,4 @@ void CWinSystemX11::UpdateCrtc()
   g_graphicsContext.SetFPS(fps);
 }
 
-
+#endif

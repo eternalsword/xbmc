@@ -25,12 +25,14 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDDemuxFFmpeg.h"
 #include "DVDDemuxPacket.h"
-#include "TimingConstants.h"
+#include "DVDClock.h"
 #include "DVDSubtitles/DVDSubtitleStream.h"
 
 #include <string.h>
 
-CDVDDemuxVobsub::CDVDDemuxVobsub() = default;
+CDVDDemuxVobsub::CDVDDemuxVobsub()
+{
+}
 
 CDVDDemuxVobsub::~CDVDDemuxVobsub()
 {
@@ -139,7 +141,7 @@ void CDVDDemuxVobsub::Flush()
   m_Demuxer->Flush();
 }
 
-bool CDVDDemuxVobsub::SeekTime(double time, bool backwards, double* startpts)
+bool CDVDDemuxVobsub::SeekTime(int time, bool backwords, double* startpts)
 {
   double pts = DVD_MSEC_TO_TIME(time);
   m_Timestamp = m_Timestamps.begin();

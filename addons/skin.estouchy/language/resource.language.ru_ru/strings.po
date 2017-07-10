@@ -44,10 +44,6 @@ msgctxt "#31009"
 msgid "Working..."
 msgstr "Подождите…"
 
-msgctxt "#31011"
-msgid "Recent"
-msgstr "Последнее"
-
 msgctxt "#31013"
 msgid "Movies"
 msgstr "Фильмы"
@@ -59,26 +55,6 @@ msgstr "Серии"
 msgctxt "#31016"
 msgid "Albums"
 msgstr "Альбомы"
-
-msgctxt "#31017"
-msgid "PVR info"
-msgstr "Сведения PVR"
-
-msgctxt "#31018"
-msgid "Player process info"
-msgstr "Сведения о проигрывателе"
-
-msgctxt "#31019"
-msgid "Video decoder"
-msgstr "Видеодекодер"
-
-msgctxt "#31020"
-msgid "Pixel format"
-msgstr "Формат пикселей"
-
-msgctxt "#31021"
-msgid "System memory usage"
-msgstr "Использование памяти"
 
 msgctxt "#31024"
 msgid "Page"
@@ -92,10 +68,6 @@ msgctxt "#31038"
 msgid "Login"
 msgstr "Логин"
 
-msgctxt "#31039"
-msgid "Updated:"
-msgstr "Обновлено:"
-
 msgctxt "#31044"
 msgid "FAST FORWARD"
 msgstr "ПЕРЕМОТКА ВПЕРЕД"
@@ -103,10 +75,6 @@ msgstr "ПЕРЕМОТКА ВПЕРЕД"
 msgctxt "#31045"
 msgid "REWIND"
 msgstr "ПЕРЕМОТКА НАЗАД"
-
-msgctxt "#31046"
-msgid "Play speed"
-msgstr "Скорость воспроизведения"
 
 msgctxt "#31049"
 msgid "End Time"
@@ -165,8 +133,8 @@ msgid "Data provider"
 msgstr "Источник данных"
 
 msgctxt "#31309"
-msgid "System Memory Used:"
-msgstr "Использование памяти:"
+msgid "Memory Used:"
+msgstr "Используется памяти:"
 
 msgctxt "#31320"
 msgid "Last Logged In"
@@ -208,9 +176,21 @@ msgctxt "#31421"
 msgid "Select your Kodi user Profile[CR]to login and continue"
 msgstr "Выберите профиль пользователя Kodi,[CR]чтобы войти в систему"
 
+msgctxt "#31500"
+msgid "Home Menu Catagory Buttons"
+msgstr "Пункты главного меню"
+
+msgctxt "#31501"
+msgid "Home Page Add-on Quick Links"
+msgstr "Быстрые ссылки на главном экране"
+
+msgctxt "#31502"
+msgid "Miscellaneous Options"
+msgstr "Прочие параметры"
+
 msgctxt "#31550"
-msgid "Backgrounds"
-msgstr "Варианты фона"
+msgid "Home Screen Weather Info and button"
+msgstr "Сведения о погоде и кнопка на главном экране"
 
 msgctxt "#31551"
 msgid "Add-on Shortcut"
@@ -255,14 +235,6 @@ msgstr "Переименовать группу"
 msgctxt "#31563"
 msgid "Delete Group"
 msgstr "Удалить группу"
-
-msgctxt "#31564"
-msgid "Show hidden"
-msgstr "Показать скрытое"
-
-msgctxt "#31565"
-msgid "Show deleted"
-msgstr "Показать удаленное"
 
 msgctxt "#31900"
 msgid "First Run"

@@ -27,32 +27,32 @@
 
 namespace XBMCAddon
 {
-  class AsyncCallbackMessage : public AddonClass
+  class AsynchCallbackMessage : public AddonClass
   {
   public:
     AddonClass::Ref<Callback> cb;
-    AddonClass::Ref<RetardedAsyncCallbackHandler> handler;
-    AsyncCallbackMessage(Callback* _cb, RetardedAsyncCallbackHandler* _handler) :
+    AddonClass::Ref<RetardedAsynchCallbackHandler> handler;
+    AsynchCallbackMessage(Callback* _cb, RetardedAsynchCallbackHandler* _handler) :
       cb(_cb), handler(_handler) { XBMC_TRACE; }
   };
 
   //********************************************************************
   // This holds the callback messages which will be executed. It doesn't
   //  seem to work correctly with the Ref object so we'll go with Ref*'s
-  typedef std::vector<AddonClass::Ref<AsyncCallbackMessage> > CallbackQueue;
+  typedef std::vector<AddonClass::Ref<AsynchCallbackMessage> > CallbackQueue;
   //********************************************************************
 
   static CCriticalSection critSection;
   static CallbackQueue g_callQueue;
 
-  void RetardedAsyncCallbackHandler::invokeCallback(Callback* cb)
+  void RetardedAsynchCallbackHandler::invokeCallback(Callback* cb)
   {
     XBMC_TRACE;
     CSingleLock lock(critSection);
-    g_callQueue.push_back(new AsyncCallbackMessage(cb,this));
+    g_callQueue.push_back(new AsynchCallbackMessage(cb,this));
   }
 
-  RetardedAsyncCallbackHandler::~RetardedAsyncCallbackHandler()
+  RetardedAsynchCallbackHandler::~RetardedAsynchCallbackHandler()
   {
     XBMC_TRACE;
     CSingleLock lock(critSection);
@@ -61,7 +61,7 @@ namespace XBMCAddon
     CallbackQueue::iterator iter = g_callQueue.begin();
     while (iter != g_callQueue.end())
     {
-      AddonClass::Ref<AsyncCallbackMessage> cur(*iter);
+      AddonClass::Ref<AsynchCallbackMessage> cur(*iter);
       {
         if (cur->handler.get() == this) // then this message is because of me
         {
@@ -74,14 +74,14 @@ namespace XBMCAddon
     }
   }
 
-  void RetardedAsyncCallbackHandler::makePendingCalls()
+  void RetardedAsynchCallbackHandler::makePendingCalls()
   {
     XBMC_TRACE;
     CSingleLock lock(critSection);
     CallbackQueue::iterator iter = g_callQueue.begin();
     while (iter != g_callQueue.end())
     {
-      AddonClass::Ref<AsyncCallbackMessage> p(*iter);
+      AddonClass::Ref<AsynchCallbackMessage> p(*iter);
 
       // only call when we are in the right thread state
       if(p->handler->isStateOk(p->cb->getObject()))
@@ -100,7 +100,7 @@ namespace XBMCAddon
 
           // we need to grab the object lock to see if the object of the call 
           //  is deallocating. holding this lock should prevent it from 
-          //  deallocating during the execution of this call.
+          //  deallocating durring the execution of this call.
 #ifdef ENABLE_XBMC_TRACE_API
           CLog::Log(LOGDEBUG,"%sNEWADDON executing callback 0x%lx",_tg.getSpaces(),(long)(p->cb.get()));
 #endif
@@ -117,13 +117,13 @@ namespace XBMCAddon
             catch (XbmcCommons::Exception& e) { e.LogThrowMessage(); }
             catch (...)
             {
-              CLog::Log(LOGERROR,"Unknown exception while executing callback 0x%lx", (long)(p->cb.get()));
+              CLog::Log(LOGERROR,"Unknown exception while executeing callback 0x%lx", (long)(p->cb.get()));
             }
           }
         }
 
         // since the state of the iterator may have been corrupted by
-        //  the changing state of the list from another thread during
+        //  the changing state of the list from another thread durring
         //  the releasing fo the lock in the immediately preceeding 
         //  codeblock, we need to reset it before continuing the loop
         iter = g_callQueue.begin();
@@ -133,14 +133,14 @@ namespace XBMCAddon
     }  
   }
 
-  void RetardedAsyncCallbackHandler::clearPendingCalls(void* userData)
+  void RetardedAsynchCallbackHandler::clearPendingCalls(void* userData)
   {
     XBMC_TRACE;
     CSingleLock lock(critSection);
     CallbackQueue::iterator iter = g_callQueue.begin();
     while (iter != g_callQueue.end())
     {
-      AddonClass::Ref<AsyncCallbackMessage> p(*iter);
+      AddonClass::Ref<AsynchCallbackMessage> p(*iter);
 
       if(p->handler->shouldRemoveCallback(p->cb->getObject(),userData))
       {

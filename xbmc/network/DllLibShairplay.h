@@ -29,7 +29,7 @@ struct raop_s;
 class DllLibShairplayInterface
 {
 public:
-  virtual ~DllLibShairplayInterface() = default;
+  virtual ~DllLibShairplayInterface() {}
 
   
   virtual raop_t *    raop_init(int max_clients, raop_callbacks_t *callbacks, const char *pemkey)=0;

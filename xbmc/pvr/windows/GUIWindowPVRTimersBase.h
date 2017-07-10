@@ -32,15 +32,29 @@ namespace PVR
   {
   public:
     CGUIWindowPVRTimersBase(bool bRadio, int id, const std::string &xmlFile);
-    ~CGUIWindowPVRTimersBase(void) override;
+    virtual ~CGUIWindowPVRTimersBase(void) {};
 
-    bool OnMessage(CGUIMessage& message) override;
-    bool OnAction(const CAction &action) override;
-    bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
-    void UpdateButtons(void) override;
+    bool OnMessage(CGUIMessage& message);
+    bool OnAction(const CAction &action);
+    void GetContextButtons(int itemNumber, CContextButtons &buttons);
+    bool OnContextButton(int itemNumber, CONTEXT_BUTTON button);
+    void UpdateButtons(void);
+
+  protected:
+    virtual void RegisterObservers(void);
+    virtual void UnregisterObservers(void);
 
   private:
-    bool ActionShowTimer(const CFileItemPtr &item);
+    bool ActionDeleteTimer(CFileItem *item);
+    bool ActionShowTimer(CFileItem *item);
+    bool ShowNewTimerDialog(void);
+
+    bool OnContextButtonActivate(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonAdd(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonDelete(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonStopRecord(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonRename(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button);
 
     CFileItemPtr m_currentFileItem;
   };

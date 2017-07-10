@@ -21,7 +21,6 @@
 #include "system.h"
 #include "GraphicContext.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "cores/DataCacheCore.h"
 #include "messaging/ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
@@ -32,14 +31,13 @@
 #include "TextureManager.h"
 #include "input/InputManager.h"
 #include "GUIWindowManager.h"
-#include "ServiceBroker.h"
 
 using namespace KODI::MESSAGING;
 
 extern bool g_fullScreen;
 
 /* quick access to a skin setting, fine unless we starts clearing video settings */
-static std::shared_ptr<CSettingInt> g_guiSkinzoom;
+static CSettingInt* g_guiSkinzoom = NULL;
 
 CGraphicContext::CGraphicContext(void) :
   m_iScreenHeight(576),
@@ -64,9 +62,11 @@ CGraphicContext::CGraphicContext(void) :
 {
 }
 
-CGraphicContext::~CGraphicContext(void) = default;
+CGraphicContext::~CGraphicContext(void)
+{
+}
 
-void CGraphicContext::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CGraphicContext::OnSettingChanged(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -329,7 +329,7 @@ void CGraphicContext::SetFullScreenVideo(bool bOnOff)
 
   if(m_bFullScreenRoot)
   {
-    bool allowDesktopRes = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) == ADJUST_REFRESHRATE_ALWAYS;
+    bool allowDesktopRes = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) == ADJUST_REFRESHRATE_ALWAYS;
     if (m_bFullScreenVideo || (!allowDesktopRes && g_application.m_pPlayer->IsPlayingVideo()))
       g_application.m_pPlayer->TriggerUpdateResolution();
     else if (CDisplaySettings::GetInstance().GetCurrentResolution() > RES_DESKTOP)
@@ -424,7 +424,7 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   if (g_advancedSettings.m_fullScreen)
   {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)
-    bool blankOtherDisplays = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
+    bool blankOtherDisplays = CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
     g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
     g_Windowing.SetFullScreen(true,  info_org, false);
@@ -439,7 +439,7 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   SetStereoView(RENDER_STEREO_VIEW_OFF);
 
   // update anyone that relies on sizing information
-  CServiceBroker::GetInputManager().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
+  CInputManager::GetInstance().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
   g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
 
   Unlock();
@@ -735,7 +735,7 @@ void CGraphicContext::GetGUIScaling(const RESOLUTION_INFO &res, float &scaleX, f
     float fToHeight   = (float)info.Overscan.bottom - fToPosY;
 
     if(!g_guiSkinzoom) // lookup gui setting if we didn't have it already
-      g_guiSkinzoom = std::static_pointer_cast<CSettingInt>(CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINZOOM));
+      g_guiSkinzoom = (CSettingInt*)CSettings::GetInstance().GetSetting(CSettings::SETTING_LOOKANDFEEL_SKINZOOM);
 
     float fZoom = 1.0f;
     if(g_guiSkinzoom)
@@ -917,7 +917,7 @@ void CGraphicContext::UpdateCameraPosition(const CPoint &camera, const float &fa
     RESOLUTION_INFO res = GetResInfo();
     RESOLUTION_INFO desktop = GetResInfo(RES_DESKTOP);
     float scaleRes = (static_cast<float>(res.iWidth) / static_cast<float>(desktop.iWidth));
-    float scaleX = static_cast<float>(CServiceBroker::GetSettings().GetInt(CSettings::SETTING_LOOKANDFEEL_STEREOSTRENGTH)) * scaleRes;
+    float scaleX = static_cast<float>(CSettings::GetInstance().GetInt(CSettings::SETTING_LOOKANDFEEL_STEREOSTRENGTH)) * scaleRes;
     stereoFactor = factor * (m_stereoView == RENDER_STEREO_VIEW_LEFT ? scaleX : -scaleX);
   }
   g_Windowing.SetCameraPosition(camera, m_iScreenWidth, m_iScreenHeight, stereoFactor);

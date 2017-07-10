@@ -28,7 +28,6 @@
 #include "guilib/Geometry.h"
 
 #include "DllDvdNav.h"
-#include "DVDInputStreamFile.h"
 
 #define DVD_VIDEO_BLOCKSIZE         DVD_VIDEO_LB_LEN // 2048 bytes
 
@@ -51,7 +50,7 @@ struct DVDNavStreamInfo
   std::string name;
   std::string language;
 
-  DVDNavStreamInfo() = default;
+  DVDNavStreamInfo() {}
 };
 
 struct DVDNavAudioStreamInfo : DVDNavStreamInfo
@@ -85,6 +84,19 @@ struct DVDNavVideoStreamInfo : DVDNavStreamInfo
     width(0),
     height(0)
   {}
+};
+
+class DVDNavResult
+{
+public:
+  DVDNavResult() :
+      pData (NULL ),
+      type  (0    )
+  {
+  };
+  DVDNavResult(void* p, int t) { pData = p; type = t; };
+  void* pData;
+  int type;
 };
 
 class CDVDInputStreamNavigator
@@ -218,8 +230,6 @@ protected:
   int m_iPart;
 
   struct dvdnav_s* m_dvdnav;
-  dvdnav_stream_cb m_dvdnav_stream_cb;
-  std::unique_ptr<CDVDInputStreamFile> m_pstream;
 
   IVideoPlayer* m_pVideoPlayer;
 

@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2013-2017 Team Kodi
- *      http://kodi.tv
+ *      Copyright (C) 2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,12 +22,11 @@
 
 #include <memory>
 #include <utility>
-#include "ServiceBroker.h"
 #include "addons/GUIDialogAddonInfo.h"
 #include "ContextMenuManager.h"
 #include "FileItem.h"
 #include "filesystem/Directory.h"
-#include "favourites/FavouritesService.h"
+#include "filesystem/FavouritesDirectory.h"
 #include "guilib/GUIWindowManager.h"
 #include "interfaces/AnnouncementManager.h"
 #include "messaging/ApplicationMessenger.h"
@@ -35,8 +34,6 @@
 #include "music/MusicThumbLoader.h"
 #include "pictures/PictureThumbLoader.h"
 #include "pvr/PVRManager.h"
-#include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
-#include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
@@ -63,10 +60,10 @@ public:
       m_limit(limit),
       m_parentID(parentID)
   { }
-  ~CDirectoryJob() override = default;
+  virtual ~CDirectoryJob() { }
 
-  const char* GetType() const override { return "directory"; }
-  bool operator==(const CJob *job) const override
+  virtual const char* GetType() const { return "directory"; }
+  virtual bool operator==(const CJob *job) const
   {
     if (strcmp(job->GetType(),GetType()) == 0)
     {
@@ -77,7 +74,7 @@ public:
     return false;
   }
 
-  bool DoWork() override
+  virtual bool DoWork()
   {
     CFileItemList items;
     if (CDirectory::GetDirectory(m_url, items, ""))
@@ -189,7 +186,7 @@ CDirectoryProvider::CDirectoryProvider(const TiXmlElement *element, int parentID
 
 CDirectoryProvider::~CDirectoryProvider()
 {
-  Reset();
+  Reset(true);
 }
 
 bool CDirectoryProvider::Update(bool forceRefresh)
@@ -229,8 +226,8 @@ bool CDirectoryProvider::Update(bool forceRefresh)
 
 void CDirectoryProvider::Announce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
 {
-  // we are only interested in library, player and GUI changes
-  if ((flag & (VideoLibrary | AudioLibrary | Player | GUI)) == 0)
+  // we are only interested in library and player changes
+  if ((flag & (VideoLibrary | AudioLibrary | Player)) == 0)
     return;
 
   {
@@ -271,7 +268,7 @@ void CDirectoryProvider::Announce(AnnouncementFlag flag, const char *sender, con
   }
 }
 
-void CDirectoryProvider::Fetch(std::vector<CGUIListItemPtr> &items)
+void CDirectoryProvider::Fetch(std::vector<CGUIListItemPtr> &items) const
 {
   CSingleLock lock(m_section);
   items.clear();
@@ -309,35 +306,32 @@ void CDirectoryProvider::OnPVRManagerEvent(const PVR::PVREvent& event)
   }
 }
 
-void CDirectoryProvider::OnFavouritesEvent(const CFavouritesService::FavouritesUpdated& event)
+void CDirectoryProvider::Reset(bool immediately /* = false */)
 {
-  CSingleLock lock(m_section);
-  if (URIUtils::IsProtocol(m_currentUrl, "favourites"))
-    m_updateState = INVALIDATED;
-}
-
-void CDirectoryProvider::Reset()
-{
+  // cancel any pending jobs
   CSingleLock lock(m_section);
   if (m_jobID)
     CJobManager::GetInstance().CancelJob(m_jobID);
   m_jobID = 0;
-  m_items.clear();
-  m_currentTarget.clear();
-  m_currentUrl.clear();
-  m_itemTypes.clear();
-  m_currentSort.sortBy = SortByNone;
-  m_currentSort.sortOrder = SortOrderAscending;
-  m_currentLimit = 0;
-  m_updateState = OK;
-
-  if (m_isAnnounced)
+  // reset only if this is going to be destructed
+  if (immediately)
   {
-    m_isAnnounced = false;
-    CAnnouncementManager::GetInstance().RemoveAnnouncer(this);
-    CServiceBroker::GetFavouritesService().Events().Unsubscribe(this);
-    ADDON::CAddonMgr::GetInstance().Events().Unsubscribe(this);
-    CServiceBroker::GetPVRManager().Events().Unsubscribe(this);
+    m_items.clear();
+    m_currentTarget.clear();
+    m_currentUrl.clear();
+    m_itemTypes.clear();
+    m_currentSort.sortBy = SortByNone;
+    m_currentSort.sortOrder = SortOrderAscending;
+    m_currentLimit = 0;
+    m_updateState = OK;
+
+    if (m_isAnnounced)
+    {
+      m_isAnnounced = false;
+      CAnnouncementManager::GetInstance().RemoveAnnouncer(this);
+      ADDON::CAddonMgr::GetInstance().Events().Unsubscribe(this);
+      g_PVRManager.Events().Unsubscribe(this);
+    }
   }
 }
 
@@ -360,7 +354,7 @@ bool CDirectoryProvider::OnClick(const CGUIListItemPtr &item)
   CFileItem fileItem(*std::static_pointer_cast<CFileItem>(item));
 
   if (fileItem.HasVideoInfoTag()
-      && CServiceBroker::GetSettings().GetInt(CSettings::SETTING_MYVIDEOS_SELECTACTION) == SELECT_ACTION_INFO
+      && CSettings::GetInstance().GetInt(CSettings::SETTING_MYVIDEOS_SELECTACTION) == SELECT_ACTION_INFO
       && OnInfo(item))
     return true;
 
@@ -375,7 +369,7 @@ bool CDirectoryProvider::OnClick(const CGUIListItemPtr &item)
       fileItem.SetPath(fileItem.GetProperty("node.target_url").asString());
   }
   // grab the execute string
-  std::string execute = CServiceBroker::GetFavouritesService().GetExecutePath(fileItem, target);
+  std::string execute = CFavouritesDirectory::GetExecutePath(fileItem, target);
   if (!execute.empty())
   {
     CGUIMessage message(GUI_MSG_EXECUTE, 0, 0);
@@ -392,28 +386,10 @@ bool CDirectoryProvider::OnInfo(const CGUIListItemPtr& item)
 
   if (fileItem->HasAddonInfo())
     return CGUIDialogAddonInfo::ShowForItem(fileItem);
-  else if (fileItem->HasPVRRecordingInfoTag())
-  {
-    CGUIDialogPVRRecordingInfo::ShowFor(fileItem);
-    return true;
-  }
-  else if (fileItem->HasPVRChannelInfoTag())
-  {
-    CGUIDialogPVRGuideInfo::ShowFor(fileItem);
-    return true;
-  }
   else if (fileItem->HasVideoInfoTag())
   {
-    auto mediaType = fileItem->GetVideoInfoTag()->m_type;
-    if (mediaType == MediaTypeMovie ||
-        mediaType == MediaTypeTvShow ||
-        mediaType == MediaTypeEpisode ||
-        mediaType == MediaTypeVideo ||
-        mediaType == MediaTypeMusicVideo)
-    {
-      CGUIDialogVideoInfo::ShowFor(*fileItem.get());
-      return true;
-    }
+    CGUIDialogVideoInfo::ShowFor(*fileItem.get());
+    return true;
   }
   else if (fileItem->HasMusicInfoTag())
   {
@@ -449,8 +425,7 @@ bool CDirectoryProvider::UpdateURL()
     m_isAnnounced = true;
     CAnnouncementManager::GetInstance().AddAnnouncer(this);
     ADDON::CAddonMgr::GetInstance().Events().Subscribe(this, &CDirectoryProvider::OnAddonEvent);
-    CServiceBroker::GetPVRManager().Events().Subscribe(this, &CDirectoryProvider::OnPVRManagerEvent);
-    CServiceBroker::GetFavouritesService().Events().Subscribe(this, &CDirectoryProvider::OnFavouritesEvent);
+    g_PVRManager.Events().Subscribe(this, &CDirectoryProvider::OnPVRManagerEvent);
   }
   return true;
 }
@@ -482,7 +457,7 @@ bool CDirectoryProvider::UpdateSort()
   m_currentSort.sortOrder = sortOrder;
   m_currentSort.sortAttributes = SortAttributeIgnoreFolders;
 
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
     m_currentSort.sortAttributes = static_cast<SortAttribute>(m_currentSort.sortAttributes | SortAttributeIgnoreArticle);
 
   return true;

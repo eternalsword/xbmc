@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2017 Team Kodi
+ *      Copyright (C) 2015-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -21,18 +21,16 @@
 
 class CKey;
 
-namespace KODI
-{
 namespace KEYBOARD
 {
   /*!
-   * \ingroup keyboard
+   * \ingroup input
    * \brief Interface for handling keyboard events
    */
   class IKeyboardHandler
   {
   public:
-    virtual ~IKeyboardHandler() = default;
+    virtual ~IKeyboardHandler(void) { }
 
     /*!
      * \brief A key has been pressed
@@ -50,5 +48,4 @@ namespace KEYBOARD
      */
     virtual void OnKeyRelease(const CKey& key) = 0;
   };
-}
 }

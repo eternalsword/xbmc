@@ -75,7 +75,10 @@ bool CWin32Directory::GetDirectory(const CURL& url, CFileItemList &items)
   HANDLE hSearch;
   WIN32_FIND_DATAW findData = {};
 
-  hSearch = FindFirstFileExW(searchMask.c_str(), FindExInfoBasic, &findData, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+  if (g_sysinfo.IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin7))
+    hSearch = FindFirstFileExW(searchMask.c_str(), FindExInfoBasic, &findData, FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+  else
+    hSearch = FindFirstFileExW(searchMask.c_str(), FindExInfoStandard, &findData, FindExSearchNameMatch, NULL, 0);
 
   if (hSearch == INVALID_HANDLE_VALUE)
     return GetLastError() == ERROR_FILE_NOT_FOUND ? Exists(url) : false; // return true if directory exist and empty
@@ -126,12 +129,26 @@ bool CWin32Directory::GetDirectory(const CURL& url, CFileItemList &items)
 
 bool CWin32Directory::Create(const CURL& url)
 {
-  auto nameW(prepareWin32DirectoryName(url.Get()));
+  std::wstring nameW(prepareWin32DirectoryName(url.Get()));
   if (nameW.empty())
     return false;
 
-  if (!Create(nameW))
-    return Exists(url);
+  if (!CreateDirectoryW(nameW.c_str(), NULL))
+  {
+    if (GetLastError() == ERROR_ALREADY_EXISTS)
+      return Exists(url); // is it file or directory?
+    else
+      return false;
+  }
+
+  // if directory name starts from dot, make it hidden
+  const size_t lastSlashPos = nameW.rfind(L'\\');
+  if (lastSlashPos < nameW.length() - 1 && nameW[lastSlashPos + 1] == L'.')
+  {
+    DWORD dirAttrs = GetFileAttributesW(nameW.c_str());
+    if (dirAttrs != INVALID_FILE_ATTRIBUTES && SetFileAttributesW(nameW.c_str(), dirAttrs | FILE_ATTRIBUTE_HIDDEN))
+      return true;
+  }
 
   return true;
 }
@@ -184,7 +201,6 @@ bool CWin32Directory::RemoveRecursive(const CURL& url)
   if (hSearch == INVALID_HANDLE_VALUE)
     return GetLastError() == ERROR_FILE_NOT_FOUND ? Exists(url) : false; // return true if directory exist and empty
 
-  bool success = true;
   do
   {
     std::wstring itemNameW(findData.cFileName);
@@ -202,60 +218,19 @@ bool CWin32Directory::RemoveRecursive(const CURL& url)
       }
 
       if (!RemoveRecursive(CURL{ path }))
-      {
-        success = false;
-        break;
-      }
+        return false;
+
+      if (FALSE == RemoveDirectoryW(pathW.c_str()))
+        return false;
     }
     else
     {
       if (FALSE == DeleteFileW(pathW.c_str()))
-      {
-        success = false;
-        break;
-      }
+        return false;
     }
   } while (FindNextFileW(hSearch, &findData));
 
   FindClose(hSearch);
-
-  if (success)
-  {
-    if (FALSE == RemoveDirectoryW(basePath.c_str()))
-      success = false;
-  }
-
-  return success;
-}
-
-bool CWin32Directory::Create(std::wstring path) const
-{
-  if (!CreateDirectoryW(path.c_str(), nullptr))
-  {
-    if (GetLastError() == ERROR_ALREADY_EXISTS)
-      return true;
-
-    if (GetLastError() != ERROR_PATH_NOT_FOUND)
-      return false;
-
-    auto sep = path.rfind(L'\\');
-    if (sep == std::wstring::npos)
-      return false;
-
-    if (Create(path.substr(0, sep)))
-      return Create(path);
-
-    return false;
-  }
-
-  // if directory name starts from dot, make it hidden
-  const auto lastSlashPos = path.rfind(L'\\');
-  if (lastSlashPos < path.length() - 1 && path[lastSlashPos + 1] == L'.')
-  {
-    DWORD dirAttrs = GetFileAttributesW(path.c_str());
-    if (dirAttrs != INVALID_FILE_ATTRIBUTES && SetFileAttributesW(path.c_str(), dirAttrs | FILE_ATTRIBUTE_HIDDEN))
-      return true;
-  }
 
   return true;
 }

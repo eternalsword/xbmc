@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "threads/Thread.h"
+#include "threads/Atomics.h"
 
 #define MILLIS(x) x
 
@@ -39,7 +40,7 @@ template<class E> inline static bool waitForWaiters(E& event, int numWaiters, in
   return false;
 }
   
-inline static bool waitForThread(std::atomic<long>& mutex, int numWaiters, int milliseconds)
+inline static bool waitForThread(volatile long& mutex, int numWaiters, int milliseconds)
 {
   CCriticalSection sec;
   for( int i = 0; i < milliseconds; i++)
@@ -57,10 +58,10 @@ inline static bool waitForThread(std::atomic<long>& mutex, int numWaiters, int m
 
 class AtomicGuard
 {
-  std::atomic<long>* val;
+  volatile long* val;
 public:
-  inline AtomicGuard(std::atomic<long>* val_) : val(val_) { if (val) ++(*val); }
-  inline ~AtomicGuard() { if (val) --(*val); }
+  inline AtomicGuard(volatile long* val_) : val(val_) { if (val) AtomicIncrement(val); }
+  inline ~AtomicGuard() { if (val) AtomicDecrement(val); }
 };
 
 class thread

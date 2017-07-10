@@ -56,7 +56,7 @@ namespace XBMCAddon
     /// Write a string to Kodi's log file and the debug window.
     ///
     /// @param msg                 string - text to output.
-    /// @param level               [opt] integer - log level to output at.
+    /// @param level               [opt] integer - log level to ouput at.
     ///                            <em>(default=LOGDEBUG)</em>
     ///  |  Value:         | Description:                                      |
     ///  |----------------:|---------------------------------------------------|
@@ -80,7 +80,6 @@ namespace XBMCAddon
     ///
     ///
     /// ------------------------------------------------------------------------
-    /// @python_v17 Default level changed from LOGNOTICE to LOGDEBUG
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
@@ -180,7 +179,7 @@ namespace XBMCAddon
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
     /// ..
-    /// xbmc.executebuiltin('Skin.SetString(abc,def)')
+    /// xbmc.executebuiltin('RunXBE(c:\\avalaunch.xbe)')
     /// ..
     /// ~~~~~~~~~~~~~
     ///
@@ -324,7 +323,6 @@ namespace XBMCAddon
     ///
     ///
     /// ------------------------------------------------------------------------
-    /// @python_v13 Added new options **format** and **region**.
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
@@ -490,7 +488,6 @@ namespace XBMCAddon
     ///
     ///
     /// ------------------------------------------------------------------------
-    /// @python_v14 Added new option **useCached**.
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
@@ -514,7 +511,6 @@ namespace XBMCAddon
     ///
     ///
     /// ------------------------------------------------------------------------
-    /// @python_v14 New function added.
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
@@ -641,7 +637,7 @@ namespace XBMCAddon
     ///
     /// @param filename              string or unicode - filename/path to
     ///                              make legal
-    /// @param fatX                  [opt] bool - True=Xbox file system(Default)
+    /// @paran fatX                  [opt] bool - True=Xbox file system(Default)
     /// @return                      Legal filename or path as a string
     ///
     ///
@@ -952,7 +948,7 @@ namespace XBMCAddon
     /// \ingroup python_xbmc
     /// @brief \python_func{ xbmc.convertLanguage(language, format) }
     ///-----------------------------------------------------------------------
-    /// @brief Returns the given language converted to the given format as a
+    /// @bruef Returns the given language converted to the given format as a
     /// string.
     ///
     /// @param language              string either as name in English, two
@@ -968,7 +964,6 @@ namespace XBMCAddon
     ///
     ///
     /// ------------------------------------------------------------------------
-    /// @python_v13 New function added.
     ///
     /// **Example:**
     /// ~~~~~~~~~~~~~{.py}
@@ -980,15 +975,6 @@ namespace XBMCAddon
     convertLanguage(...);
 #else
     String convertLanguage(const char* language, int format);
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-    ///
-    /// \ingroup python_xbmc
-    /// @brief \python_func{ executehttpapi(httpcommand) }
-    ///-----------------------------------------------------------------------
-    /// @python_v12 Completely removed.
-    ///
 #endif
     //@}
 #ifndef DOXYGEN_SHOULD_SKIP_THIS

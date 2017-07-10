@@ -9,21 +9,16 @@
   !include "nsDialogs.nsh"
   !include "LogicLib.nsh"
   !include "WinVer.nsh"
-  !include "x64.nsh"
   
 ;--------------------------------
 ;General
 
   ;Name and file
   Name "${APP_NAME}"
-  OutFile "${APP_NAME}Setup-${app_revision}-${app_branch}-${TARGET_ARCHITECTURE}.exe"
+  OutFile "${APP_NAME}Setup-${app_revision}-${app_branch}.exe"
 
   ;Default installation folder
-!ifdef x64
-  InstallDir "$PROGRAMFILES64\${APP_NAME}"
-!else
   InstallDir "$PROGRAMFILES\${APP_NAME}"
-!endif
 
   ;Get installation folder from registry if available
   InstallDirRegKey HKCU "Software\${APP_NAME}" ""
@@ -168,7 +163,7 @@ InstType "Minimal" ; 3.
 ;Installer Sections
 
 Section "${APP_NAME}" SecAPP
-  SetShellVarContext all
+  SetShellVarContext current
   SectionIn RO
   SectionIn 1 2 3 #section is in install type Normal/Full/Minimal
 
@@ -181,6 +176,7 @@ Section "${APP_NAME}" SecAPP
   SetOutPath "$INSTDIR\addons"
   File /r "${app_root}\application\addons\*.*"
   File /nonfatal /r "${app_root}\addons\peripheral.*"
+  File /r "${app_root}\addons\skin.*"
   SetOutPath "$INSTDIR\media"
   File /r "${app_root}\application\media\*.*"
   SetOutPath "$INSTDIR\system"
@@ -235,12 +231,10 @@ SectionEnd
 !include /nonfatal "audiodecoder-addons.nsi"
 !include /nonfatal "audioencoder-addons.nsi"
 !include /nonfatal "audiodsp-addons.nsi"
-!include /nonfatal "game-addons.nsi"
-!include /nonfatal "imagedecoder-addons.nsi"
 !include /nonfatal "inputstream-addons.nsi"
 !include /nonfatal "pvr-addons.nsi"
+;!include /nonfatal "skin-addons.nsi"
 !include /nonfatal "screensaver-addons.nsi"
-!include /nonfatal "vfs-addons.nsi"
 !include /nonfatal "visualization-addons.nsi"
 
 ;--------------------------------
@@ -293,7 +287,7 @@ FunctionEnd
 
 Section "Uninstall"
 
-  SetShellVarContext all
+  SetShellVarContext current
 
   ;ADD YOUR OWN FILES HERE...
   RMDir /r "$INSTDIR\addons"
@@ -305,9 +299,7 @@ Section "Uninstall"
   
   ;Un-install User Data if option is checked, otherwise skip
   ${If} $UnPageProfileCheckbox_State == ${BST_CHECKED}
-    SetShellVarContext current
     RMDir /r "$APPDATA\${APP_NAME}\"
-    SetShellVarContext all
     RMDir /r "$INSTDIR\portable_data\"
   ${EndIf}
   RMDir "$INSTDIR"
@@ -326,12 +318,12 @@ SectionEnd
 ;vs redist installer Section
 SectionGroup "Microsoft Visual C++ packages" SEC_VCREDIST
 
-Section "VS2015 C++ re-distributable Package (${TARGET_ARCHITECTURE})" SEC_VCREDIST1
+Section "VS2015 C++ re-distributable Package (x86)" SEC_VCREDIST1
 DetailPrint "Running VS2015 re-distributable setup..."
   SectionIn 1 2 #section is in install type Full
   SetOutPath "$TEMP\vc2015"
-  File "${app_root}\..\dependencies\vcredist\2015\vcredist_${TARGET_ARCHITECTURE}.exe"
-  ExecWait '"$TEMP\vc2015\vcredist_${TARGET_ARCHITECTURE}.exe" /install /quiet /norestart' $VSRedistSetupError
+  File "${app_root}\..\dependencies\vcredist\2015\vcredist_x86.exe"
+  ExecWait '"$TEMP\vc2015\vcredist_x86.exe" /install /quiet /norestart' $VSRedistSetupError
   RMDir /r "$TEMP\vc2015"
   DetailPrint "Finished VS2015 re-distributable setup"
   SetOutPath "$INSTDIR"
@@ -340,55 +332,9 @@ SectionEnd
 SectionGroupEnd
 
 Function .onInit
-  !ifdef x64
-    SetRegView 64
-    ${IfNot} ${RunningX64}
-      MessageBox MB_OK|MB_ICONSTOP 'This is the 64-bit ${APP_NAME} installer.$\nPlease download the 32-bit version from ${WEBSITE}.$\n$\nClick Ok to quit Setup.'
-      Quit
-    ${Endif}
-  !endif
-
-  ; Win7 SP1 is minimum requirement
-  ${IfNot} ${AtLeastWin7}
-  ${OrIf} ${IsWin7}
-  ${AndIfNot} ${AtLeastServicePack} 1
-    MessageBox MB_OK|MB_ICONSTOP|MB_TOPMOST|MB_SETFOREGROUND "Windows 7 SP1 or above required.$\nInstall Service Pack 1 for Windows 7 and run setup again."
+  ${IfNot} ${AtLeastWinVista}
+    MessageBox MB_OK|MB_ICONSTOP|MB_TOPMOST|MB_SETFOREGROUND "Windows Vista or above required.$\nThis program can not be run on Windows XP"
     Quit
-  ${EndIf}
-
-  Var /GLOBAL HotFixID
-  ${If} ${IsWin7}
-    StrCpy $HotFixID "2670838" ; Platform Update for Windows 7 SP1
-  ${Else}
-    StrCpy $HotFixID ""
-  ${Endif}
-  ${If} $HotFixID != ""
-    nsExec::ExecToStack 'cmd /Q /C "%SYSTEMROOT%\System32\wbem\wmic.exe /?"'
-    Pop $0 ; return value (it always 0 even if an error occured)
-    Pop $1 ; command output
-    ${If} $0 != 0
-    ${OrIf} $1 == ""
-      MessageBox MB_OK|MB_ICONSTOP|MB_TOPMOST|MB_SETFOREGROUND "Unable to run the Windows program wmic.exe to verify that Windows Update KB$HotFixID is installed.$\nWmic is not installed correctly.$\nPlease fix this issue and try again to install Kodi."
-      Quit
-    ${EndIf}
-    nsExec::ExecToStack 'cmd /Q /C "%SYSTEMROOT%\System32\findstr.exe /?"'
-    Pop $0 ; return value (it always 0 even if an error occured)
-    Pop $1 ; command output
-    ${If} $0 != 0
-    ${OrIf} $1 == ""
-      MessageBox MB_OK|MB_ICONSTOP|MB_TOPMOST|MB_SETFOREGROUND "Unable to run the Windows program findstr.exe to verify that Windows Update KB$HotFixID is installed.$\nFindstr is not installed correctly.$\nPlease fix this issue and try again to install Kodi."
-      Quit
-    ${EndIf}
-    nsExec::ExecToStack 'cmd /Q /C "%SYSTEMROOT%\System32\wbem\wmic.exe qfe get hotfixid | %SYSTEMROOT%\System32\findstr.exe "^KB$HotFixID[^0-9]""'
-    Pop $0 ; return value (it always 0 even if an error occured)
-    Pop $1 ; command output
-    ${If} $0 != 0
-    ${OrIf} $1 == ""
-      MessageBox MB_OK|MB_ICONSTOP|MB_TOPMOST|MB_SETFOREGROUND "Platform Update for Windows (KB$HotFixID) is required.$\nDownload and install Platform Update for Windows then run setup again."
-      ExecShell "open" "http://support.microsoft.com/kb/$HotFixID"
-      Quit
-    ${EndIf}
-    SetOutPath "$INSTDIR"
   ${EndIf}
   StrCpy $CleanDestDir "-1"
 FunctionEnd

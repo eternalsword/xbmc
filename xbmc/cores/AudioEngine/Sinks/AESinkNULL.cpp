@@ -37,7 +37,9 @@ CAESinkNULL::CAESinkNULL()
 {
 }
 
-CAESinkNULL::~CAESinkNULL() = default;
+CAESinkNULL::~CAESinkNULL()
+{
+}
 
 bool CAESinkNULL::Initialize(AEAudioFormat &format, std::string &device)
 {

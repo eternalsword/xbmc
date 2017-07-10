@@ -18,14 +18,17 @@
  *
  */
 
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
+
 #include "Weather.h"
 
 #include <utility>
 
 #include "addons/AddonManager.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
+#include "addons/GUIDialogAddonSettings.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "filesystem/Directory.h"
 #include "filesystem/ZipManager.h"
 #include "guilib/GUIWindowManager.h"
@@ -79,7 +82,7 @@ bool CWeatherJob::DoWork()
     return false;
 
   AddonPtr addon;
-  if (!ADDON::CAddonMgr::GetInstance().GetAddon(CServiceBroker::GetSettings().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER))
+  if (!ADDON::CAddonMgr::GetInstance().GetAddon(CSettings::GetInstance().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER))
     return false;
 
   // initialize our sys.argv variables
@@ -155,7 +158,7 @@ void CWeatherJob::LoadLocalizedToken()
 {
   // We load the english strings in to get our tokens
   std::string language = LANGUAGE_DEFAULT;
-  std::shared_ptr<CSettingString> languageSetting = std::static_pointer_cast<CSettingString>(CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_LOCALE_LANGUAGE));
+  CSettingString* languageSetting = static_cast<CSettingString*>(CSettings::GetInstance().GetSetting(CSettings::SETTING_LOCALE_LANGUAGE));
   if (languageSetting != NULL)
     language = languageSetting->GetDefault();
 
@@ -308,7 +311,9 @@ CWeather::CWeather(void) : CInfoLoader(30 * 60 * 1000) // 30 minutes
   Reset();
 }
 
-CWeather::~CWeather(void) = default;
+CWeather::~CWeather(void)
+{
+}
 
 std::string CWeather::BusyInfo(int info) const
 {
@@ -372,8 +377,8 @@ const day_forecast &CWeather::GetForecast(int day) const
  */
 void CWeather::SetArea(int iLocation)
 {
-  CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION, iLocation);
-  CServiceBroker::GetSettings().Save();
+  CSettings::GetInstance().SetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION, iLocation);
+  CSettings::GetInstance().Save();
 }
 
 /*!
@@ -382,7 +387,7 @@ void CWeather::SetArea(int iLocation)
  */
 int CWeather::GetArea() const
 {
-  return CServiceBroker::GetSettings().GetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION);
+  return CSettings::GetInstance().GetInt(CSettings::SETTING_WEATHER_CURRENTLOCATION);
 }
 
 CJob *CWeather::GetJob() const
@@ -396,7 +401,7 @@ void CWeather::OnJobComplete(unsigned int jobID, bool success, CJob *job)
   CInfoLoader::OnJobComplete(jobID, success, job);
 }
 
-void CWeather::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CWeather::OnSettingChanged(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -406,13 +411,12 @@ void CWeather::OnSettingChanged(std::shared_ptr<const CSetting> setting)
   {
     // clear "WeatherProviderLogo" property that some weather addons set
     CGUIWindow* window = g_windowManager.GetWindow(WINDOW_WEATHER);
-    if (window != nullptr)
-      window->SetProperty("WeatherProviderLogo", "");
+    window->SetProperty("WeatherProviderLogo", "");
     Refresh();
   }
 }
 
-void CWeather::OnSettingAction(std::shared_ptr<const CSetting> setting)
+void CWeather::OnSettingAction(const CSetting *setting)
 {
   if (setting == NULL)
     return;
@@ -421,9 +425,9 @@ void CWeather::OnSettingAction(std::shared_ptr<const CSetting> setting)
   if (settingId == CSettings::SETTING_WEATHER_ADDONSETTINGS)
   {
     AddonPtr addon;
-    if (CAddonMgr::GetInstance().GetAddon(CServiceBroker::GetSettings().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER) && addon != NULL)
+    if (CAddonMgr::GetInstance().GetAddon(CSettings::GetInstance().GetString(CSettings::SETTING_WEATHER_ADDON), addon, ADDON_SCRIPT_WEATHER) && addon != NULL)
     { //! @todo maybe have ShowAndGetInput return a bool if settings changed, then only reset weather if true.
-      CGUIDialogAddonSettings::ShowForAddon(addon);
+      CGUIDialogAddonSettings::ShowAndGetInput(addon);
       Refresh();
     }
   }

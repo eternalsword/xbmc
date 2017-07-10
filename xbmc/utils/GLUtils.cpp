@@ -118,7 +118,7 @@ void LogGraphicsInfo()
 
 #else /* !HAS_GL */
   CLog::Log(LOGNOTICE,
-            "Please define LogGraphicsInfo for your chosen graphics library");
+            "Please define LogGraphicsInfo for your chosen graphics libary");
 #endif /* !HAS_GL */
 }
 

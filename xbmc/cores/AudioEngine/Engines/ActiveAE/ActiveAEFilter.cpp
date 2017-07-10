@@ -25,7 +25,6 @@
 
 extern "C" {
 #include "libavfilter/avfilter.h"
-#include "libavcodec/avcodec.h"
 #include "libavfilter/buffersink.h"
 #include "libavfilter/buffersrc.h"
 #include "libswresample/swresample.h"
@@ -55,8 +54,7 @@ void CActiveAEFilter::Init(AVSampleFormat fmt, int sampleRate, uint64_t channelL
   m_sampleRate = sampleRate;
   m_channelLayout = channelLayout;
   m_tempo = 1.0;
-  m_SamplesIn = 0;
-  m_SamplesOut = 0;
+  m_bufferedSamples = 0;
 }
 
 bool CActiveAEFilter::SetTempo(float tempo)
@@ -77,8 +75,7 @@ bool CActiveAEFilter::SetTempo(float tempo)
     return false;
   }
 
-  m_SamplesIn = 0;
-  m_SamplesOut = 0;
+  m_bufferedSamples = 0;
   return true;
 }
 
@@ -192,8 +189,7 @@ void CActiveAEFilter::CloseFilter()
   if (m_pConvertCtx)
     swr_free(&m_pConvertCtx);
 
-  m_SamplesIn = 0;
-  m_SamplesOut = 0;
+  m_bufferedSamples = 0;
 }
 
 int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples, int src_bufsize)
@@ -212,6 +208,8 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
 
   if (src_samples)
   {
+    m_bufferedSamples += src_samples;
+
     AVFrame *frame = av_frame_alloc();
     if (!frame)
       return -1;
@@ -224,13 +222,10 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     frame->nb_samples = src_samples;
     frame->format = m_sampleFormat;
 
-    m_SamplesIn += src_samples;
-
     result = avcodec_fill_audio_frame(frame, channels, m_sampleFormat,
                              src_buffer[0], src_bufsize, 16);
     if (result < 0)
     {
-      av_frame_free(&frame);
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - avcodec_fill_audio_frame failed");
       return -1;
     }
@@ -280,8 +275,6 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       return -1;
     }
 
-    m_SamplesOut = outFrame->pts;
-
     if (m_needConvert)
     {
       av_frame_unref(m_pOutFrame);
@@ -289,7 +282,6 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       av_frame_set_channel_layout(m_pOutFrame, m_channelLayout);
       av_frame_set_sample_rate(m_pOutFrame, m_sampleRate);
       result = swr_convert_frame(m_pConvertCtx, m_pOutFrame, m_pConvertFrame);
-      av_frame_unref(m_pConvertFrame);
       if (result < 0)
       {
         CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - swr_convert_frame failed");
@@ -320,6 +312,9 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       m_hasData = false;
     }
 
+    m_bufferedSamples -= samples * m_tempo;
+    if (m_bufferedSamples < 0)
+      m_bufferedSamples = 0;
     return samples;
   }
 
@@ -346,10 +341,5 @@ bool CActiveAEFilter::IsActive()
 
 int CActiveAEFilter::GetBufferedSamples()
 {
-  int ret = m_SamplesIn - (m_SamplesOut * m_tempo);
-  if (m_hasData)
-  {
-    ret += (m_pOutFrame->nb_samples - m_sampleOffset);
-  }
-  return ret;
+  return m_bufferedSamples;
 }

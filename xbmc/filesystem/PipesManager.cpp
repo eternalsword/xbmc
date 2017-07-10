@@ -38,15 +38,17 @@ Pipe::Pipe(const std::string &name, int nMaxSize)
   m_strPipeName = name;
   m_bOpen = true;
   m_bEof = false;
-  m_nOpenThreshold = PIPE_DEFAULT_MAX_SIZE / 2;
-  m_bReadyForRead = true; // open threshold disabled atm
+  m_nOpenThreashold = PIPE_DEFAULT_MAX_SIZE / 2;
+  m_bReadyForRead = true; // open threashold disabled atm
 }
 
-Pipe::~Pipe() = default;
-
-void Pipe::SetOpenThreshold(int threshold)
+Pipe::~Pipe()
 {
-  m_nOpenThreshold = threshold;
+}
+
+void Pipe::SetOpenThreashold(int threashold)
+{
+  m_nOpenThreashold = threashold;
 }
 
 const std::string &Pipe::GetName()
@@ -221,7 +223,7 @@ void Pipe::CheckStatus()
     m_readEvent.Reset();
   else
   {
-    if (!m_bReadyForRead  && (int)m_buffer.getMaxReadSize() >= m_nOpenThreshold)
+    if (!m_bReadyForRead  && (int)m_buffer.getMaxReadSize() >= m_nOpenThreashold)
       m_bReadyForRead = true;
     m_readEvent.Set();  
   }
@@ -269,7 +271,9 @@ PipesManager::PipesManager() : m_nGenIdHelper(1)
 {
 }
 
-PipesManager::~PipesManager() = default;
+PipesManager::~PipesManager()
+{
+}
 
 PipesManager &PipesManager::GetInstance()
 {

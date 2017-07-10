@@ -24,7 +24,7 @@ class TiXmlNode;
 class IXmlDeserializable
 {
 public:
-  virtual ~IXmlDeserializable() = default;
+  virtual ~IXmlDeserializable() { }
 
   virtual bool Deserialize(const TiXmlNode *node) = 0;
 };

@@ -161,7 +161,9 @@ field_value::field_value (const field_value & fv) {
 
 
 //empty destructor
-field_value::~field_value() = default;
+field_value::~field_value(){
+
+  }
 
   
 //Conversations functions

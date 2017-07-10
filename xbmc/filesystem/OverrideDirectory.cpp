@@ -25,10 +25,12 @@
 using namespace XFILE;
 
 
-COverrideDirectory::COverrideDirectory() = default;
+COverrideDirectory::COverrideDirectory()
+{ }
 
 
-COverrideDirectory::~COverrideDirectory() = default;
+COverrideDirectory::~COverrideDirectory()
+{ }
 
 bool COverrideDirectory::Create(const CURL& url)
 {

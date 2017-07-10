@@ -36,8 +36,7 @@
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
 #include "utils/Variant.h"
-#include "ServiceBroker.h"
-#include "cores/AudioEngine/Interfaces/AE.h"
+#include "cores/AudioEngine/AEFactory.h"
 #include "input/InputManager.h"
 #if defined(TARGET_WINDOWS)
   #include "utils/CharsetConverter.h"
@@ -305,10 +304,10 @@ void CExternalPlayer::Process()
 
   /* Suspend AE temporarily so exclusive or hog-mode sinks */
   /* don't block external player's access to audio device  */
-  CServiceBroker::GetActiveAE().Suspend();
+  CAEFactory::Suspend();
   // wait for AE has completed suspended
   XbmcThreads::EndTime timer(2000);
-  while (!timer.IsTimePast() && !CServiceBroker::GetActiveAE().IsSuspended())
+  while (!timer.IsTimePast() && !CAEFactory::IsSuspended())
   {
     Sleep(50);
   }
@@ -319,7 +318,7 @@ void CExternalPlayer::Process()
 
   m_callback.OnPlayBackStarted();
 
-  bool ret = true;
+  BOOL ret = TRUE;
 #if defined(TARGET_WINDOWS)
   ret = ExecuteAppW32(strFName.c_str(),strFArgs.c_str());
 #elif defined(TARGET_ANDROID)
@@ -339,7 +338,7 @@ void CExternalPlayer::Process()
 
     {
       CSingleLock lock(g_graphicsContext);
-      m_dialog = g_windowManager.GetWindow<CGUIDialogOK>(WINDOW_DIALOG_OK);
+      m_dialog = (CGUIDialogOK *)g_windowManager.GetWindow(WINDOW_DIALOG_OK);
       m_dialog->SetHeading(CVariant{23100});
       m_dialog->SetLine(1, CVariant{23104});
       m_dialog->SetLine(2, CVariant{23105});
@@ -385,7 +384,7 @@ void CExternalPlayer::Process()
 #endif
 
   /* Resume AE processing of XBMC native audio */
-  if (!CServiceBroker::GetActiveAE().Resume())
+  if (!CAEFactory::Resume())
   {
     CLog::Log(LOGFATAL, "%s: Failed to restart AudioEngine after return from external player",__FUNCTION__);
   }
@@ -401,7 +400,7 @@ void CExternalPlayer::Process()
 }
 
 #if defined(TARGET_WINDOWS)
-bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches)
+BOOL CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches)
 {
   CLog::Log(LOGNOTICE, "%s: %s %s", __FUNCTION__, strPath, strSwitches);
 
@@ -452,34 +451,35 @@ bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
     CloseHandle(m_processInfo.hProcess);
     m_processInfo.hProcess = 0;
   }
-  return (ret == 0);
+
+  return ret;
 }
 #endif
 
 #if !defined(TARGET_ANDROID) && (defined(TARGET_POSIX) || defined(TARGET_DARWIN_OSX))
-bool CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
+BOOL CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
 {
   CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
 
-  bool remoteUsed = CServiceBroker::GetInputManager().IsRemoteControlEnabled();
-  CServiceBroker::GetInputManager().DisableRemoteControl();
+  bool remoteUsed = CInputManager::GetInstance().IsRemoteControlEnabled();
+  CInputManager::GetInstance().DisableRemoteControl();
 
   int ret = system(strSwitches);
 
   if (remoteUsed)
-    CServiceBroker::GetInputManager().EnableRemoteControl();
+    CInputManager::GetInstance().EnableRemoteControl();
 
   if (ret != 0)
   {
     CLog::Log(LOGNOTICE, "%s: Failure: %d", __FUNCTION__, ret);
   }
 
-  return (ret == 0);
+  return ret == 0;
 }
 #endif
 
 #if defined(TARGET_ANDROID)
-bool CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strPath)
+BOOL CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strPath)
 {
   CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
 
@@ -490,7 +490,7 @@ bool CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strP
     CLog::Log(LOGNOTICE, "%s: Failure", __FUNCTION__);
   }
 
-  return (ret == 0);
+  return ret;
 }
 #endif
 
@@ -508,12 +508,24 @@ bool CExternalPlayer::HasAudio() const
   return false;
 }
 
+void CExternalPlayer::SwitchToNextLanguage()
+{
+}
+
+void CExternalPlayer::ToggleSubtitles()
+{
+}
+
 bool CExternalPlayer::CanSeek()
 {
   return false;
 }
 
 void CExternalPlayer::Seek(bool bPlus, bool bLargeStep, bool bChapterOverride)
+{
+}
+
+void CExternalPlayer::SwitchToNextAudioLanguage()
 {
 }
 
@@ -572,14 +584,18 @@ int64_t CExternalPlayer::GetTotalTime() // in milliseconds
   return (int64_t)m_totalTime * 1000;
 }
 
-void CExternalPlayer::SetSpeed(float speed)
+void CExternalPlayer::SetSpeed(float iSpeed)
 {
-  m_speed = speed;
+  m_speed = static_cast<int>(iSpeed);
 }
 
 float CExternalPlayer::GetSpeed()
 {
   return m_speed;
+}
+
+void CExternalPlayer::ShowOSD(bool bOnoff)
+{
 }
 
 std::string CExternalPlayer::GetPlayerState()
@@ -705,7 +721,7 @@ void CExternalPlayer::GetCustomRegexpReplacers(TiXmlElement *pRootElement,
         CLog::Log(LOGDEBUG,"  Registering replacer:");
         CLog::Log(LOGDEBUG,"    Match:[%s] Pattern:[%s] Replacement:[%s]", strMatch.c_str(), strPat.c_str(), strRep.c_str());
         CLog::Log(LOGDEBUG,"    Global:[%s] Stop:[%s]", bGlobal?"true":"false", bStop?"true":"false");
-        // keep literal commas since we use comma as a separator
+        // keep literal commas since we use comma as a seperator
         StringUtils::Replace(strMatch, ",",",,");
         StringUtils::Replace(strPat, ",",",,");
         StringUtils::Replace(strRep, ",",",,");

@@ -164,24 +164,19 @@ void COverlayQuadsDX::Render(SRenderState &state)
   if (m_count == 0)
     return;
 
-  ID3D11Buffer* vertexBuffer = m_vertex.Get();
-  if (vertexBuffer == nullptr)
-    return;
-
   ID3D11DeviceContext* pContext = g_Windowing.Get3D11Context();
   CGUIShaderDX* pGUIShader = g_Windowing.GetGUIShader();
 
-  XMMATRIX world, view, proj;
-  pGUIShader->GetWVP(world, view, proj);
+  XMMATRIX world = pGUIShader->GetWorld();
+  XMMATRIX view = pGUIShader->GetView();
+  XMMATRIX proj = pGUIShader->GetProjection();
 
   if (g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_HORIZONTAL
    || g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_VERTICAL)
   {
     CRect rect;
     g_Windowing.GetViewPort(rect);
-    g_Windowing.SetCameraPosition(CPoint(rect.Width() * 0.5f, rect.Height() * 0.5f),
-                                  static_cast<int>(rect.Width()),
-                                  static_cast<int>(rect.Height()));
+    g_Windowing.SetCameraPosition(CPoint(rect.Width()*0.5f, rect.Height()*0.5f), rect.Width(), rect.Height());
   }
 
   XMMATRIX trans = XMMatrixTranslation(state.x, state.y, 0.0f);
@@ -192,6 +187,7 @@ void COverlayQuadsDX::Render(SRenderState &state)
   const unsigned stride = sizeof(Vertex);
   const unsigned offset = 0;
 
+  ID3D11Buffer* vertexBuffer = m_vertex.Get();
   // Set the vertex buffer to active in the input assembler so it can be rendered.
   pContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
   // Set the type of primitive that should be rendered from this vertex buffer, in this case triangles.
@@ -205,7 +201,9 @@ void COverlayQuadsDX::Render(SRenderState &state)
   pGUIShader->Draw(m_count * 6, 0);
 
   // restoring transformation
-  pGUIShader->SetWVP(world, view, proj);
+  pGUIShader->SetWorld(world);
+  pGUIShader->SetView(view);
+  pGUIShader->SetProjection(proj);
   pGUIShader->RestoreBuffers();
 }
 
@@ -334,24 +332,19 @@ void COverlayImageDX::Load(uint32_t* rgba, int width, int height, int stride)
 
 void COverlayImageDX::Render(SRenderState &state)
 {
-  ID3D11Buffer* vertexBuffer = m_vertex.Get();
-  if (vertexBuffer == nullptr)
-    return;
-
   ID3D11DeviceContext* pContext = g_Windowing.Get3D11Context();
   CGUIShaderDX* pGUIShader = g_Windowing.GetGUIShader();
 
-  XMMATRIX world, view, proj;
-  pGUIShader->GetWVP(world, view, proj);
+  XMMATRIX world = pGUIShader->GetWorld();
+  XMMATRIX view = pGUIShader->GetView();
+  XMMATRIX proj = pGUIShader->GetProjection();
 
   if (g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_HORIZONTAL
    || g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_SPLIT_VERTICAL)
   {
     CRect rect;
     g_Windowing.GetViewPort(rect);
-    g_Windowing.SetCameraPosition(CPoint(rect.Width() * 0.5f, rect.Height() * 0.5f),
-                                  static_cast<int>(rect.Width()),
-                                  static_cast<int>(rect.Height()));
+    g_Windowing.SetCameraPosition(CPoint(rect.Width()*0.5f, rect.Height()*0.5f), rect.Width(), rect.Height());
   }
 
   XMMATRIX trans = m_pos == POSITION_RELATIVE
@@ -364,6 +357,7 @@ void COverlayImageDX::Render(SRenderState &state)
   const unsigned stride = m_vertex.GetStride();
   const unsigned offset = 0;
 
+  ID3D11Buffer* vertexBuffer = m_vertex.Get();
   pContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
   pContext->IASetPrimitiveTopology(D3D10_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
@@ -375,7 +369,9 @@ void COverlayImageDX::Render(SRenderState &state)
   pGUIShader->Draw(4, 0);
 
   // restoring transformation
-  pGUIShader->SetWVP(world, view, proj);
+  pGUIShader->SetWorld(world);
+  pGUIShader->SetView(view);
+  pGUIShader->SetProjection(proj);
   pGUIShader->RestoreBuffers();
 }
 

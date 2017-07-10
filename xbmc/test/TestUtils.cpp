@@ -22,7 +22,6 @@
 #include "Util.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
-#include "platform/win32/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 
@@ -37,7 +36,7 @@
 class CTempFile : public XFILE::CFile
 {
 public:
-  CTempFile() = default;
+  CTempFile(){};
   ~CTempFile()
   {
     Delete();
@@ -57,15 +56,13 @@ public:
     strcpy(tmp, m_ptempFilePath.c_str());
 
 #ifdef TARGET_WINDOWS
-    using namespace KODI::PLATFORM::WINDOWS;
-    wchar_t tmpW[MAX_PATH];
-    if (!GetTempFileName(ToW(CSpecialProtocol::TranslatePath("special://temp/")).c_str(),
-                         L"xbmctempfile", 0, tmpW))
+    if (!GetTempFileName(CSpecialProtocol::TranslatePath("special://temp/").c_str(),
+                         "xbmctempfile", 0, tmp))
     {
       m_ptempFilePath = "";
       return false;
     }
-    m_ptempFilePath = FromW(tmpW);
+    m_ptempFilePath = tmp;
 #else
     int fd;
     if ((fd = mkstemps(tmp, suffix.length())) < 0)

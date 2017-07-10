@@ -57,7 +57,7 @@ TEST_F(TestAddonFactory, ShouldFailWhenAddonDoesNotHaveRequestedType)
   EXPECT_EQ(nullptr, addon);
 }
 
-TEST_F(TestAddonFactory, ShouldPickFirstExtensionWhenNotRequestingSpecificType)
+TEST_F(TestAddonFactory, ShouldPickFirstExtenstionWhenNotRequestingSpecificType)
 {
   cp_extension_t extensions[2] = {
       {&plugin, (char*)"xbmc.python.script", nullptr, nullptr, nullptr, nullptr},
@@ -71,7 +71,7 @@ TEST_F(TestAddonFactory, ShouldPickFirstExtensionWhenNotRequestingSpecificType)
   EXPECT_EQ(ADDON_SCRIPT, addon->Type());
 }
 
-TEST_F(TestAddonFactory, ShouldIgnoreMetadataExtension)
+TEST_F(TestAddonFactory, ShouldIgnoreMetadataExtenstion)
 {
   cp_extension_t extensions[2] = {
       {&plugin, (char*)"kodi.addon.metadata", nullptr, nullptr, nullptr, nullptr},

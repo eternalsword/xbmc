@@ -23,7 +23,6 @@
 #include "GUIWindowSettingsCategory.h"
 #include "GUIPassword.h"
 #include "GUIUserMessages.h"
-#include "ServiceBroker.h"
 #include "input/Key.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
@@ -38,9 +37,8 @@
 #define SETTINGS_PLAYER                 WINDOW_SETTINGS_PLAYER - WINDOW_SETTINGS_START
 #define SETTINGS_MEDIA                  WINDOW_SETTINGS_MEDIA - WINDOW_SETTINGS_START
 #define SETTINGS_INTERFACE              WINDOW_SETTINGS_INTERFACE - WINDOW_SETTINGS_START
-#define SETTINGS_GAMES                  WINDOW_SETTINGS_MYGAMES - WINDOW_SETTINGS_START
 
-#define CONTROL_BTN_LEVELS               20
+#define CONTRL_BTN_LEVELS               20
 
 typedef struct {
   int id;
@@ -52,17 +50,18 @@ static const SettingGroup s_settingGroupMap[] = { { SETTINGS_SYSTEM,      "syste
                                                   { SETTINGS_PVR,         "pvr" },
                                                   { SETTINGS_PLAYER,      "player" },
                                                   { SETTINGS_MEDIA,       "media" },
-                                                  { SETTINGS_INTERFACE,   "interface" },
-                                                  { SETTINGS_GAMES,       "games" } };
-
+                                                  { SETTINGS_INTERFACE,   "interface" } };
+                                                  
 #define SettingGroupSize sizeof(s_settingGroupMap) / sizeof(SettingGroup)
 
 CGUIWindowSettingsCategory::CGUIWindowSettingsCategory()
     : CGUIDialogSettingsManagerBase(WINDOW_SETTINGS_SYSTEM, "SettingsCategory.xml"),
-      m_settings(CServiceBroker::GetSettings()),
+      m_settings(CSettings::GetInstance()),
       m_iSection(0),
       m_returningFromSkinLoad(false)
 {
+  m_settingsManager = m_settings.GetSettingsManager();
+
   // set the correct ID range...
   m_idRange.clear();
   m_idRange.push_back(WINDOW_SETTINGS_SYSTEM);
@@ -71,10 +70,10 @@ CGUIWindowSettingsCategory::CGUIWindowSettingsCategory()
   m_idRange.push_back(WINDOW_SETTINGS_PLAYER);
   m_idRange.push_back(WINDOW_SETTINGS_MEDIA);
   m_idRange.push_back(WINDOW_SETTINGS_INTERFACE);
-  m_idRange.push_back(WINDOW_SETTINGS_MYGAMES);
 }
 
-CGUIWindowSettingsCategory::~CGUIWindowSettingsCategory() = default;
+CGUIWindowSettingsCategory::~CGUIWindowSettingsCategory()
+{ }
 
 bool CGUIWindowSettingsCategory::OnMessage(CGUIMessage &message)
 {
@@ -134,14 +133,14 @@ bool CGUIWindowSettingsCategory::OnAction(const CAction &action)
         return false;
       
       CViewStateSettings::GetInstance().CycleSettingLevel();
-      CServiceBroker::GetSettings().Save();
+      CSettings::GetInstance().Save();
 
       // try to keep the current position
       std::string oldCategory;
       if (m_iCategory >= 0 && m_iCategory < (int)m_categories.size())
         oldCategory = m_categories[m_iCategory]->GetId();
 
-      SET_CONTROL_LABEL(CONTROL_BTN_LEVELS, 10036 + (int)CViewStateSettings::GetInstance().GetSettingLevel());
+      SET_CONTROL_LABEL(CONTRL_BTN_LEVELS, 10036 + (int)CViewStateSettings::GetInstance().GetSettingLevel());
       // only re-create the categories, the settings will be created later
       SetupControls(false);
 
@@ -178,7 +177,7 @@ bool CGUIWindowSettingsCategory::OnBack(int actionID)
 
 void CGUIWindowSettingsCategory::OnWindowLoaded()
 {
-  SET_CONTROL_LABEL(CONTROL_BTN_LEVELS, 10036 + (int)CViewStateSettings::GetInstance().GetSettingLevel());
+  SET_CONTROL_LABEL(CONTRL_BTN_LEVELS, 10036 + (int)CViewStateSettings::GetInstance().GetSettingLevel());
   CGUIDialogSettingsManagerBase::OnWindowLoaded();
 }
 
@@ -187,7 +186,7 @@ int CGUIWindowSettingsCategory::GetSettingLevel() const
   return (int)CViewStateSettings::GetInstance().GetSettingLevel();
 }
 
-SettingSectionPtr CGUIWindowSettingsCategory::GetSection()
+CSettingSection* CGUIWindowSettingsCategory::GetSection()
 {
   for (size_t index = 0; index < SettingGroupSize; index++)
   {
@@ -201,11 +200,6 @@ SettingSectionPtr CGUIWindowSettingsCategory::GetSection()
 void CGUIWindowSettingsCategory::Save()
 {
   m_settings.Save();
-}
-
-CSettingsManager* CGUIWindowSettingsCategory::GetSettingsManager() const
-{
-  return m_settings.GetSettingsManager();
 }
 
 void CGUIWindowSettingsCategory::FocusElement(const std::string& elementId)

@@ -19,14 +19,20 @@
  */
 #include "system.h"
 
-// always define GL_GLEXT_PROTOTYPES before include gl headers
-#if !defined(GL_GLEXT_PROTOTYPES)
-  #define GL_GLEXT_PROTOTYPES
-#endif
+#if defined(HAVE_X11) && defined(HAS_EGL)
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glext.h>
+#ifdef HAS_GL
+  // always define GL_GLEXT_PROTOTYPES before include gl headers
+  #if !defined(GL_GLEXT_PROTOTYPES)
+    #define GL_GLEXT_PROTOTYPES
+  #endif
+  #include <GL/gl.h>
+  #include <GL/glu.h>
+  #include <GL/glext.h>
+#elif HAS_GLES == 2
+  #include <GLES2/gl2.h>
+  #include <GLES2/gl2ext.h>
+#endif
 
 #include "GLContextEGL.h"
 #include "utils/log.h"
@@ -168,12 +174,14 @@ bool CGLContextEGL::Refresh(bool force, int screen, Window glWindow, bool &newCo
       return false;
     }
 
+#if defined (HAS_GL)
     if (!eglBindAPI(EGL_OPENGL_API))
     {
       CLog::Log(LOGERROR, "failed to initialize egl");
       XFree(vInfo);
       return false;
     }
+#endif
 
     if(m_eglConfig == EGL_NO_CONFIG)
     {
@@ -410,3 +418,5 @@ XVisualInfo* CGLContextEGL::GetVisual()
 			&x11_visual_info_template,
 			&num_visuals);
 }
+
+#endif

@@ -30,23 +30,26 @@
 #include "platform/win32/IMMNotificationClient.h"
 #endif
 
-#if defined(TARGET_ANDROID)
-#include "platform/android/activity/XBMCApp.h"
-#endif
-
 #include "platform/MessagePrinter.h"
-#include "utils/log.h"
 
-extern "C" int XBMC_Run(bool renderGUI, const CAppParamParser &params)
+
+extern "C" int XBMC_Run(bool renderGUI)
 {
   int status = -1;
 
   if (!g_advancedSettings.Initialized())
   {
+#ifdef _DEBUG
+  g_advancedSettings.m_logLevel     = LOG_LEVEL_DEBUG;
+  g_advancedSettings.m_logLevelHint = LOG_LEVEL_DEBUG;
+#else
+  g_advancedSettings.m_logLevel     = LOG_LEVEL_NORMAL;
+  g_advancedSettings.m_logLevelHint = LOG_LEVEL_NORMAL;
+#endif
     g_advancedSettings.Initialize();
   }
 
-  if (!g_application.Create(params))
+  if (!g_application.Create())
   {
     CMessagePrinter::DisplayError("ERROR: Unable to create application. Exiting");
     return status;
@@ -55,9 +58,7 @@ extern "C" int XBMC_Run(bool renderGUI, const CAppParamParser &params)
 #ifdef TARGET_RASPBERRY_PI
   if(!g_RBP.Initialize())
     return false;
-  g_RBP.LogFirmwareVersion();
-#elif defined(TARGET_ANDROID)
-  CXBMCApp::get()->Initialize();
+  g_RBP.LogFirmwareVerison();
 #endif
 
   if (renderGUI && !g_application.CreateGUI())
@@ -85,7 +86,7 @@ extern "C" int XBMC_Run(bool renderGUI, const CAppParamParser &params)
 
   try
   {
-    status = g_application.Run(params);
+    status = g_application.Run();
   }
 #ifdef TARGET_WINDOWS
   catch (const XbmcCommons::UncheckedException &e)
@@ -114,8 +115,6 @@ extern "C" int XBMC_Run(bool renderGUI, const CAppParamParser &params)
 
 #ifdef TARGET_RASPBERRY_PI
   g_RBP.Deinitialize();
-#elif defined(TARGET_ANDROID)
-  CXBMCApp::get()->Deinitialize();
 #endif
 
   return status;

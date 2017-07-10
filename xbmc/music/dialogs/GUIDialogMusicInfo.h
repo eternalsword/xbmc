@@ -34,7 +34,7 @@ class CGUIDialogMusicInfo :
 {
 public:
   CGUIDialogMusicInfo(void);
-  ~CGUIDialogMusicInfo(void) override;
+  virtual ~CGUIDialogMusicInfo(void);
   bool OnMessage(CGUIMessage& message) override;
   bool OnAction(const CAction &action) override;
   void SetAlbum(const CAlbum& album, const std::string &path);

@@ -18,7 +18,7 @@
  *
  */
 
-#include "TimingConstants.h"
+#include "DVDClock.h"
 #include "DemuxMultiSource.h"
 #include "DVDDemuxUtils.h"
 #include "DVDFactoryDemuxer.h"
@@ -27,7 +27,9 @@
 #include "Util.h"
 
 
-CDemuxMultiSource::CDemuxMultiSource() = default;
+CDemuxMultiSource::CDemuxMultiSource()
+{
+}
 
 CDemuxMultiSource::~CDemuxMultiSource()
 {
@@ -149,7 +151,7 @@ bool CDemuxMultiSource::Open(CDVDInputStream* pInput)
 
       m_demuxerMap[demuxer->GetDemuxerId()] = demuxer;
       m_DemuxerToInputStreamMap[demuxer] = *iter;
-      m_demuxerQueue.push(std::make_pair(-1.0, demuxer));
+      m_demuxerQueue.push(std::make_pair((double)DVD_NOPTS_VALUE, demuxer));
       ++iter;
     }
   }
@@ -194,14 +196,14 @@ DemuxPacket* CDemuxMultiSource::Read()
           __FUNCTION__, CURL::GetRedacted(currentDemuxer->GetFileName()).c_str());
       }
       else    //maybe add an error counter?
-        m_demuxerQueue.push(std::make_pair(-1.0, currentDemuxer));
+        m_demuxerQueue.push(std::make_pair((double)DVD_NOPTS_VALUE, currentDemuxer));
     }
   }
 
   return packet;
 }
 
-bool CDemuxMultiSource::SeekTime(double time, bool backwards, double* startpts)
+bool CDemuxMultiSource::SeekTime(int time, bool backwords, double* startpts)
 {
   DemuxQueue demuxerQueue = DemuxQueue();
   bool ret = false;
@@ -210,12 +212,12 @@ bool CDemuxMultiSource::SeekTime(double time, bool backwards, double* startpts)
     if (iter.second->SeekTime(time, false, startpts))
     {
       demuxerQueue.push(std::make_pair(*startpts, iter.second));
-      CLog::Log(LOGDEBUG, "%s - starting demuxer from: %f", __FUNCTION__, time);
+      CLog::Log(LOGDEBUG, "%s - starting demuxer from: %d", __FUNCTION__, time);
       ret = true;
     }
     else
     {
-      CLog::Log(LOGDEBUG, "%s - failed to start demuxing from: %f", __FUNCTION__, time);
+      CLog::Log(LOGDEBUG, "%s - failed to start demuxing from: %d", __FUNCTION__, time);
     }
   }
   m_demuxerQueue = demuxerQueue;
@@ -228,7 +230,8 @@ void CDemuxMultiSource::SetMissingStreamDetails(DemuxPtr demuxer)
   std::string fileName = demuxer->GetFileName();
   for (auto& stream : demuxer->GetStreams())
   {
-    ExternalStreamInfo info = CUtil::GetExternalStreamDetailsFromFilename(baseFileName, fileName);
+    ExternalStreamInfo info;
+    CUtil::GetExternalStreamDetailsFromFilename(baseFileName, fileName, info);
 
     if (stream->flags == CDemuxStream::FLAG_NONE)
     {

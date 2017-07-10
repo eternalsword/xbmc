@@ -42,7 +42,9 @@ GUIScrollBarControl::GUIScrollBarControl(int parentID, int controlID, float posX
   m_showOnePage = showOnePage;
 }
 
-GUIScrollBarControl::~GUIScrollBarControl(void) = default;
+GUIScrollBarControl::~GUIScrollBarControl(void)
+{
+}
 
 void GUIScrollBarControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {

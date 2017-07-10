@@ -28,9 +28,9 @@ public:
   CGUIViewStateWindowPrograms(const CFileItemList& items);
 
 protected:
-  void SaveViewState() override;
-  std::string GetLockType() override;
-  std::string GetExtensions() override;
-  VECSOURCES& GetSources() override;
+  virtual void SaveViewState();
+  virtual std::string GetLockType();
+  virtual std::string GetExtensions();
+  virtual VECSOURCES& GetSources();
 };
 

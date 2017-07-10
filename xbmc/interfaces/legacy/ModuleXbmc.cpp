@@ -20,12 +20,14 @@
 
 //! @todo Need a uniform way of returning an error status
 
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
 #include "network/Network.h"
 
 #include "ModuleXbmc.h"
 
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "utils/URIUtils.h"
 #include "aojsonrpc.h"
@@ -46,7 +48,7 @@
 #include "settings/Settings.h"
 #include "guilib/TextureManager.h"
 #include "Util.h"
-#include "cores/AudioEngine/Interfaces/AE.h"
+#include "cores/AudioEngine/AEFactory.h"
 #include "storage/MediaManager.h"
 #include "utils/LangCodeExpander.h"
 #include "utils/StringUtils.h"
@@ -172,7 +174,7 @@ namespace XBMCAddon
     String getSkinDir()
     {
       XBMC_TRACE;
-      return CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
+      return CSettings::GetInstance().GetString(CSettings::SETTING_LOOKANDFEEL_SKIN);
     }
 
     String getLanguage(int format /* = CLangCodeExpander::ENGLISH_NAME */, bool region /*= false*/)
@@ -208,12 +210,12 @@ namespace XBMCAddon
       case CLangCodeExpander::ISO_639_2:
         {
           std::string langCode;
-          g_LangCodeExpander.ConvertToISO6392B(lang, langCode);
+          g_LangCodeExpander.ConvertToISO6392T(lang, langCode);
           if (region)
           {
             std::string region = g_langInfo.GetRegionLocale();
             std::string region3Code;
-            g_LangCodeExpander.ConvertToISO6392B(region, region3Code);
+            g_LangCodeExpander.ConvertToISO6392T(region, region3Code);
             region3Code = "-" + region3Code;
             return (langCode += region3Code);
           }
@@ -461,7 +463,7 @@ namespace XBMCAddon
       else if (strcmpi(mediaType, "music") == 0)
         result = g_advancedSettings.GetMusicExtensions();
       else if (strcmpi(mediaType, "picture") == 0)
-        result = g_advancedSettings.GetPictureExtensions();
+        result = g_advancedSettings.m_pictureExtensions;
 
       //! @todo implement
       //    else
@@ -486,12 +488,12 @@ namespace XBMCAddon
 
     void audioSuspend()
     {  
-      CServiceBroker::GetActiveAE().Suspend();
+      CAEFactory::Suspend();
     }
 
     void audioResume()
     { 
-      CServiceBroker::GetActiveAE().Resume();
+      CAEFactory::Resume();
     }
 
     String convertLanguage(const char* language, int format)
@@ -505,7 +507,7 @@ namespace XBMCAddon
           // maybe it's a check whether the language exists or not
           if (convertedLanguage.empty())
           {
-            g_LangCodeExpander.ConvertToISO6392B(language, convertedLanguage);
+            g_LangCodeExpander.ConvertToISO6392T(language, convertedLanguage);
             g_LangCodeExpander.Lookup(convertedLanguage, convertedLanguage);
           }
           break;
@@ -514,7 +516,7 @@ namespace XBMCAddon
         g_LangCodeExpander.ConvertToISO6391(language, convertedLanguage);
         break;
       case CLangCodeExpander::ISO_639_2:
-        g_LangCodeExpander.ConvertToISO6392B(language, convertedLanguage);
+        g_LangCodeExpander.ConvertToISO6392T(language, convertedLanguage);
         break;
       default:
         return "";

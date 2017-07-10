@@ -28,14 +28,14 @@ class CGUIDialogTeletext : public CGUIDialog
 {
 public:
   CGUIDialogTeletext(void);
-  ~CGUIDialogTeletext(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  bool OnAction(const CAction& action) override;
-  bool OnBack(int actionID) override;
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  void OnInitWindow() override;
-  void OnDeinitWindow(int nextWindowID) override;
+  virtual ~CGUIDialogTeletext(void);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual bool OnAction(const CAction& action);
+  virtual bool OnBack(int actionID);
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual void OnInitWindow();
+  virtual void OnDeinitWindow(int nextWindowID);
 
 protected:
   bool                m_bClose;           /* Close sendet, needed for fade out */

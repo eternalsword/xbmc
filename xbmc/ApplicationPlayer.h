@@ -28,7 +28,6 @@
 #include "threads/SystemClock.h"
 #include "guilib/Resolution.h"
 #include "cores/IPlayer.h"
-#include "pvr/PVRTypes.h"
 
 typedef enum
 {
@@ -36,6 +35,12 @@ typedef enum
   PLAYBACK_FAIL = 0,
   PLAYBACK_OK = 1,
 } PlayBackRet;
+
+namespace PVR
+{
+  class CPVRChannel;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
+}
 
 class CAction;
 class CPlayerOptions;
@@ -78,6 +83,7 @@ public:
   void SetPlaySpeed(float speed);
 
   void FrameMove();
+  bool HasFrame();
   void Render(bool clear, uint32_t alpha = 255, bool gui = true);
   void FlushRenderer();
   void SetRenderViewMode(int mode);
@@ -112,10 +118,13 @@ public:
   int   GetChapter();  
   void  GetChapterName(std::string& strChapterName, int chapterIdx=-1);
   int64_t GetChapterPos(int chapterIdx=-1);
+  void  GetDeinterlaceMethods(std::vector<int> &deinterlaceMethods);
   float GetPercentage() const;
   std::string GetPlayerState();
   std::string GetPlayingTitle();
   int   GetPreferredPlaylist() const;
+  void  GetRenderFeatures(std::vector<int> &renderFeatures);
+  void  GetScalingMethods(std::vector<int> &scalingMethods);
   bool  GetStreamDetails(CStreamDetails &details);
   int   GetSubtitle();
   void  GetSubtitleCapabilities(std::vector<int> &subCaps);
@@ -132,7 +141,6 @@ public:
   bool  HasAudio() const;
   bool  HasMenu() const;
   bool  HasVideo() const;
-  bool  HasGame() const;
   bool  HasRDS() const;
   bool  IsCaching() const;
   bool  IsInMenu() const;
@@ -142,7 +150,6 @@ public:
   bool  IsPlaying() const;
   bool  IsPlayingAudio() const;
   bool  IsPlayingVideo() const;
-  bool  IsPlayingGame() const;
   bool  IsPlayingRDS() const;
   bool  IsRecording() const;
   void  LoadPage(int p, int sp, unsigned char* buffer);

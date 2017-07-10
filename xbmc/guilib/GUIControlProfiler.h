@@ -81,7 +81,7 @@ public:
   float m_fPerfScale;
 private:
   CGUIControlProfiler(void);
-  ~CGUIControlProfiler(void) = default;
+  ~CGUIControlProfiler(void) {};
   CGUIControlProfiler(const CGUIControlProfiler &that);
   CGUIControlProfiler &operator=(const CGUIControlProfiler &that);
 

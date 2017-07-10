@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -20,16 +20,13 @@
 
 #include "DriverPrimitive.h"
 
-using namespace KODI;
 using namespace JOYSTICK;
 
 CDriverPrimitive::CDriverPrimitive(void)
   : m_type(),
     m_driverIndex(0),
     m_hatDirection(),
-    m_center(0),
-    m_semiAxisDirection(),
-    m_range(1)
+    m_semiAxisDirection()
 {
 }
 
@@ -37,9 +34,7 @@ CDriverPrimitive::CDriverPrimitive(PRIMITIVE_TYPE type, unsigned int index)
   : m_type(type),
     m_driverIndex(index),
     m_hatDirection(),
-    m_center(0),
-    m_semiAxisDirection(),
-    m_range(1)
+    m_semiAxisDirection()
 {
 }
 
@@ -47,19 +42,15 @@ CDriverPrimitive::CDriverPrimitive(unsigned int hatIndex, HAT_DIRECTION directio
   : m_type(HAT),
     m_driverIndex(hatIndex),
     m_hatDirection(direction),
-    m_center(0),
-    m_semiAxisDirection(),
-    m_range(1)
+    m_semiAxisDirection()
 {
 }
 
-CDriverPrimitive::CDriverPrimitive(unsigned int axisIndex, int center, SEMIAXIS_DIRECTION direction, unsigned int range)
+CDriverPrimitive::CDriverPrimitive(unsigned int axisIndex, SEMIAXIS_DIRECTION direction)
   : m_type(SEMIAXIS),
     m_driverIndex(axisIndex),
     m_hatDirection(),
-    m_center(center),
-    m_semiAxisDirection(direction),
-    m_range(range)
+    m_semiAxisDirection(direction)
 {
 }
 
@@ -75,10 +66,7 @@ bool CDriverPrimitive::operator==(const CDriverPrimitive& rhs) const
     case HAT:
       return m_driverIndex == rhs.m_driverIndex && m_hatDirection == rhs.m_hatDirection;
     case SEMIAXIS:
-      return m_driverIndex       == rhs.m_driverIndex &&
-             m_center            == rhs.m_center &&
-             m_semiAxisDirection == rhs.m_semiAxisDirection &&
-             m_range             == rhs.m_range;
+      return m_driverIndex == rhs.m_driverIndex && m_semiAxisDirection == rhs.m_semiAxisDirection;
     default:
       return true;
     }
@@ -106,14 +94,8 @@ bool CDriverPrimitive::operator<(const CDriverPrimitive& rhs) const
 
   if (m_type == SEMIAXIS)
   {
-    if (m_center < rhs.m_center) return true;
-    if (m_center > rhs.m_center) return false;
-
     if (m_semiAxisDirection < rhs.m_semiAxisDirection) return true;
     if (m_semiAxisDirection > rhs.m_semiAxisDirection) return false;
-
-    if (m_range < rhs.m_range) return true;
-    if (m_range > rhs.m_range) return false;
   }
 
   return false;
@@ -134,36 +116,8 @@ bool CDriverPrimitive::IsValid(void) const
 
   if (m_type == SEMIAXIS)
   {
-    unsigned int maxRange = 1;
-
-    switch (m_center)
-    {
-    case -1:
-    {
-      if (m_semiAxisDirection != SEMIAXIS_DIRECTION::POSITIVE)
-        return false;
-      maxRange = 2;
-      break;
-    }
-    case 0:
-    {
-      if (m_semiAxisDirection != SEMIAXIS_DIRECTION::POSITIVE &&
-          m_semiAxisDirection != SEMIAXIS_DIRECTION::NEGATIVE)
-        return false;
-      break;
-    }
-    case 1:
-    {
-      if (m_semiAxisDirection != SEMIAXIS_DIRECTION::POSITIVE)
-        return false;
-      maxRange = 2;
-      break;
-    }
-    default:
-      break;
-    }
-
-    return 1 <= m_range && m_range <= maxRange;
+    return m_semiAxisDirection == SEMIAXIS_DIRECTION::POSITIVE ||
+           m_semiAxisDirection == SEMIAXIS_DIRECTION::NEGATIVE;
   }
 
   return false;

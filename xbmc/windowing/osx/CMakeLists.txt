@@ -1,25 +1,17 @@
 if(CORE_SYSTEM_NAME STREQUAL osx)
-  set(SOURCES OSScreenSaverOSX.cpp
-              WinEventsOSX.mm
-              WinEventsSDL.cpp
+  set(SOURCES WinEventsOSX.mm
               WinSystemOSX.mm
-              WinSystemOSXGL.mm
-              VideoSyncOsx.cpp)
-  set(HEADERS OSScreenSaverOSX.h
-              WinEventsOSX.h
-              WinEventsSDL.h
+              WinSystemOSXGL.mm)
+  set(HEADERS WinEventsOSX.h
               WinSystemOSX.h
-              WinSystemOSXGL.h
-              VideoSyncOsx.h)
+              WinSystemOSXGL.h)
 endif()
 
 if(CORE_SYSTEM_NAME STREQUAL ios)
   set(SOURCES WinEventsIOS.mm
-              WinSystemIOS.mm
-              VideoSyncIos.cpp)
+              WinSystemIOS.mm)
   set(HEADERS WinEventsIOS.h
-              WinSystemIOS.h
-              VideoSyncIos.h)
+              WinSystemIOS.h)
 endif()
 
 core_add_library(windowing_osx)

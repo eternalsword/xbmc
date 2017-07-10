@@ -26,20 +26,18 @@
 class CBaseEvent : public IEvent
 {
 public:
-  ~CBaseEvent() override = default;
+  virtual ~CBaseEvent() { }
 
-  std::string GetIdentifier() const override { return m_identifier; }
-  EventLevel GetLevel() const override { return m_level; }
-  std::string GetLabel() const override;
-  std::string GetIcon() const override { return m_icon; }
-  std::string GetDescription() const override;
-  std::string GetDetails() const override;
-  std::string GetExecutionLabel() const override;
-  CDateTime GetDateTime() const override { return m_dateTime; }
+  virtual std::string GetIdentifier() const { return m_identifier; }
+  virtual EventLevel GetLevel() const { return m_level; }
+  virtual std::string GetLabel() const;
+  virtual std::string GetIcon() const { return m_icon; }
+  virtual std::string GetDescription() const;
+  virtual std::string GetDetails() const;
+  virtual std::string GetExecutionLabel() const;
+  virtual CDateTime GetDateTime() const { return m_dateTime; }
 
-  bool CanExecute() const override { return !GetExecutionLabel().empty(); }
-
-  void ToSortable(SortItem& sortable, Field field) const override;
+  virtual bool CanExecute() const { return !GetExecutionLabel().empty(); }
 
 protected:
   CBaseEvent(const std::string& identifier, const CVariant& label, const CVariant& description, EventLevel level = EventLevel::Information);
@@ -57,8 +55,6 @@ protected:
 
 private:
   static std::string VariantToLocalizedString(const CVariant& variant);
-  static uint64_t GetInternalTimestamp();
 
-  uint64_t m_timestamp; // high res internal time stamp
-  CDateTime m_dateTime; // user interface time stamp
+  CDateTime m_dateTime;
 };

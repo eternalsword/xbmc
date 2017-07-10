@@ -31,8 +31,8 @@
 
 using namespace XFILE;
 
-CDAVDirectory::CDAVDirectory(void) = default;
-CDAVDirectory::~CDAVDirectory(void) = default;
+CDAVDirectory::CDAVDirectory(void) {}
+CDAVDirectory::~CDAVDirectory(void) {}
 
 /*
  * Parses a <response>

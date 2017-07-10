@@ -38,8 +38,6 @@
 
 class CURL;
 
-static const std::string PATH_TRAVERSAL(R"_((^|\/|\\)\.{2}($|\/|\\))_");
-
 struct SZipEntry {
   unsigned int header;
   unsigned short version;

@@ -60,13 +60,13 @@ public:
    */
   bool RipCD();
 
-  void OnJobComplete(unsigned int jobID, bool success, CJob* job) override;
+  virtual void OnJobComplete(unsigned int jobID, bool success, CJob* job);
 
 private:
   // private construction and no assignments
   CCDDARipper();
   CCDDARipper(const CCDDARipper&);
-  ~CCDDARipper() override;
+  virtual ~CCDDARipper();
   CCDDARipper const& operator=(CCDDARipper const&);
   
   /*! \brief Return track file name extension for the given encoder type

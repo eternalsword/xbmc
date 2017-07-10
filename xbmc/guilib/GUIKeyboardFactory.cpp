@@ -19,7 +19,6 @@
  */
 
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "LocalizeStrings.h"
 #include "GUIKeyboardFactory.h"
@@ -38,12 +37,15 @@
 
 using namespace KODI::MESSAGING;
 
-CGUIKeyboard *CGUIKeyboardFactory::g_activeKeyboard = NULL;
+CGUIKeyboard *CGUIKeyboardFactory::g_activedKeyboard = NULL;
 FILTERING CGUIKeyboardFactory::m_filtering = FILTERING_NONE;
 
-CGUIKeyboardFactory::CGUIKeyboardFactory(void) = default;
+CGUIKeyboardFactory::CGUIKeyboardFactory(void)
+{
+}
 
-CGUIKeyboardFactory::~CGUIKeyboardFactory(void) = default;
+CGUIKeyboardFactory::~CGUIKeyboardFactory(void)
+{}
 
 void CGUIKeyboardFactory::keyTypedCB(CGUIKeyboard *ref, const std::string &typedString)
 {
@@ -72,9 +74,9 @@ void CGUIKeyboardFactory::keyTypedCB(CGUIKeyboard *ref, const std::string &typed
 
 bool CGUIKeyboardFactory::SendTextToActiveKeyboard(const std::string &aTextString, bool closeKeyboard /* = false */)
 {
-  if (!g_activeKeyboard)
+  if (!g_activedKeyboard)
     return false;
-  return g_activeKeyboard->SetTextToKeyboard(aTextString, closeKeyboard);
+  return g_activedKeyboard->SetTextToKeyboard(aTextString, closeKeyboard);
 }
 
 
@@ -93,17 +95,17 @@ bool CGUIKeyboardFactory::ShowAndGetInput(std::string& aTextString, CVariant hea
     headingStr = g_localizeStrings.Get((uint32_t)heading.asInteger());
 
 #if defined(TARGET_DARWIN_IOS)
-  kb = g_windowManager.GetWindow<CGUIDialogKeyboardTouch>(WINDOW_DIALOG_KEYBOARD_TOUCH);
+  kb = (CGUIDialogKeyboardTouch*)g_windowManager.GetWindow(WINDOW_DIALOG_KEYBOARD_TOUCH);
 #else
-  kb = g_windowManager.GetWindow<CGUIDialogKeyboardGeneric>(WINDOW_DIALOG_KEYBOARD);
+  kb = (CGUIDialogKeyboardGeneric*)g_windowManager.GetWindow(WINDOW_DIALOG_KEYBOARD);
 #endif
 
   if (kb)
   {
-    g_activeKeyboard = kb;
+    g_activedKeyboard = kb;
     kb->startAutoCloseTimer(autoCloseMs);
     confirmed = kb->ShowAndGetInput(keyTypedCB, aTextString, aTextString, headingStr, hiddenInput);
-    g_activeKeyboard = NULL;
+    g_activedKeyboard = NULL;
   }
 
   if (confirmed)
@@ -195,7 +197,7 @@ int CGUIKeyboardFactory::ShowAndVerifyPassword(std::string& strPassword, const s
   else
     strHeadingTemp = StringUtils::Format("%s - %i %s",
                                          g_localizeStrings.Get(12326).c_str(),
-                                         CServiceBroker::GetSettings().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) - iRetries,
+                                         CSettings::GetInstance().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES) - iRetries,
                                          g_localizeStrings.Get(12343).c_str());
 
   std::string strUserInput;

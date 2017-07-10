@@ -41,13 +41,13 @@ namespace JSONRPC
     static void StopServer(bool bWait);
     static bool IsRunning();
 
-    bool PrepareDownload(const char *path, CVariant &details, std::string &protocol) override;
-    bool Download(const char *path, CVariant &result) override;
-    int GetCapabilities() override;
+    virtual bool PrepareDownload(const char *path, CVariant &details, std::string &protocol);
+    virtual bool Download(const char *path, CVariant &result);
+    virtual int GetCapabilities();
 
-    void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+    virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
   protected:
-    void Process() override;
+    void Process();
   private:
     CTCPServer(int port, bool nonlocal);
     bool Initialize();
@@ -63,11 +63,11 @@ namespace JSONRPC
       //when adding a member variable, make sure to copy it in CTCPClient::Copy
       CTCPClient(const CTCPClient& client);
       CTCPClient& operator=(const CTCPClient& client);
-      ~CTCPClient() override = default;
+      virtual ~CTCPClient() { };
 
-      int GetPermissionFlags() override;
-      int GetAnnouncementFlags() override;
-      bool SetAnnouncementFlags(int flags) override;
+      virtual int  GetPermissionFlags();
+      virtual int  GetAnnouncementFlags();
+      virtual bool SetAnnouncementFlags(int flags);
 
       virtual void Send(const char *data, unsigned int size);
       virtual void PushBuffer(CTCPServer *host, const char *buffer, int length);
@@ -76,9 +76,9 @@ namespace JSONRPC
       virtual bool IsNew() const { return m_new; }
       virtual bool Closing() const { return false; }
 
-      SOCKET m_socket;
+      SOCKET           m_socket;
       sockaddr_storage m_cliaddr;
-      socklen_t m_addrlen;
+      socklen_t        m_addrlen;
       CCriticalSection m_critSection;
 
     protected:
@@ -98,14 +98,14 @@ namespace JSONRPC
       CWebSocketClient(const CWebSocketClient& client);
       CWebSocketClient(CWebSocket *websocket, const CTCPClient& client);
       CWebSocketClient& operator=(const CWebSocketClient& client);
-      ~CWebSocketClient() override;
+      ~CWebSocketClient();
 
-      void Send(const char *data, unsigned int size) override;
-      void PushBuffer(CTCPServer *host, const char *buffer, int length) override;
-      void Disconnect() override;
+      virtual void Send(const char *data, unsigned int size);
+      virtual void PushBuffer(CTCPServer *host, const char *buffer, int length);
+      virtual void Disconnect();
 
-      bool IsNew() const override { return m_websocket == NULL; }
-      bool Closing() const override { return m_websocket != NULL && m_websocket->GetState() == WebSocketStateClosed; }
+      virtual bool IsNew() const { return m_websocket == NULL; }
+      virtual bool Closing() const { return m_websocket != NULL && m_websocket->GetState() == WebSocketStateClosed; }
 
     private:
       CWebSocket *m_websocket;

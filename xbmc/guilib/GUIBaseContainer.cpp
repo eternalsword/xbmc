@@ -19,7 +19,6 @@
  */
 
 #include "GUIBaseContainer.h"
-#include "ServiceBroker.h"
 #include "utils/CharsetConverter.h"
 #include "GUIInfoManager.h"
 #include "utils/TimeUtils.h"
@@ -161,7 +160,7 @@ void CGUIBaseContainer::ProcessItem(float posX, float posY, CGUIListItemPtr& ite
   {
     if (!item->GetFocusedLayout())
     {
-      CGUIListItemLayout *layout = new CGUIListItemLayout(*m_focusedLayout, this);
+      CGUIListItemLayout *layout = new CGUIListItemLayout(*m_focusedLayout);
       item->SetFocusedLayout(layout);
     }
     if (item->GetFocusedLayout())
@@ -189,7 +188,6 @@ void CGUIBaseContainer::ProcessItem(float posX, float posY, CGUIListItemPtr& ite
     if (!item->GetLayout())
     {
       CGUIListItemLayout *layout = new CGUIListItemLayout(*m_layout);
-      layout->SetParentControl(this);
       item->SetLayout(layout);
     }
     if (item->GetFocusedLayout())
@@ -436,10 +434,7 @@ bool CGUIBaseContainer::OnMessage(CGUIMessage& message)
     {
       if (message.GetParam1()) // subfocus item is specified, so set the offset appropriately
       {
-        int offset = GetOffset();
-        if (message.GetParam2() && message.GetParam2() == 1)
-          offset = 0;
-        int item = std::min(offset + (int)message.GetParam1() - 1, (int)m_items.size() - 1);
+        int item = std::min(GetOffset() + (int)message.GetParam1() - 1, (int)m_items.size() - 1);
         SelectItem(item);
       }
     }
@@ -580,7 +575,7 @@ void CGUIBaseContainer::OnJumpLetter(char letter, bool skip /*=false*/)
   {
     CGUIListItemPtr item = m_items[i];
     std::string label = item->GetLabel();
-    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
+    if (CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
       label = SortUtils::RemoveArticles(label);
     if (0 == strnicmp(label.c_str(), m_match.c_str(), m_match.size()))
     {
@@ -767,7 +762,7 @@ bool CGUIBaseContainer::OnClick(int actionID)
       int selected = GetSelectedItem();
       if (selected >= 0 && selected < (int)m_items.size())
       {
-        if (m_clickActions.HasActionsMeetingCondition())
+        if (m_clickActions.HasAnyActions())
           m_clickActions.ExecuteActions(0, GetParentID(), m_items[selected]);
         else
           m_listProvider->OnClick(m_items[selected]);
@@ -867,10 +862,9 @@ void CGUIBaseContainer::FreeResources(bool immediately)
   if (m_listProvider)
   {
     if (immediately)
-    {
       Reset();
-      m_listProvider->Reset();
-    }
+
+    m_listProvider->Reset(immediately);
   }
   m_scroller.Stop();
 }
@@ -913,13 +907,11 @@ void CGUIBaseContainer::UpdateVisibility(const CGUIListItem *item)
   if (!IsVisible() && !CGUIControl::CanFocus())
     return; // no need to update the content if we're not visible and we can't focus
 
-  // update layouts in case of condition changed
-  if ((m_layout && m_layout->CheckCondition() != m_layoutCondition) ||
-      (m_focusedLayout && m_focusedLayout->CheckCondition() != m_focusedLayoutCondition))
+  // check whether we need to update our layouts
+  if ((m_layout && !m_layout->CheckCondition()) ||
+      (m_focusedLayout && !m_focusedLayout->CheckCondition()))
   {
-    m_layoutCondition = m_layout->CheckCondition();
-    m_focusedLayoutCondition = m_focusedLayout->CheckCondition();
-
+    // and do it
     int itemIndex = GetSelectedItem();
     UpdateLayout(true); // true to refresh all items
     SelectItem(itemIndex);
@@ -1148,17 +1140,15 @@ void CGUIBaseContainer::LoadLayout(TiXmlElement *layout)
   while (itemElement)
   { // we have a new item layout
     m_layouts.emplace_back();
-    m_layouts.back().LoadLayout(itemElement, GetParentID(), false, m_width, m_height);
+    m_layouts.back().LoadLayout(itemElement, GetParentID(), false);
     itemElement = itemElement->NextSiblingElement("itemlayout");
-    m_layouts.back().SetParentControl(this);
   }
   itemElement = layout->FirstChildElement("focusedlayout");
   while (itemElement)
   { // we have a new item layout
     m_focusedLayouts.emplace_back();
-    m_focusedLayouts.back().LoadLayout(itemElement, GetParentID(), true, m_width, m_height);
+    m_focusedLayouts.back().LoadLayout(itemElement, GetParentID(), true);
     itemElement = itemElement->NextSiblingElement("focusedlayout");
-    m_focusedLayouts.back().SetParentControl(this);
   }
 }
 
@@ -1309,29 +1299,17 @@ std::string CGUIBaseContainer::GetLabel(int info) const
         label = StringUtils::Format("%i", GetSelectedItem() + 1);
     }
     break;
-  case CONTAINER_NUM_ALL_ITEMS:
   case CONTAINER_NUM_ITEMS:
     {
       unsigned int numItems = GetNumItems();
-      if (info == CONTAINER_NUM_ITEMS && numItems && m_items[0]->IsFileItem() && (std::static_pointer_cast<CFileItem>(m_items[0]))->IsParentFolder())
+      if (numItems && m_items[0]->IsFileItem() && (std::static_pointer_cast<CFileItem>(m_items[0]))->IsParentFolder())
         label = StringUtils::Format("%u", numItems-1);
       else
         label = StringUtils::Format("%u", numItems);
     }
     break;
-  case CONTAINER_NUM_NONFOLDER_ITEMS:
-    {
-      int numItems = 0;
-      for (auto item : m_items)
-      {
-        if (!item->m_bIsFolder)
-          numItems++;
-      }
-      label = StringUtils::Format("%u", numItems);
-    }
-    break;
   default:
-    break;
+      break;
   }
   return label;
 }
@@ -1364,8 +1342,6 @@ void CGUIBaseContainer::GetCacheOffsets(int &cacheBefore, int &cacheAfter) const
 
 void CGUIBaseContainer::SetCursor(int cursor)
 {
-  if (m_cursor != cursor)
-    MarkDirtyRegion();
   m_cursor = cursor;
 }
 

@@ -51,5 +51,7 @@ namespace JSONRPC
   private:
     static JSONRPC_STATUS GetPropertyValue(const std::string &property, CVariant &result);
     static void FillChannelGroupDetails(const PVR::CPVRChannelGroupPtr &channelGroup, const CVariant &parameterObject, CVariant &result, bool append = false);
+
+    static CFileItemPtr GetBroadcastFromBroadcastid(unsigned int broadcastid);
   };
 }

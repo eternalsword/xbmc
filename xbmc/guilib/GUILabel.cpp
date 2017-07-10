@@ -26,6 +26,7 @@ CGUILabel::CGUILabel(float posX, float posY, float width, float height, const CL
     , m_textLayout(labelInfo.font, overflow == OVER_FLOW_WRAP, height)
     , m_scrolling(overflow == OVER_FLOW_SCROLL)
     , m_overflowType(overflow)
+    , m_selected(false)
     , m_scrollInfo(50, 0, labelInfo.scrollSpeed, labelInfo.scrollSuffix)
     , m_renderRect()
     , m_maxRect(posX, posY, posX + width, posY + height)
@@ -34,14 +35,16 @@ CGUILabel::CGUILabel(float posX, float posY, float width, float height, const CL
 {
 }
 
-CGUILabel::~CGUILabel(void) = default;
+CGUILabel::~CGUILabel(void)
+{
+}
 
 bool CGUILabel::SetScrolling(bool scrolling)
 {
   bool changed = m_scrolling != scrolling;
 
   m_scrolling = scrolling;
-  if (changed)
+  if (!m_scrolling)
     m_scrollInfo.Reset();
 
   return changed;
@@ -91,12 +94,7 @@ bool CGUILabel::Process(unsigned int currentTime)
   bool renderSolid = (m_color == COLOR_DISABLED);
 
   if (overFlows && m_scrolling && !renderSolid)
-  {
-    if (m_maxScrollLoops < m_scrollInfo.m_loopCount)
-      SetScrolling(false);
-    else
-      return m_textLayout.UpdateScrollinfo(m_scrollInfo);
-  }
+    return m_textLayout.UpdateScrollinfo(m_scrollInfo);
 
   return false;
 }

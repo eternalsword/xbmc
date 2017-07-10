@@ -25,15 +25,15 @@
 class CFallbackPowerSyscall : public CPowerSyscallWithoutEvents
 {
 public:
-  bool Powerdown() override {return true; }
-  bool Suspend() override {return false; }
-  bool Hibernate() override {return false; }
-  bool Reboot() override {return true; }
+  virtual bool Powerdown() {return true; }
+  virtual bool Suspend() {return false; }
+  virtual bool Hibernate() {return false; }
+  virtual bool Reboot() {return true; }
 
-  bool CanPowerdown() override {return true; }
-  bool CanSuspend() override {return false; }
-  bool CanHibernate() override {return false; }
-  bool CanReboot() override {return true; }
-  int  BatteryLevel() override {return 0; }
+  virtual bool CanPowerdown() {return true; }
+  virtual bool CanSuspend() {return false; }
+  virtual bool CanHibernate() {return false; }
+  virtual bool CanReboot() {return true; }
+  virtual int  BatteryLevel() {return 0; }
 };
 #endif

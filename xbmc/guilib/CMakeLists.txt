@@ -1,4 +1,5 @@
 set(SOURCES DDSImage.cpp
+            DirectXGraphics.cpp
             DirtyRegionSolvers.cpp
             DirtyRegionTracker.cpp
             FFmpegImage.cpp
@@ -13,7 +14,6 @@ set(SOURCES DDSImage.cpp
             GUIControlFactory.cpp
             GUIControlGroup.cpp
             GUIControlGroupList.cpp
-            GUIControlLookup.cpp
             GUIControlProfiler.cpp
             GUIDialog.cpp
             GUIEditControl.cpp
@@ -73,6 +73,7 @@ set(SOURCES DDSImage.cpp
             XBTFReader.cpp)
 
 set(HEADERS DDSImage.h
+            DirectXGraphics.h
             DirtyRegion.h
             DirtyRegionSolvers.h
             DirtyRegionTracker.h
@@ -93,7 +94,6 @@ set(HEADERS DDSImage.h
             GUIControlGroup.h
             GUIControlGroupList.h
             GUIControlProfiler.h
-            GUIControlLookup.h
             GUIDialog.h
             GUIEditControl.h
             GUIFadeLabelControl.h
@@ -190,13 +190,11 @@ endif()
 
 if(CORE_SYSTEM_NAME STREQUAL windows)
   list(APPEND SOURCES D3DResource.cpp
-                      DirectXGraphics.cpp
                       GUIFontTTFDX.cpp
                       GUIShaderDX.cpp
                       GUITextureD3D.cpp
                       TextureDX.cpp)
   list(APPEND HEADERS D3DResource.h
-                      DirectXGraphics.h
                       GUIFontTTFDX.h
                       GUIShaderDX.h
                       GUITextureD3D.h
@@ -222,8 +220,8 @@ if(CORE_SYSTEM_NAME STREQUAL windows)
     get_filename_component(file ${shader} NAME_WE)
     add_custom_command(OUTPUT ${file}.h
                        COMMAND ${FXC} /Fh ${file}.h /E VS /T vs_4_0_level_9_1 /Vn ${file} /Qstrip_reflect
-                                      ${CMAKE_SOURCE_DIR}/system/shaders/${shader}
-                       DEPENDS ${CMAKE_SOURCE_DIR}/system/shaders/${shader}
+                                      ${CORE_SOURCE_DIR}/system/shaders/${shader}
+                       DEPENDS ${CORE_SOURCE_DIR}/system/shaders/${shader}
                        COMMENT "FX compile vertex shader ${shader}"
                        VERBATIM)
     list(APPEND SHADERS ${file}.h)
@@ -232,8 +230,8 @@ if(CORE_SYSTEM_NAME STREQUAL windows)
     get_filename_component(file ${shader} NAME_WE)
     add_custom_command(OUTPUT ${file}.h
                        COMMAND ${FXC} /Fh ${file}.h /E PS /T ps_4_0_level_9_1 /Vn ${file} /Qstrip_reflect
-                                      ${CMAKE_SOURCE_DIR}/system/shaders/${shader}
-                       DEPENDS ${CMAKE_SOURCE_DIR}/system/shaders/${shader}
+                                      ${CORE_SOURCE_DIR}/system/shaders/${shader}
+                       DEPENDS ${CORE_SOURCE_DIR}/system/shaders/${shader}
                        COMMENT "FX compile pixel shader ${shader}"
                        VERBATIM)
     list(APPEND SHADERS ${file}.h)

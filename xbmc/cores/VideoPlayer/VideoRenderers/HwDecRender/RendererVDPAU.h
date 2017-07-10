@@ -22,6 +22,8 @@
 
 #include "system.h"
 
+#ifdef HAVE_LIBVDPAU
+
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
 
 class CRendererVDPAU : public CLinuxRendererGL
@@ -30,14 +32,10 @@ public:
   CRendererVDPAU();
   virtual ~CRendererVDPAU();
 
-  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height,
-                         float fps, unsigned flags, ERenderFormat format, void *hwPic, unsigned int orientation) override;
-
   // Player functions
-  virtual void AddVideoPictureHW(VideoPicture &picture, int index);
+  virtual void AddVideoPictureHW(DVDVideoPicture &picture, int index);
   virtual void ReleaseBuffer(int idx);
   virtual CRenderInfo GetRenderInfo();
-  virtual bool ConfigChanged(void *hwPic) override;
 
   // Feature support
   virtual bool Supports(ERENDERFEATURE feature);
@@ -59,10 +57,7 @@ protected:
   bool CreateVDPAUTexture420(int index);
   void DeleteVDPAUTexture420(int index);
   bool UploadVDPAUTexture420(int index);
-
-  virtual EShaderFormat GetShaderFormat(ERenderFormat renderFormat) override;
-
-  bool m_isYuv = false;
 };
 
+#endif
 

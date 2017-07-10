@@ -23,9 +23,6 @@
 #include "windowing/WindowingFactory.h"
 #include "settings/AdvancedSettings.h"
 #include "cores/IPlayer.h"
-extern "C" {
-#include "libavutil/mem.h"
-}
 
 CRenderCaptureBase::CRenderCaptureBase()
 {
@@ -40,7 +37,9 @@ CRenderCaptureBase::CRenderCaptureBase()
   m_asyncChecked   = false;
 }
 
-CRenderCaptureBase::~CRenderCaptureBase() = default;
+CRenderCaptureBase::~CRenderCaptureBase()
+{
+}
 
 bool CRenderCaptureBase::UseOcclusionQuery()
 {
@@ -326,7 +325,7 @@ CRenderCaptureDX::CRenderCaptureDX()
 CRenderCaptureDX::~CRenderCaptureDX()
 {
   CleanupDX();
-  av_freep(&m_pixels);
+  delete[] m_pixels;
 
   g_Windowing.Unregister(this);
 }
@@ -340,11 +339,11 @@ void CRenderCaptureDX::BeginRender()
 {
   ID3D11DeviceContext* pContext = g_Windowing.Get3D11Context();
   ID3D11Device* pDevice = g_Windowing.Get3D11Device();
-  CD3D11_QUERY_DESC queryDesc(D3D11_QUERY_EVENT);
+  CD3D11_QUERY_DESC queryDesc(D3D11_QUERY_OCCLUSION);
 
   if (!m_asyncChecked)
   {
-    m_asyncSupported = SUCCEEDED(pDevice->CreateQuery(&queryDesc, nullptr));
+    m_asyncSupported = S_OK == pDevice->CreateQuery(&queryDesc, nullptr);
     if (m_flags & CAPTUREFLAG_CONTINUOUS)
     {
       if (!m_asyncSupported)
@@ -352,6 +351,7 @@ void CRenderCaptureDX::BeginRender()
       if (!UseOcclusionQuery())
         CLog::Log(LOGWARNING, "CRenderCaptureDX: D3D11_QUERY_OCCLUSION disabled, performance might suffer");
     }
+
     m_asyncChecked = true;
   }
 
@@ -359,12 +359,21 @@ void CRenderCaptureDX::BeginRender()
 
   if (m_surfaceWidth != m_width || m_surfaceHeight != m_height)
   {
-    SAFE_RELEASE(m_renderSurface);
-    SAFE_RELEASE(m_copySurface);
+    if (m_renderSurface)
+    {
+      while(m_renderSurface->Release() > 0) {}
+      m_renderSurface = nullptr;
+    }
+
+    if (m_copySurface)
+    {
+      while (m_copySurface->Release() > 0) {}
+      m_copySurface = nullptr;
+    }
 
     CD3D11_TEXTURE2D_DESC texDesc(DXGI_FORMAT_B8G8R8A8_UNORM, m_width, m_height, 1, 1, D3D11_BIND_RENDER_TARGET);
     result = pDevice->CreateTexture2D(&texDesc, nullptr, &m_renderTexture);
-    if (FAILED(result))
+    if (S_OK != result)
     {
       CLog::Log(LOGERROR, "CRenderCaptureDX::BeginRender: CreateTexture2D (RENDER_TARGET) failed %s",
                 g_Windowing.GetErrorDescription(result).c_str());
@@ -374,7 +383,7 @@ void CRenderCaptureDX::BeginRender()
 
     CD3D11_RENDER_TARGET_VIEW_DESC rtDesc(D3D11_RTV_DIMENSION_TEXTURE2D);
     result = pDevice->CreateRenderTargetView(m_renderTexture, &rtDesc, &m_renderSurface);
-    if (FAILED(result))
+    if (S_OK != result)
     {
       CLog::Log(LOGERROR, "CRenderCaptureDX::BeginRender: CreateRenderTargetView failed %s",
         g_Windowing.GetErrorDescription(result).c_str());
@@ -387,7 +396,7 @@ void CRenderCaptureDX::BeginRender()
     texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
     result = pDevice->CreateTexture2D(&texDesc, nullptr, &m_copySurface);
-    if (FAILED(result))
+    if (S_OK != result)
     {
       CLog::Log(LOGERROR, "CRenderCaptureDX::BeginRender: CreateTexture2D (USAGE_STAGING) failed %s",
                 g_Windowing.GetErrorDescription(result).c_str());
@@ -402,8 +411,8 @@ void CRenderCaptureDX::BeginRender()
   if (m_bufferSize != m_width * m_height * 4)
   {
     m_bufferSize = m_width * m_height * 4;
-    av_freep(&m_pixels);
-    m_pixels = (uint8_t*)av_malloc(m_bufferSize);
+    delete[] m_pixels;
+    m_pixels = new uint8_t[m_bufferSize];
   }
 
   pContext->OMSetRenderTargets(1, &m_renderSurface, nullptr);
@@ -414,25 +423,35 @@ void CRenderCaptureDX::BeginRender()
     if (!m_query)
     {
       result = pDevice->CreateQuery(&queryDesc, &m_query);
-      if (FAILED(result))
+      if (S_OK != result)
       {
         CLog::Log(LOGERROR, "CRenderCaptureDX::BeginRender: CreateQuery failed %s",
                   g_Windowing.GetErrorDescription(result).c_str());
         m_asyncSupported = false;
-        SAFE_RELEASE(m_query);
+        if (m_query)
+        {
+          while (m_query->Release() > 0) {}
+          m_query = nullptr;
+        }
       }
     }
   }
   else
   {
     //don't use an occlusion query, clean up any old one
-    SAFE_RELEASE(m_query);
+    if (m_query)
+    {
+      while (m_query->Release() > 0) {}
+      m_query = nullptr;
+    }
   }
+
+  if (m_query)
+    g_Windowing.GetImmediateContext()->Begin(m_query);
 }
 
 void CRenderCaptureDX::EndRender()
 {
-  // send commands to the GPU queue
   g_Windowing.FinishCommandList();
   ID3D11DeviceContext* pContext = g_Windowing.GetImmediateContext();
 
@@ -441,6 +460,7 @@ void CRenderCaptureDX::EndRender()
   if (m_query)
   {
     pContext->End(m_query);
+    pContext->GetData(m_query, nullptr, 0, 0); //flush the query request
   }
 
   if (m_flags & CAPTUREFLAG_IMMEDIATELY)
@@ -455,12 +475,11 @@ void CRenderCaptureDX::ReadOut()
   {
     //if the result of the occlusion query is available, the data is probably also written into m_copySurface
     HRESULT result = g_Windowing.GetImmediateContext()->GetData(m_query, nullptr, 0, 0);
-    if (SUCCEEDED(result))
+    if (S_OK == result)
     {
-      if (S_OK == result)
-        SurfaceToBuffer();
+      SurfaceToBuffer();
     }
-    else
+    else if (S_FALSE != result)
     {
       CLog::Log(LOGERROR, "CRenderCaptureDX::ReadOut: GetData failed");
       SurfaceToBuffer();
@@ -505,7 +524,7 @@ void CRenderCaptureDX::OnLostDevice()
   SetState(CAPTURESTATE_FAILED);
 }
 
-void CRenderCaptureDX::OnDestroyDevice(bool fatal)
+void CRenderCaptureDX::OnDestroyDevice()
 {
   CleanupDX();
   SetState(CAPTURESTATE_FAILED);
@@ -513,10 +532,29 @@ void CRenderCaptureDX::OnDestroyDevice(bool fatal)
 
 void CRenderCaptureDX::CleanupDX()
 {
-  SAFE_RELEASE(m_renderSurface);
-  SAFE_RELEASE(m_renderTexture);
-  SAFE_RELEASE(m_copySurface);
-  SAFE_RELEASE(m_query);
+  if (m_renderSurface)
+  {
+    while (m_renderSurface->Release() > 0) {}
+    m_renderSurface = nullptr;
+  }
+
+  if (m_renderTexture)
+  {
+    while (m_renderTexture->Release() > 0) {}
+    m_renderTexture = nullptr;
+  }
+
+  if (m_copySurface)
+  {
+    while (m_copySurface->Release() > 0) {}
+    m_copySurface = nullptr;
+  }
+
+  if (m_query)
+  {
+    while (m_query->Release() > 0) {}
+    m_query = nullptr;
+  }
 
   m_surfaceWidth = 0;
   m_surfaceHeight = 0;

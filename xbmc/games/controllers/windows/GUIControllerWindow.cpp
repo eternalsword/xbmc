@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,12 +26,8 @@
 #include "addons/GUIWindowAddonBrowser.h"
 #include "addons/IAddon.h"
 #include "addons/AddonManager.h"
-#include "games/controllers/dialogs/GUIDialogIgnoreInput.h"
-#include "guilib/GUIButtonControl.h"
-#include "guilib/GUIControl.h"
 #include "guilib/GUIMessage.h"
 #include "guilib/WindowIDs.h"
-#include "ServiceBroker.h"
 
 // To check for button mapping support
 #include "dialogs/GUIDialogOK.h"
@@ -41,8 +37,8 @@
 
 // To check for installable controllers
 #include "addons/AddonDatabase.h"
+#include "addons/AddonManager.h"
 
-using namespace KODI;
 using namespace GAME;
 
 CGUIControllerWindow::CGUIControllerWindow(void) :
@@ -60,50 +56,14 @@ CGUIControllerWindow::~CGUIControllerWindow(void)
   delete m_featureList;
 }
 
-void CGUIControllerWindow::DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions)
-{
-  /*
-   * Apply the faded focus texture to the current controller when unfocused
-   */
-
-  CGUIControl* control = nullptr; // The controller button
-  bool bAlphaFaded = false; // True if the controller button has been focused and faded this frame
-
-  if (m_controllerList && m_controllerList->GetFocusedController() >= 0)
-  {
-    control = GetFirstFocusableControl(CONTROL_CONTROLLER_BUTTONS_START + m_controllerList->GetFocusedController());
-    if (control && !control->HasFocus())
-    {
-      if (control->GetControlType() == CGUIControl::GUICONTROL_BUTTON)
-      {
-        control->SetFocus(true);
-        static_cast<CGUIButtonControl*>(control)->SetAlpha(0x80);
-        bAlphaFaded = true;
-      }
-    }
-  }
-
-  CGUIDialog::DoProcess(currentTime, dirtyregions);
-
-  if (control && bAlphaFaded)
-  {
-    control->SetFocus(false);
-    if (control->GetControlType() == CGUIControl::GUICONTROL_BUTTON)
-      static_cast<CGUIButtonControl*>(control)->SetAlpha(0xFF);
-  }
-}
-
 bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
 {
-  // Set to true to block the call to the super class
-  bool bHandled = false;
-
   switch (message.GetMessage())
   {
     case GUI_MSG_WINDOW_INIT:
     {
-      //! @todo Process params here, don't just record them for later
-      m_param = message.GetStringParam();
+      //! @todo Process parameter
+      //std::string strParam = message.GetStringParam();
       break;
     }
     case GUI_MSG_CLICKED:
@@ -113,36 +73,32 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
       if (controlId == CONTROL_CLOSE_BUTTON)
       {
         Close();
-        bHandled = true;
+        return true;
       }
       else if (controlId == CONTROL_GET_MORE)
       {
         GetMoreControllers();
-        bHandled = true;
+        return true;
       }
       else if (controlId == CONTROL_RESET_BUTTON)
       {
         ResetController();
-        bHandled = true;
+        return true;
       }
       else if (controlId == CONTROL_HELP_BUTTON)
       {
         ShowHelp();
-        bHandled = true;
-      }
-      else if (controlId == CONTROL_FIX_SKIPPING)
-      {
-        ShowButtonCaptureDialog();
+        return true;
       }
       else if (CONTROL_CONTROLLER_BUTTONS_START <= controlId && controlId < CONTROL_CONTROLLER_BUTTONS_END)
       {
         OnControllerSelected(controlId - CONTROL_CONTROLLER_BUTTONS_START);
-        bHandled = true;
+        return true;
       }
       else if (CONTROL_FEATURE_BUTTONS_START <= controlId && controlId < CONTROL_FEATURE_BUTTONS_END)
       {
         OnFeatureSelected(controlId - CONTROL_FEATURE_BUTTONS_START);
-        bHandled = true;
+        return true;
       }
       break;
     }
@@ -183,7 +139,7 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
         if (m_controllerList && m_controllerList->Refresh())
         {
           CGUIDialog::OnMessage(message);
-          bHandled = true;
+          return true;
         }
       }
       break;
@@ -192,10 +148,7 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
       break;
   }
 
-  if (!bHandled)
-    bHandled = CGUIDialog::OnMessage(message);
-
-  return bHandled;
+  return CGUIDialog::OnMessage(message);
 }
 
 void CGUIControllerWindow::OnEvent(const ADDON::CRepositoryUpdater::RepositoryUpdated& event)
@@ -205,11 +158,13 @@ void CGUIControllerWindow::OnEvent(const ADDON::CRepositoryUpdater::RepositoryUp
 
 void CGUIControllerWindow::OnInitWindow(void)
 {
+  using namespace PERIPHERALS;
+
   CGUIDialog::OnInitWindow();
 
   if (!m_featureList)
   {
-    m_featureList = new CGUIFeatureList(this, m_param);
+    m_featureList = new CGUIFeatureList(this);
     if (!m_featureList->Initialize())
     {
       delete m_featureList;
@@ -231,14 +186,34 @@ void CGUIControllerWindow::OnInitWindow(void)
   CGUIMessage msgFocus(GUI_MSG_SETFOCUS, GetID(), CONTROL_CONTROLLER_BUTTONS_START);
   OnMessage(msgFocus);
 
-  // Enable button mapping support
-  CServiceBroker::GetPeripherals().EnableButtonMapping();
+  // Check for button mapping support
+  //! @todo remove this
+  PeripheralBusAddonPtr bus = std::static_pointer_cast<CPeripheralBusAddon>(g_peripherals.GetBusByType(PERIPHERAL_BUS_ADDON));
+  if (bus && !bus->HasFeature(FEATURE_JOYSTICK))
+  {
+    //! @todo Move the XML implementation of button map storage from add-on to
+    //! Kodi while keeping support for add-on button-mapping
+
+    CLog::Log(LOGERROR, "Joystick support not found");
+
+    // "Joystick support not found"
+    // "Controller configuration is disabled. Install the proper joystick support add-on."
+    CGUIDialogOK::ShowAndGetInput(CVariant{35056}, CVariant{35057});
+
+    // close the window as there's nothing that can be done
+    Close();
+  }
+
+  // FIXME: not thread safe
+//  ADDON::CRepositoryUpdater::GetInstance().Events().Subscribe(this, &CGUIControllerWindow::OnEvent);
 
   UpdateButtons();
 }
 
 void CGUIControllerWindow::OnDeinitWindow(int nextWindowID)
 {
+  ADDON::CRepositoryUpdater::GetInstance().Events().Unsubscribe(this);
+
   if (m_controllerList)
   {
     m_controllerList->Deinitialize();
@@ -311,10 +286,4 @@ void CGUIControllerWindow::ShowHelp(void)
   // "Help"
   // <help text>
   CGUIDialogOK::ShowAndGetInput(CVariant{10043}, CVariant{35055});
-}
-
-void CGUIControllerWindow::ShowButtonCaptureDialog(void)
-{
-  CGUIDialogIgnoreInput dialog;
-  dialog.Show();
 }

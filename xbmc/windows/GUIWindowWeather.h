@@ -26,12 +26,12 @@ class CGUIWindowWeather : public CGUIWindow
 {
 public:
   CGUIWindowWeather(void);
-  ~CGUIWindowWeather(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  void FrameMove() override;
+  virtual ~CGUIWindowWeather(void);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual void FrameMove();
 
 protected:
-  void OnInitWindow() override;
+  virtual void OnInitWindow();
 
   void UpdateButtons();
   void UpdateLocations();

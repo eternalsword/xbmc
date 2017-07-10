@@ -36,7 +36,7 @@ namespace XbmcThreads
     {
       CRITICAL_SECTION mutex;
 
-      // needs access to 'mutex'
+      // needs acces to 'mutex'
       friend class XbmcThreads::ConditionVariable;
     public:
       inline RecursiveMutex()

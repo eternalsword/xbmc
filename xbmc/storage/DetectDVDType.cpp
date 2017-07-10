@@ -20,6 +20,8 @@
 
 #include "system.h"
 
+#ifdef HAS_DVD_DRIVE
+
 #include "DetectDVDType.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/StringUtils.h"
@@ -46,6 +48,7 @@
 #include "FileItem.h"
 #include "Application.h"
 #include "IoSupport.h"
+#include "cdioSupport.h"
 #include "storage/MediaManager.h"
 
 
@@ -71,7 +74,9 @@ CDetectDVDMedia::CDetectDVDMedia() : CThread("DetectDVDMedia"),
   m_pInstance = this;
 }
 
-CDetectDVDMedia::~CDetectDVDMedia() = default;
+CDetectDVDMedia::~CDetectDVDMedia()
+{
+}
 
 void CDetectDVDMedia::OnStartup()
 {
@@ -493,3 +498,4 @@ const std::string &CDetectDVDMedia::GetDVDPath()
 {
   return m_diskPath;
 }
+#endif

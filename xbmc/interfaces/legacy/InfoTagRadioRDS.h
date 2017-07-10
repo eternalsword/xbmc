@@ -38,7 +38,7 @@ namespace XBMCAddon
     /// To get radio RDS info tag data of currently played PVR radio channel source.
     ///
     /// @note Info tag load is only be possible from present player class.\n
-    /// Also is all the data variable from radio channels and not known on beginning
+    /// Also is all the data variable from radio channels and not known on begining
     /// of radio receiving.
     ///
     ///
@@ -64,7 +64,7 @@ namespace XBMCAddon
       InfoTagRadioRDS(const PVR::CPVRRadioRDSInfoTagPtr tag);
 #endif
       InfoTagRadioRDS();
-      ~InfoTagRadioRDS() override;
+      virtual ~InfoTagRadioRDS();
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///

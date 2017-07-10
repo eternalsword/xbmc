@@ -28,12 +28,14 @@
 #define XML_ELM_DEFAULT     "default"
 #define XML_ELM_CONSTRAINTS "constraints"
 
-CSettingPath::CSettingPath(const std::string &id, CSettingsManager *settingsManager /* = nullptr */)
-  : CSettingString(id, settingsManager)
+CSettingPath::CSettingPath(const std::string &id, CSettingsManager *settingsManager /* = NULL */)
+  : CSettingString(id, settingsManager),
+    m_writable(true)
 { }
 
-CSettingPath::CSettingPath(const std::string &id, int label, const std::string &value, CSettingsManager *settingsManager /* = nullptr */)
-  : CSettingString(id, label, value, settingsManager)
+CSettingPath::CSettingPath(const std::string &id, int label, const std::string &value, CSettingsManager *settingsManager /* = NULL */)
+  : CSettingString(id, label, value, settingsManager),
+    m_writable(true)
 { }
   
 CSettingPath::CSettingPath(const std::string &id, const CSettingPath &setting)
@@ -42,9 +44,9 @@ CSettingPath::CSettingPath(const std::string &id, const CSettingPath &setting)
   copy(setting);
 }
 
-SettingPtr CSettingPath::Clone(const std::string &id) const
+CSetting* CSettingPath::Clone(const std::string &id) const
 {
-  return std::make_shared<CSettingPath>(id, *this);
+  return new CSettingPath(id, *this);
 }
 
 bool CSettingPath::Deserialize(const TiXmlNode *node, bool update /* = false */)
@@ -54,26 +56,26 @@ bool CSettingPath::Deserialize(const TiXmlNode *node, bool update /* = false */)
   if (!CSettingString::Deserialize(node, update))
     return false;
     
-  if (m_control != nullptr &&
-     (m_control->GetType() != "button" || (m_control->GetFormat() != "path" && m_control->GetFormat() != "file")))
+  if (m_control != NULL &&
+     (m_control->GetType() != "button" || m_control->GetFormat() != "path"))
   {
     CLog::Log(LOGERROR, "CSettingPath: invalid <control> of \"%s\"", m_id.c_str());
     return false;
   }
     
-  auto constraints = node->FirstChild(XML_ELM_CONSTRAINTS);
-  if (constraints != nullptr)
+  const TiXmlNode *constraints = node->FirstChild(XML_ELM_CONSTRAINTS);
+  if (constraints != NULL)
   {
     // get writable
     XMLUtils::GetBoolean(constraints, "writable", m_writable);
 
     // get sources
-    auto sources = constraints->FirstChild("sources");
-    if (sources != nullptr)
+    const TiXmlNode *sources = constraints->FirstChild("sources");
+    if (sources != NULL)
     {
       m_sources.clear();
-      auto source = sources->FirstChild("source");
-      while (source != nullptr)
+      const TiXmlNode *source = sources->FirstChild("source");
+      while (source != NULL)
       {
         std::string strSource = source->FirstChild()->ValueStr();
         if (!strSource.empty())
@@ -82,11 +84,6 @@ bool CSettingPath::Deserialize(const TiXmlNode *node, bool update /* = false */)
         source = source->NextSibling("source");
       }
     }
-
-    // get masking
-    auto masking = constraints->FirstChild("masking");
-    if (masking != nullptr)
-      m_masking = masking->FirstChild()->ValueStr();
   }
 
   return true;
@@ -109,6 +106,4 @@ void CSettingPath::copy(const CSettingPath &setting)
   CExclusiveLock lock(m_critical);
   m_writable = setting.m_writable;
   m_sources = setting.m_sources;
-  m_hideExtension = setting.m_hideExtension;
-  m_masking = setting.m_masking;
 }

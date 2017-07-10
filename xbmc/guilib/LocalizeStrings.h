@@ -35,8 +35,6 @@
 #include <string>
 #include <stdint.h>
 
-#include "utils/ILocalizer.h"
-
 /*!
  \ingroup strings
  \brief
@@ -52,11 +50,11 @@ struct LocStr
 const std::string LANGUAGE_DEFAULT = "resource.language.en_gb";
 const std::string LANGUAGE_OLD_DEFAULT = "English";
 
-class CLocalizeStrings : public ILocalizer
+class CLocalizeStrings
 {
 public:
   CLocalizeStrings(void);
-  ~CLocalizeStrings(void) override;
+  virtual ~CLocalizeStrings(void);
   bool Load(const std::string& strPathName, const std::string& strLanguage);
   bool LoadSkinStrings(const std::string& path, const std::string& language);
   bool LoadAddonStrings(const std::string& path, const std::string& language, const std::string& addonId);
@@ -64,9 +62,6 @@ public:
   const std::string& Get(uint32_t code) const;
   std::string GetAddonString(const std::string& addonId, uint32_t code);
   void Clear();
-
-  // implementation of ILocalizer
-  std::string Localize(std::uint32_t code) const override { return Get(code); }
 
 protected:
   void Clear(uint32_t start, uint32_t end);

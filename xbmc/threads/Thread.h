@@ -40,7 +40,7 @@ class IRunnable
 {
 public:
   virtual void Run()=0;
-  virtual ~IRunnable() = default;
+  virtual ~IRunnable() {}
 };
 
 // minimum as mandated by XTL

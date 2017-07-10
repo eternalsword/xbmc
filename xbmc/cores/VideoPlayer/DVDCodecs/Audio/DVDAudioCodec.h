@@ -24,9 +24,12 @@
 #include "cores/AudioEngine/Utils/AEAudioFormat.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
-#include "cores/VideoPlayer/DVDDemuxers/DVDDemuxPacket.h"
-#include "TimingConstants.h"
+#include "DVDClock.h"
 
+
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
 #include <vector>
 
 extern "C" {
@@ -46,7 +49,6 @@ typedef struct stDVDAudioFrame
   bool hasTimestamp;
   double duration;
   unsigned int nb_frames;
-  unsigned int framesOut;
   unsigned int framesize;
   unsigned int planes;
 
@@ -56,7 +58,7 @@ typedef struct stDVDAudioFrame
   AEAudioFormat audioFormat;
   enum AVAudioServiceType audio_service_type;
   enum AVMatrixEncoding matrix_encoding;
-  int profile;
+  int               profile;
 } DVDAudioFrame;
 
 class CDVDAudioCodec
@@ -64,7 +66,7 @@ class CDVDAudioCodec
 public:
 
   CDVDAudioCodec(CProcessInfo &processInfo) : m_processInfo(processInfo) {}
-  virtual ~CDVDAudioCodec() = default;
+  virtual ~CDVDAudioCodec() {}
 
   /*
    * Open the decoder, returns true on success
@@ -77,19 +79,19 @@ public:
   virtual void Dispose() = 0;
 
   /*
-   * returns false on error
+   * returns bytes used or -1 on error
    *
    */
-  virtual bool AddData(const DemuxPacket &packet) = 0;
+  virtual int Decode(uint8_t* pData, int iSize, double dts, double pts) = 0;
 
   /*
    * returns nr of bytes in decode buffer
-   * the data is valid until the next call
+   * the data is valid until the next Decode call
    */
   virtual int GetData(uint8_t** dst) = 0;
 
   /*
-   * the data is valid until the next call
+   * the data is valid until the next Decode call
    */
   virtual void GetData(DVDAudioFrame &frame) = 0;
 
@@ -109,7 +111,7 @@ public:
   virtual int GetBitRate() { return 0; }
 
   /*
-   * returns if the codec requests to use passthrough
+   * returns if the codec requests to use passtrough
    */
   virtual bool NeedPassthrough() { return false; }
 

@@ -31,7 +31,7 @@ class CVideoSettings
 {
 public:
   CVideoSettings();
-  ~CVideoSettings() = default;
+  ~CVideoSettings() {};
 
   bool operator!=(const CVideoSettings &right) const;
 

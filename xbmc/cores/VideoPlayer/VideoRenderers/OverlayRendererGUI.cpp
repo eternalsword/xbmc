@@ -22,7 +22,6 @@
 #include "settings/Settings.h"
 
 #include "filesystem/File.h"
-#include "ServiceBroker.h"
 #include "Util.h"
 #include "utils/URIUtils.h"
 #include "utils/StringUtils.h"
@@ -116,7 +115,7 @@ COverlayText::COverlayText(CDVDOverlayText * src)
   StringUtils::Replace(m_text, "</b", "[/B]");
   StringUtils::Replace(m_text, "</u", "");
 
-  m_subalign = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_SUBTITLES_ALIGN);
+  m_subalign = CSettings::GetInstance().GetInt(CSettings::SETTING_SUBTITLES_ALIGN);
   if (m_subalign == SUBTITLE_ALIGN_MANUAL)
   {
     m_align  = ALIGN_SUBTITLE;

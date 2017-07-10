@@ -211,7 +211,7 @@ namespace XBMC
             try
             {
 
-                bool successful = true;
+                bool successfull = true;
                 int packetCount = (Payload.Length / MAX_PAYLOAD_SIZE) + 1;
                 int bytesToSend = 0;
                 int bytesSent = 0;
@@ -241,7 +241,7 @@ namespace XBMC
 
                     if (sendSize != (header.Length + bytesToSend))
                     {
-                        successful = false;
+                        successfull = false;
                         break;
                     }
 
@@ -249,7 +249,7 @@ namespace XBMC
 
                 }
 
-                return successful;
+                return successfull;
 
             }
             catch

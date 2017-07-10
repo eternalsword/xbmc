@@ -20,7 +20,6 @@
  *
  */
 
-#include <atomic>
 #include <map>
 #include <string>
 #include <utility>
@@ -60,7 +59,7 @@ public:
   //implement it by doing so.
   //
   //fcr_identifier - the identifier of the already published service which should be reannounced
-  // returns true on successful reannonuce - false if this service isn't published yet
+  // returns true on successfull reannonuce - false if this service isn't published yet
   bool ForceReAnnounceService(const std::string& fcr_identifier);
 
   ///removes the specified service
@@ -75,7 +74,7 @@ public:
   //started, get published now.
   bool Start();
 
-  // unpublishes all services (but keeps them stored in this class)
+  // unpublishs all services (but keeps them stored in this class)
   // a call to Start() will republish them
   void Stop();
 
@@ -136,7 +135,7 @@ private:
   bool m_started;
 
   //protects singleton creation/destruction
-  static std::atomic_flag sm_singleton_guard;
+  static long sm_singleton_guard;
   static CZeroconf* smp_instance;
 
   class CPublish : public CJob
@@ -145,7 +144,7 @@ private:
     CPublish(const std::string& fcr_identifier, const PublishInfo& pubinfo);
     CPublish(const tServiceMap& servmap);
 
-    bool DoWork() override;
+    bool DoWork();
 
   private:
     tServiceMap m_servmap;

@@ -26,9 +26,13 @@
 
 using namespace XFILE;
 
-CUPnPFile::CUPnPFile() = default;
+CUPnPFile::CUPnPFile()
+{
+}
 
-CUPnPFile::~CUPnPFile() = default;
+CUPnPFile::~CUPnPFile()
+{
+}
 
 bool CUPnPFile::Open(const CURL& url)
 {

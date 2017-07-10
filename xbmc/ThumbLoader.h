@@ -28,10 +28,10 @@ class CThumbLoader : public CBackgroundInfoLoader
 {
 public:
   CThumbLoader();
-  ~CThumbLoader() override;
+  virtual ~CThumbLoader();
 
-  void OnLoaderStart() override;
-  void OnLoaderFinish() override;
+  virtual void OnLoaderStart();
+  virtual void OnLoaderFinish();
 
   /*! \brief helper function to fill the art for a library item
    \param item a CFileItem
@@ -61,10 +61,10 @@ class CProgramThumbLoader : public CThumbLoader
 {
 public:
   CProgramThumbLoader();
-  ~CProgramThumbLoader() override;
-  bool LoadItem(CFileItem* pItem) override;
-  bool LoadItemCached(CFileItem* pItem) override;
-  bool LoadItemLookup(CFileItem* pItem) override;
+  virtual ~CProgramThumbLoader();
+  virtual bool LoadItem(CFileItem* pItem);
+  virtual bool LoadItemCached(CFileItem* pItem);
+  virtual bool LoadItemLookup(CFileItem* pItem);
 
   /*! \brief Fill the thumb of a programs item
    First uses a cached thumb from a previous run, then checks for a local thumb

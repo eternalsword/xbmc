@@ -20,6 +20,10 @@
  *
  */
 
+#if defined(HAVE_CONFIG_H)
+#include "config.h"
+#endif
+
 #if !defined(TARGET_WINDOWS)
 #define DECLARE_UNUSED(a,b) a __attribute__((unused)) b;
 #endif
@@ -27,7 +31,15 @@
 /*****************
  * All platforms
  *****************/
+#define HAS_DVD_SWSCALE
+#define HAS_VideoPlayer
 #define HAS_EVENT_SERVER
+#define HAS_SCREENSAVER
+#define HAS_PYTHON
+#define HAS_VIDEO_PLAYBACK
+#define HAS_VISUALISATION
+#define HAS_PVRCLIENTS
+#define HAS_ADSPADDONS
 
 #ifdef HAVE_LIBMICROHTTPD
 #define HAS_WEB_SERVER
@@ -36,6 +48,7 @@
 
 #define HAS_JSONRPC
 
+#define HAS_FILESYSTEM
 #define HAS_FILESYSTEM_CDDA
 
 #ifdef HAVE_LIBSMBCLIENT
@@ -62,12 +75,18 @@
   #define HAS_UPNP
 #endif
 
-#if defined(HAVE_LIBMDNS)
+#if defined(HAVE_LIBMDNSEMBEDDED)
   #define HAS_ZEROCONF
   #define HAS_MDNS
-  #if defined(HAVE_LIBMDNSEMBEDDED)
-    #define HAS_MDNS_EMBEDDED
-  #endif
+  #define HAS_MDNS_EMBEDDED
+#endif
+
+/**********************
+ * Non-free Components
+ **********************/
+
+#if defined(HAVE_XBMC_NONFREE)
+  #define HAS_FILESYSTEM_RAR
 #endif
 
 /*****************
@@ -77,11 +96,14 @@
 #if defined(TARGET_WINDOWS)
 #define HAS_WIN32_NETWORK
 #define HAS_IRSERVERSUITE
+#define HAS_AUDIO
+#define HAS_WEB_SERVER
+#define HAS_WEB_INTERFACE
 #define HAS_FILESYSTEM_SMB
-
-#ifdef HAVE_LIBBLURAY
-  #define HAVE_LIBBLURAY_BDJ
-#endif
+#define HAS_ZEROCONF
+#define HAS_MDNS
+#define HAS_AIRTUNES
+#define HAS_UPNP
 
 #define DECLARE_UNUSED(a,b) a b;
 #endif
@@ -133,9 +155,6 @@
 #ifdef HAVE_LIBPULSE
 #define HAS_PULSEAUDIO
 #endif
-#ifdef HAVE_SNDIO
-#define HAS_SNDIO
-#endif
 #ifdef HAVE_ALSA
 #define HAS_ALSA
 #endif
@@ -143,6 +162,13 @@
 
 #ifdef HAVE_LIBSSH
 #define HAS_FILESYSTEM_SFTP
+#endif
+
+#if defined(HAVE_X11)
+#define HAS_EGL
+#if !defined(HAVE_LIBGLESV2)
+#define HAS_GLX
+#endif
 #endif
 
 /****************************************
@@ -186,10 +212,20 @@
 #undef HAS_LIRC
 #endif
 
+#ifdef HAVE_LIBEGL
+#define HAS_EGL
+#endif
+
 // GLES2.0 detected. Dont use GL!
 #ifdef HAVE_LIBGLESV2
 #undef HAS_GL
 #define HAS_GLES 2
+#endif
+
+// GLES1.0 detected. Dont use GL!
+#ifdef HAVE_LIBGLES
+#undef HAS_GL
+#define HAS_GLES 1
 #endif
 
 #ifdef HAS_DVD_DRIVE

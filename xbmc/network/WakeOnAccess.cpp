@@ -26,7 +26,6 @@
 #include "system.h"
 #include "network/Network.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "DNSNameCache.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "dialogs/GUIDialogKaiToast.h"
@@ -90,13 +89,13 @@ class CMACDiscoveryJob : public CJob
 public:
   CMACDiscoveryJob(const std::string& host) : m_host(host) {}
 
-  bool DoWork() override;
+  virtual bool DoWork();
 
-  const std::string& GetMAC() const { return m_macAddress; }
+  const std::string& GetMAC() const { return m_macAddres; }
   const std::string& GetHost() const { return m_host; }
 
 private:
-  std::string m_macAddress;
+  std::string m_macAddres;
   std::string m_host;
 };
 
@@ -113,7 +112,7 @@ bool CMACDiscoveryJob::DoWork()
   std::vector<CNetworkInterface*>& ifaces = g_application.getNetwork().GetInterfaceList();
   for (std::vector<CNetworkInterface*>::const_iterator it = ifaces.begin(); it != ifaces.end(); ++it)
   {
-    if ((*it)->GetHostMacAddress(ipAddress, m_macAddress))
+    if ((*it)->GetHostMacAddress(ipAddress, m_macAddres))
       return true;
   }
 
@@ -166,7 +165,7 @@ public:
   ProgressDialogHelper (const std::string& heading) : m_dialog(0)
   {
     if (g_application.IsCurrentThread())
-      m_dialog = g_windowManager.GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+      m_dialog = (CGUIDialogProgress*) g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
 
     if (m_dialog)
     {
@@ -236,7 +235,7 @@ public:
   NetworkStartWaiter (unsigned settle_time_ms, const std::string& host) : m_settle_time_ms (settle_time_ms), m_host(host)
   {
   }
-  bool SuccessWaiting () const override
+  virtual bool SuccessWaiting () const
   {
     unsigned long address = ntohl(HostToIP(m_host));
     bool online = g_application.getNetwork().HasInterfaceForIP(address);
@@ -264,16 +263,16 @@ public:
       m_jobId = CJobManager::GetInstance().AddJob(job, this);
     }
   }
-  ~PingResponseWaiter() override
+  ~PingResponseWaiter()
   {
     CJobManager::GetInstance().CancelJob(m_jobId);
   }
-  bool SuccessWaiting () const override
+  virtual bool SuccessWaiting () const
   {
     return m_jobId ? m_hostOnline : Ping(m_server);
   }
 
-  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override
+  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job)
   {
     m_hostOnline = success;
   }
@@ -291,7 +290,7 @@ private:
     public:
       CHostProberJob(const CWakeOnAccess::WakeUpEntry& server) : m_server (server) {}
 
-      bool DoWork() override
+      virtual bool DoWork()
       {
         while (!ShouldCancel(0,0))
         {
@@ -426,7 +425,7 @@ bool CWakeOnAccess::WakeUpHost(const WakeUpEntry& server)
   // we have ping response ; just add extra wait-for-services before returning if requested
 
   {
-    WaitCondition waitObj ; // wait uninterruptable fixed time for services ..
+    WaitCondition waitObj ; // wait uninteruptable fixed time for services ..
 
     dlg.ShowAndWait (waitObj, server.wait_services_sec, LOCALIZED(13032));
 
@@ -631,7 +630,7 @@ void CWakeOnAccess::OnJobComplete(unsigned int jobID, bool success, CJob *job)
   }
 }
 
-void CWakeOnAccess::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CWakeOnAccess::OnSettingChanged(const CSetting *setting)
 {
   if (setting == nullptr)
     return;
@@ -639,7 +638,7 @@ void CWakeOnAccess::OnSettingChanged(std::shared_ptr<const CSetting> setting)
   const std::string& settingId = setting->GetId();
   if (settingId == CSettings::SETTING_POWERMANAGEMENT_WAKEONACCESS)
   {
-    bool enabled = std::static_pointer_cast<const CSettingBool>(setting)->GetValue();
+    bool enabled = static_cast<const CSettingBool*>(setting)->GetValue();
 
     SetEnabled(enabled);
 
@@ -669,7 +668,7 @@ void CWakeOnAccess::SetEnabled(bool enabled)
 
 void CWakeOnAccess::LoadFromXML()
 {
-  bool enabled = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_POWERMANAGEMENT_WAKEONACCESS);
+  bool enabled = CSettings::GetInstance().GetBool(CSettings::SETTING_POWERMANAGEMENT_WAKEONACCESS);
 
   CXBMCTinyXML xmlDoc;
   if (!xmlDoc.LoadFile(GetSettingFile()))

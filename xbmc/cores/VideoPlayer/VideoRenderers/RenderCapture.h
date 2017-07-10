@@ -193,7 +193,7 @@ class CRenderCaptureGL : public CRenderCaptureBase
 class CRenderCapture : public CRenderCaptureGL
 {
   public:
-    CRenderCapture() = default;
+    CRenderCapture() {};
 };
 
 #elif HAS_DX /*HAS_GL*/
@@ -210,7 +210,7 @@ class CRenderCaptureDX : public CRenderCaptureBase, public ID3DResource
     void EndRender();
     void ReadOut();
     
-    virtual void OnDestroyDevice(bool fatal);
+    virtual void OnDestroyDevice();
     virtual void OnLostDevice();
     virtual void OnCreateDevice() {};
 

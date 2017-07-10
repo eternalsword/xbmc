@@ -22,6 +22,7 @@
 #include "system.h"
 
 #include "cores/AudioEngine/Interfaces/AESink.h"
+#include "cores/AudioEngine/AEFactory.h"
 #include "Utils/AEDeviceInfo.h"
 #include "Utils/AEUtil.h"
 #include <pulse/pulseaudio.h>
@@ -30,22 +31,22 @@
 class CAESinkPULSE : public IAESink
 {
 public:
-  const char *GetName() override { return "PULSE"; }
+  virtual const char *GetName() { return "PULSE"; }
 
   CAESinkPULSE();
-  ~CAESinkPULSE() override;
+  virtual ~CAESinkPULSE();
 
-  bool Initialize(AEAudioFormat &format, std::string &device) override;
-  void Deinitialize() override;
+  virtual bool Initialize(AEAudioFormat &format, std::string &device);
+  virtual void Deinitialize();
 
-  virtual double GetDelay() { return 0.0; }
-  void GetDelay(AEDelayStatus& status) override;
-  double GetCacheTotal() override;
-  unsigned int AddPackets(uint8_t **data, unsigned int frames, unsigned int offset) override;
-  void Drain() override;
+  virtual double       GetDelay        () { return 0.0; }
+  virtual void         GetDelay        (AEDelayStatus& status);
+  virtual double       GetCacheTotal   ();
+  virtual unsigned int AddPackets      (uint8_t **data, unsigned int frames, unsigned int offset);
+  virtual void         Drain           ();
 
-  bool HasVolume() override { return true; };
-  void SetVolume(float volume) override;
+  virtual bool HasVolume() { return true; };
+  virtual void SetVolume(float volume);
 
   static void EnumerateDevicesEx(AEDeviceInfoList &list, bool force = false);
   bool IsInitialized();
@@ -70,6 +71,8 @@ private:
   pa_cvolume m_Volume;
   bool m_volume_needs_update;
   uint32_t m_periodSize;
+  uint64_t m_lastPackageStamp;
+  uint64_t m_filled_bytes;
 
   pa_context *m_Context;
   pa_threaded_mainloop *m_MainLoop;

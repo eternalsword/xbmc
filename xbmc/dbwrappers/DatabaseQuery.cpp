@@ -128,7 +128,8 @@ bool CDatabaseQueryRule::Load(const TiXmlNode *node, const std::string &encoding
 
 bool CDatabaseQueryRule::Load(const CVariant &obj)
 {
-  if (!obj.isMember("field") || !obj["field"].isString() ||
+  if (!obj.isObject() ||
+      !obj.isMember("field") || !obj["field"].isString() ||
       !obj.isMember("operator") || !obj["operator"].isString())
     return false;
 
@@ -341,7 +342,7 @@ std::string CDatabaseQueryRule::GetWhereClause(const CDatabase &db, const std::s
   if (op == OPERATOR_DOES_NOT_CONTAIN || op == OPERATOR_FALSE ||
      (op == OPERATOR_DOES_NOT_EQUAL && GetFieldType(m_field) != REAL_FIELD && GetFieldType(m_field) != NUMERIC_FIELD &&
       GetFieldType(m_field) != SECONDS_FIELD))
-    negate = " NOT ";
+    negate = " NOT";
 
   // boolean operators don't have any values in m_parameter, they work on the operator
   if (m_operator == OPERATOR_FALSE || m_operator == OPERATOR_TRUE)

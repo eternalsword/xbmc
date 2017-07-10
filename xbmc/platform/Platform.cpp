@@ -32,9 +32,15 @@ CPlatform* CPlatform::CreateInstance()
 
 // base class definitions
 
-CPlatform::CPlatform() = default;
+CPlatform::CPlatform()
+{
+  
+}
 
-CPlatform::~CPlatform() = default;
+CPlatform::~CPlatform()
+{
+  
+}
 
 void CPlatform::Init()
 {

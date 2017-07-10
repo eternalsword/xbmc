@@ -46,11 +46,11 @@ public:
               bool eject=false, unsigned int rate=44100,
               unsigned int channels=2, unsigned int bps=16);
 
-  ~CCDDARipJob() override;
+  virtual ~CCDDARipJob();
 
-  const char* GetType() const override { return "cdrip"; };
-  bool operator==(const CJob *job) const override;
-  bool DoWork() override;
+  virtual const char* GetType() const { return "cdrip"; };
+  virtual bool operator==(const CJob *job) const;
+  virtual bool DoWork();
   std::string GetOutput() const { return m_output; }
 protected:
   //! \brief Setup the audio encoder

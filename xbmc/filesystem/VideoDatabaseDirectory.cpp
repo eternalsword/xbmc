@@ -19,7 +19,6 @@
  */
 
 #include "VideoDatabaseDirectory.h"
-#include "ServiceBroker.h"
 #include "utils/URIUtils.h"
 #include "VideoDatabaseDirectory/QueryParams.h"
 #include "video/VideoDatabase.h"
@@ -35,9 +34,13 @@
 using namespace XFILE;
 using namespace VIDEODATABASEDIRECTORY;
 
-CVideoDatabaseDirectory::CVideoDatabaseDirectory(void) = default;
+CVideoDatabaseDirectory::CVideoDatabaseDirectory(void)
+{
+}
 
-CVideoDatabaseDirectory::~CVideoDatabaseDirectory(void) = default;
+CVideoDatabaseDirectory::~CVideoDatabaseDirectory(void)
+{
+}
 
 bool CVideoDatabaseDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
@@ -233,7 +236,7 @@ std::string CVideoDatabaseDirectory::GetIcon(const std::string &strDirectory)
   case NODE_TYPE_TITLE_MOVIES:
     if (URIUtils::PathEquals(path, "videodb://movies/titles/"))
     {
-      if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
+      if (CSettings::GetInstance().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
         return "DefaultMovies.png";
       return "DefaultMovieTitle.png";
     }
@@ -241,7 +244,7 @@ std::string CVideoDatabaseDirectory::GetIcon(const std::string &strDirectory)
   case NODE_TYPE_TITLE_TVSHOWS:
     if (URIUtils::PathEquals(path, "videodb://tvshows/titles/"))
     {
-      if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
+      if (CSettings::GetInstance().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
         return "DefaultTVShows.png";
       return "DefaultTVShowTitle.png";
     }
@@ -249,7 +252,7 @@ std::string CVideoDatabaseDirectory::GetIcon(const std::string &strDirectory)
   case NODE_TYPE_TITLE_MUSICVIDEOS:
     if (URIUtils::PathEquals(path, "videodb://musicvideos/titles/"))
     {
-      if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
+      if (CSettings::GetInstance().GetBool(CSettings::SETTING_MYVIDEOS_FLATTEN))
         return "DefaultMusicVideos.png";
       return "DefaultMusicVideoTitle.png";
     }

@@ -21,6 +21,9 @@
 //#define DEBUG_VERBOSE 1
 
 #include "system.h"
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
 
 #if HAS_GLES == 2
 #include "system_gl.h"
@@ -28,7 +31,6 @@
 #include <locale.h>
 #include "guilib/MatrixGLES.h"
 #include "LinuxRendererGLES.h"
-#include "ServiceBroker.h"
 #include "utils/MathUtils.h"
 #include "utils/GLUtils.h"
 #include "utils/log.h"
@@ -50,7 +52,7 @@ extern "C" {
 #include "libswscale/swscale.h"
 }
 
-#if defined(HAS_NEON) && !defined(__LP64__)
+#if defined(__ARM_NEON__) && !defined(__LP64__)
 #include "yuv2rgb.neon.h"
 #include "utils/CPUInfo.h"
 #endif
@@ -145,7 +147,6 @@ bool CLinuxRendererGLES::ValidateRenderTarget()
       DeleteTexture(i);
 
      // create the yuv textures
-    UpdateVideoFilter();
     LoadShaders();
     if (m_renderMethod < 0)
       return false;
@@ -159,7 +160,7 @@ bool CLinuxRendererGLES::ValidateRenderTarget()
   return false;
 }
 
-bool CLinuxRendererGLES::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void* hwPic, unsigned int orientation)
+bool CLinuxRendererGLES::Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, unsigned extended_format, unsigned int orientation)
 {
   m_sourceWidth = width;
   m_sourceHeight = height;
@@ -186,6 +187,17 @@ bool CLinuxRendererGLES::Configure(unsigned int width, unsigned int height, unsi
     m_buffers[i].image.flags = 0;
 
   m_iLastRenderBuffer = -1;
+
+  if (m_format == RENDER_FMT_BYPASS)
+  {
+    m_renderFeatures.clear();
+    m_scalingMethods.clear();
+    m_deinterlaceMethods.clear();
+
+    g_application.m_pPlayer->GetRenderFeatures(m_renderFeatures);
+    g_application.m_pPlayer->GetDeinterlaceMethods(m_deinterlaceMethods);
+    g_application.m_pPlayer->GetScalingMethods(m_scalingMethods);
+  }
 
   return true;
 }
@@ -248,7 +260,7 @@ void CLinuxRendererGLES::ReleaseImage(int source, bool preserve)
 
   im.flags &= ~IMAGE_FLAG_INUSE;
   im.flags |= IMAGE_FLAG_READY;
-  /* if image should be preserved reserve it so it's not auto selected */
+  /* if image should be preserved reserve it so it's not auto seleceted */
 
   if( preserve )
     im.flags |= IMAGE_FLAG_RESERVED;
@@ -534,7 +546,7 @@ void CLinuxRendererGLES::UpdateVideoFilter()
 
   if(!Supports(m_scalingMethod))
   {
-    CLog::Log(LOGWARNING, "CLinuxRendererGLES::UpdateVideoFilter - chosen scaling method %d, is not supported by renderer", (int)m_scalingMethod);
+    CLog::Log(LOGWARNING, "CLinuxRendererGLES::UpdateVideoFilter - choosen scaling method %d, is not supported by renderer", (int)m_scalingMethod);
     m_scalingMethod = VS_SCALINGMETHOD_LINEAR;
   }
 
@@ -590,11 +602,9 @@ void CLinuxRendererGLES::UpdateVideoFilter()
 
 void CLinuxRendererGLES::LoadShaders(int field)
 {
-  m_reloadShaders = 0;
-
   if (!LoadShadersHook())
   {
-    int requestedMethod = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
+    int requestedMethod = CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD);
     CLog::Log(LOGDEBUG, "GL: Requested render method: %d", requestedMethod);
 
     ReleaseShaders();
@@ -616,9 +626,8 @@ void CLinuxRendererGLES::LoadShaders(int field)
           // create regular scan shader
           CLog::Log(LOGNOTICE, "GL: Selecting Single Pass YUV 2 RGB shader");
 
-          EShaderFormat shaderFormat = GetShaderFormat(m_format);
-          m_pYUVProgShader = new YUV2RGBProgressiveShader(false, m_iFlags, shaderFormat);
-          m_pYUVBobShader = new YUV2RGBBobShader(false, m_iFlags, shaderFormat);
+          m_pYUVProgShader = new YUV2RGBProgressiveShader(false, m_iFlags, m_format);
+          m_pYUVBobShader = new YUV2RGBBobShader(false, m_iFlags, m_format);
           if ((m_pYUVProgShader && m_pYUVProgShader->CompileAndLink())
               && (m_pYUVBobShader && m_pYUVBobShader->CompileAndLink()))
           {
@@ -813,8 +822,6 @@ void CLinuxRendererGLES::Render(DWORD flags, int index)
       break;
     }
   }
-  
-  AfterRenderHook(index);
 }
 
 void CLinuxRendererGLES::RenderSinglePass(int index, int field)
@@ -826,6 +833,7 @@ void CLinuxRendererGLES::RenderSinglePass(int index, int field)
 
   if (m_reloadShaders)
   {
+    m_reloadShaders = 0;
     LoadShaders(field);
   }
 
@@ -1377,14 +1385,14 @@ bool CLinuxRendererGLES::CreateYV12Texture(int index)
 //********************************************************************************************************
 // NV12 Texture loading, creation and deletion
 //********************************************************************************************************
-bool CLinuxRendererGLES::UploadNV12Texture(int source)
+void CLinuxRendererGLES::UploadNV12Texture(int source)
 {
   YUVBUFFER& buf    =  m_buffers[source];
   YV12Image* im     = &buf.image;
   YUVFIELDS& fields =  buf.fields;
 
   if (!(im->flags & IMAGE_FLAG_READY))
-    return false;
+    return;
   bool deinterlacing;
   if (m_currentField == FIELD_FULL)
     deinterlacing = false;
@@ -1437,7 +1445,7 @@ bool CLinuxRendererGLES::UploadNV12Texture(int source)
   CalculateTextureSourceRects(source, 3);
 
   glDisable(m_textureTarget);
-  return true;
+  return;
 }
 
 bool CLinuxRendererGLES::CreateNV12Texture(int index)
@@ -1619,6 +1627,13 @@ void CLinuxRendererGLES::SetTextureFilter(GLenum method)
 
 bool CLinuxRendererGLES::Supports(ERENDERFEATURE feature)
 {
+  // Player controls render, let it dictate available render features
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_renderFeatures.begin(),m_renderFeatures.end(), feature);
+    return itr != m_renderFeatures.end();
+  }
+
   if(feature == RENDERFEATURE_BRIGHTNESS)
     return true;
 
@@ -1656,6 +1671,13 @@ bool CLinuxRendererGLES::SupportsMultiPassRendering()
 
 bool CLinuxRendererGLES::Supports(ESCALINGMETHOD method)
 {
+  // Player controls render, let it dictate available scaling methods
+  if((m_renderMethod & RENDER_BYPASS))
+  {
+    Features::iterator itr = std::find(m_scalingMethods.begin(),m_scalingMethods.end(), method);
+    return itr != m_scalingMethods.end();
+  }
+
   if(method == VS_SCALINGMETHOD_NEAREST
   || method == VS_SCALINGMETHOD_LINEAR)
     return true;

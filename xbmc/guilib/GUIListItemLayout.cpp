@@ -37,7 +37,7 @@ CGUIListItemLayout::CGUIListItemLayout()
   m_group.SetPushUpdates(true);
 }
 
-CGUIListItemLayout::CGUIListItemLayout(const CGUIListItemLayout &from, CGUIControl *control)
+CGUIListItemLayout::CGUIListItemLayout(const CGUIListItemLayout &from)
 : m_group(from.m_group), m_isPlaying(from.m_isPlaying)
 {
   m_width = from.m_width;
@@ -45,10 +45,11 @@ CGUIListItemLayout::CGUIListItemLayout(const CGUIListItemLayout &from, CGUIContr
   m_focused = from.m_focused;
   m_condition = from.m_condition;
   m_invalidated = true;
-  m_group.SetParentControl(control);
 }
 
-CGUIListItemLayout::~CGUIListItemLayout() = default;
+CGUIListItemLayout::~CGUIListItemLayout()
+{
+}
 
 bool CGUIListItemLayout::IsAnimating(ANIMATION_TYPE animType)
 {
@@ -166,7 +167,7 @@ void CGUIListItemLayout::LoadControl(TiXmlElement *child, CGUIControlGroup *grou
   }
 }
 
-void CGUIListItemLayout::LoadLayout(TiXmlElement *layout, int context, bool focused, float maxWidth, float maxHeight)
+void CGUIListItemLayout::LoadLayout(TiXmlElement *layout, int context, bool focused)
 {
   m_focused = focused;
   layout->QueryFloatAttribute("width", &m_width);
@@ -175,22 +176,17 @@ void CGUIListItemLayout::LoadLayout(TiXmlElement *layout, int context, bool focu
   if (condition)
     m_condition = g_infoManager.Register(condition, context);
   m_isPlaying.Parse("listitem.isplaying", context);
-  // ensure width and height are valid
-  if (!m_width)
-    m_width = maxWidth;
-  if (!m_height)
-    m_height = maxHeight;
-  m_width = std::max(1.0f, m_width);
-  m_height = std::max(1.0f, m_height);
+  TiXmlElement *child = layout->FirstChildElement("control");
   m_group.SetWidth(m_width);
   m_group.SetHeight(m_height);
-
-  TiXmlElement *child = layout->FirstChildElement("control");
   while (child)
   {
     LoadControl(child, &m_group);
     child = child->NextSiblingElement("control");
   }
+  // ensure width and height are valid
+  m_width = std::max(1.0f, m_width);
+  m_height = std::max(1.0f, m_height);
 }
 
 //#ifdef GUILIB_PYTHON_COMPATIBILITY

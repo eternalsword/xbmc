@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2017 Team Kodi
+ *      Copyright (C) 2015-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -22,33 +22,25 @@
 #include "ControllerLayout.h"
 #include "ControllerTypes.h"
 #include "addons/Addon.h"
-#include "input/joysticks/JoystickTypes.h"
 
 #include <string>
-#include <vector>
 
-namespace KODI
-{
 namespace GAME
 {
-using JOYSTICK::FEATURE_TYPE;
 
 class CController : public ADDON::CAddon
 {
 public:
-  static std::unique_ptr<CController> FromExtension(ADDON::CAddonInfo addonInfo, const cp_extension_t* ext);
+  static std::unique_ptr<CController> FromExtension(ADDON::AddonProps props, const cp_extension_t* ext);
 
-  CController(ADDON::CAddonInfo addonInfo);
+  CController(ADDON::AddonProps addonprops);
 
-  virtual ~CController() = default;
+  virtual ~CController(void) { }
 
   static const ControllerPtr EmptyPtr;
 
   std::string Label(void);
   std::string ImagePath(void) const;
-  void GetFeatures(std::vector<std::string>& features, FEATURE_TYPE type = FEATURE_TYPE::UNKNOWN) const;
-  JOYSTICK::FEATURE_TYPE GetFeatureType(const std::string &feature) const;
-  JOYSTICK::INPUT_TYPE GetInputType(const std::string& feature) const;
 
   bool LoadLayout(void);
 
@@ -59,5 +51,4 @@ private:
   bool              m_bLoaded;
 };
 
-}
 }

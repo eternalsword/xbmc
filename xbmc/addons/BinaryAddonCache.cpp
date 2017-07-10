@@ -32,10 +32,7 @@ CBinaryAddonCache::~CBinaryAddonCache()
 
 void CBinaryAddonCache::Init()
 {
-  m_addonsToCache = {
-    ADDON_PVRDLL,
-    ADDON_GAMEDLL,
-  };
+  m_addonsToCache = {ADDON_AUDIODECODER, ADDON_INPUTSTREAM};
   CAddonMgr::GetInstance().Events().Subscribe(this, &CBinaryAddonCache::OnEvent);
   Update();
 }
@@ -47,57 +44,17 @@ void CBinaryAddonCache::Deinit()
 
 void CBinaryAddonCache::GetAddons(VECADDONS& addons, const TYPE& type)
 {
-  VECADDONS myAddons;
-  GetInstalledAddons(myAddons, type);
-
-  for (auto &addon : myAddons)
-  {
-    if (!CAddonMgr::GetInstance().IsAddonDisabled(addon->ID()))
-      addons.emplace_back(std::move(addon));
-  }
-}
-
-void CBinaryAddonCache::GetDisabledAddons(VECADDONS& addons, const TYPE& type)
-{
-  VECADDONS myAddons;
-  GetInstalledAddons(myAddons, type);
-
-  for (auto &addon : myAddons)
-  {
-    if (CAddonMgr::GetInstance().IsAddonDisabled(addon->ID()))
-      addons.emplace_back(std::move(addon));
-  }
-}
-
-void CBinaryAddonCache::GetInstalledAddons(VECADDONS& addons, const TYPE& type)
-{
   CSingleLock lock(m_critSection);
   auto it = m_addons.find(type);
-  if (it != m_addons.end())
-    addons = it->second;
-}
 
-AddonPtr CBinaryAddonCache::GetAddonInstance(const std::string& strId, TYPE type)
-{
-  AddonPtr addon;
-
-  CSingleLock lock(m_critSection);
-
-  auto it = m_addons.find(type);
   if (it != m_addons.end())
   {
-    VECADDONS& addons = it->second;
-    auto itAddon = std::find_if(addons.begin(), addons.end(),
-      [&strId](const AddonPtr& addon)
-      {
-        return addon->ID() == strId;
-      });
-
-    if (itAddon != addons.end())
-      addon = *itAddon;
+    for (auto &addon : it->second)
+    {
+      if (!CAddonMgr::GetInstance().IsAddonDisabled(addon->ID()))
+        addons.push_back(addon);
+    }
   }
-
-  return addon;
 }
 
 void CBinaryAddonCache::OnEvent(const AddonEvent& event)
@@ -110,6 +67,7 @@ void CBinaryAddonCache::Update()
 {
   using AddonMap = std::multimap<TYPE, VECADDONS>;
   AddonMap addonmap;
+  addonmap.clear();
 
   for (auto &addonType : m_addonsToCache)
   {
@@ -120,7 +78,7 @@ void CBinaryAddonCache::Update()
 
   {
     CSingleLock lock(m_critSection);
-    m_addons = std::move(addonmap);
+    m_addons = addonmap;
   }
 }
 

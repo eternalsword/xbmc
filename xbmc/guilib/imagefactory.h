@@ -25,8 +25,8 @@
 class ImageFactory
 {
 public:
-  ImageFactory() = default;
-  virtual ~ImageFactory() = default;
+  ImageFactory() {}
+  virtual ~ImageFactory() {}
 
   static IImage* CreateLoader(const std::string& strFileName);
   static IImage* CreateLoader(const CURL& url);

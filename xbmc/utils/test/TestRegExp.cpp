@@ -137,8 +137,8 @@ TEST(TestRegExp, operatorEqual)
 class TestRegExpLog : public testing::Test
 {
 protected:
-  TestRegExpLog() = default;
-  ~TestRegExpLog() override
+  TestRegExpLog(){}
+  ~TestRegExpLog()
   {
     CLog::Close();
   }

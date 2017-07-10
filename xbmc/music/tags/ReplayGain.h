@@ -55,8 +55,6 @@ public:
   void SetGain(Type aType, float aGain);
   void ParsePeak(Type aType, const std::string& aStrPeak);
   void SetPeak(Type aType, float aPeak);
-  std::string Get() const;
-  void Set(const std::string& strReplayGain);
 private:
   Info m_data[TRACK];
 };

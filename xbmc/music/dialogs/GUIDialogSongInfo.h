@@ -29,18 +29,17 @@ class CGUIDialogSongInfo :
 {
 public:
   CGUIDialogSongInfo(void);
-  ~CGUIDialogSongInfo(void) override;
-  bool OnMessage(CGUIMessage& message) override;
+  virtual ~CGUIDialogSongInfo(void);
+  virtual bool OnMessage(CGUIMessage& message);
   void SetSong(CFileItem *item);
-  bool OnAction(const CAction &action) override;
-  bool OnBack(int actionID) override;
+  virtual bool OnAction(const CAction &action);
+  virtual bool OnBack(int actionID);
   bool NeedsUpdate() const { return m_needsUpdate; };
 
-  bool HasListItems() const override { return true; };
-  CFileItemPtr GetCurrentListItem(int offset = 0) override;
+  virtual bool HasListItems() const { return true; };
+  virtual CFileItemPtr GetCurrentListItem(int offset = 0);
 protected:
-  void OnInitWindow() override;
-  void Update();
+  virtual void OnInitWindow();
   bool DownloadThumbnail(const std::string &thumbFile);
   void OnGetThumb();
   void SetUserrating(int userrating);

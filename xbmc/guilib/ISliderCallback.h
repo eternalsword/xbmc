@@ -36,7 +36,7 @@ class CGUISliderControl;
 class ISliderCallback
 {
 public:
-  virtual ~ISliderCallback() = default;
+  virtual ~ISliderCallback() {}
   
   /*!
    \brief Callback function called whenever the user moves the slider

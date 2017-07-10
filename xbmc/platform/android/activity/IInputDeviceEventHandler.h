@@ -24,10 +24,10 @@ struct AInputEvent;
 class IInputDeviceEventHandler
 {
 public:
-  virtual ~IInputDeviceEventHandler() = default;
+  virtual ~IInputDeviceEventHandler() { }
 
   virtual bool OnInputDeviceEvent(const AInputEvent* event) = 0;
 
 protected:
-  IInputDeviceEventHandler() = default;
+  IInputDeviceEventHandler() { }
 };

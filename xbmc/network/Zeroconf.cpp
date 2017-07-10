@@ -21,7 +21,6 @@
 
 #include <cassert>
 
-#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "system.h" //HAS_ZEROCONF define
 #include "threads/Atomics.h"
@@ -54,7 +53,7 @@ class CZeroconfDummy : public CZeroconf
 };
 #endif
 
-std::atomic_flag CZeroconf::sm_singleton_guard = ATOMIC_FLAG_INIT;
+long CZeroconf::sm_singleton_guard = 0;
 CZeroconf* CZeroconf::smp_instance = 0;
 
 CZeroconf::CZeroconf():mp_crit_sec(new CCriticalSection),m_started(false)
@@ -116,9 +115,9 @@ bool CZeroconf::Start()
   CSingleLock lock(*mp_crit_sec);
   if(!IsZCdaemonRunning())
   {
-    CServiceBroker::GetSettings().SetBool(CSettings::SETTING_SERVICES_ZEROCONF, false);
-    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_AIRPLAY))
-      CServiceBroker::GetSettings().SetBool(CSettings::SETTING_SERVICES_AIRPLAY, false);
+    CSettings::GetInstance().SetBool(CSettings::SETTING_SERVICES_ZEROCONF, false);
+    if (CSettings::GetInstance().GetBool(CSettings::SETTING_SERVICES_AIRPLAY))
+      CSettings::GetInstance().SetBool(CSettings::SETTING_SERVICES_AIRPLAY, false);
     return false;
   }
   if(m_started)

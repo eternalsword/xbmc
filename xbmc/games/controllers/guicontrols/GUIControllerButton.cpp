@@ -21,7 +21,6 @@
 #include "GUIControllerButton.h"
 #include "games/controllers/windows/GUIControllerDefines.h"
 
-using namespace KODI;
 using namespace GAME;
 
 CGUIControllerButton::CGUIControllerButton(const CGUIButtonControl& buttonControl, const std::string& label, unsigned int index) :

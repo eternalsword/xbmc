@@ -32,14 +32,14 @@
 
 #define MAX_HTTP_POST_SIZE 65536
 
-bool CHTTPJsonRpcHandler::CanHandleRequest(const HTTPRequest &request) const
+bool CHTTPJsonRpcHandler::CanHandleRequest(const HTTPRequest &request)
 {
   return (request.pathUrl.compare("/jsonrpc") == 0);
 }
 
 int CHTTPJsonRpcHandler::HandleRequest()
 {
-  CHTTPClient client(m_request.method);
+  CHTTPClient client;
   bool isRequest = false;
   std::string jsonpCallback;
 
@@ -94,13 +94,7 @@ int CHTTPJsonRpcHandler::HandleRequest()
     // get the whole output of JSONRPC.Introspect
     CVariant result;
     JSONRPC::CJSONServiceDescription::Print(result, &m_transportLayer, &client);
-    if (!CJSONVariantWriter::Write(result, m_responseData, false))
-    {
-      m_response.type = HTTPError;
-      m_response.status = MHD_HTTP_INTERNAL_SERVER_ERROR;
-
-      return MHD_YES;
-    }
+    m_responseData = CJSONVariantWriter::Write(result, false);
   }
   else
   {
@@ -176,12 +170,9 @@ int CHTTPJsonRpcHandler::CHTTPTransportLayer::GetCapabilities()
   return JSONRPC::Response | JSONRPC::FileDownloadRedirect;
 }
 
-CHTTPJsonRpcHandler::CHTTPClient::CHTTPClient(HTTPMethod method)
-  : m_permissionFlags(JSONRPC::ReadData)
+int CHTTPJsonRpcHandler::CHTTPClient::GetPermissionFlags()
 {
-  // with a HTTP POST request everything is allowed
-  if (method == POST)
-    m_permissionFlags = JSONRPC::OPERATION_PERMISSION_ALL;
+  return JSONRPC::OPERATION_PERMISSION_ALL;
 }
 
 int CHTTPJsonRpcHandler::CHTTPClient::GetAnnouncementFlags()

@@ -19,13 +19,6 @@
  */
 
 %begin %{
-#if defined(TARGET_WINDOWS) || defined(TARGET_WIN10)
-#  if !defined(WIN32_LEAN_AND_MEAN)
-#    define WIN32_LEAN_AND_MEAN
-#  endif
-#  include <windows.h>
-#endif
-
 #include "system.h"
 
 #ifdef HAS_WEB_SERVER

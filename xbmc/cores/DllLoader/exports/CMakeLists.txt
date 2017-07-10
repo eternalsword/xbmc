@@ -1,7 +1,9 @@
 set(SOURCES emu_dummy.cpp
+            emu_kernel32.cpp
             emu_msvcrt.cpp)
 
 set(HEADERS emu_dummy.h
+            emu_kernel32.h
             emu_msvcrt.h)
 
 core_add_library(dllexports)
@@ -19,7 +21,8 @@ elseif(NOT CORE_SYSTEM_NAME STREQUAL windows)
   add_custom_target(wrapper.def ALL nm ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/wrapper.dir/wrapper.c.o | grep __wrap | awk '{ printf(\"%s \", \$\$3) }' | sed \"s/___wrap_/__wrap_/g\" | sed \"s/__wrap_/-Wl,-wrap,/g\" > wrapper.def)
 
   if(CORE_SYSTEM_NAME STREQUAL android)
-    add_custom_command(TARGET wrapper.def COMMAND echo \"-L${DEPENDS_PATH}/lib/dummy-lib${APP_NAME_LC} -l${APP_NAME_LC}\" >> wrapper.def)
+    add_custom_command(TARGET wrapper.def COMMAND echo \"-l$<TARGET_FILE:${APP_NAME_LC}>\" >> wrapper.def)
+    add_dependencies(wrapper.def ${APP_NAME_LC})
   endif()
 
   set_target_properties(wrapper PROPERTIES FOLDER "Build Utilities")

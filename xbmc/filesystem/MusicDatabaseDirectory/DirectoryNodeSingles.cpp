@@ -35,7 +35,7 @@ bool CDirectoryNodeSingles::GetContent(CFileItemList& items) const
   if (!musicdatabase.Open())
     return false;
 
-  bool bSuccess = musicdatabase.GetSongsFullByWhere(BuildPath(), CDatabase::Filter(), items, SortDescription(), true);
+  bool bSuccess=musicdatabase.GetSongsByWhere(BuildPath(), CDatabase::Filter(), items);
 
   musicdatabase.Close();
 

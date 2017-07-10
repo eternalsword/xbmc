@@ -27,19 +27,17 @@
 #include <conio.h>
 #else
 #include <sys/utsname.h>
+#include "linux/XFileUtils.h"
 #endif
 #include "guiinfo/GUIInfoLabels.h"
 #include "filesystem/CurlFile.h"
-#include "filesystem/File.h"
 #include "network/Network.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "windowing/WindowingFactory.h"
 #include "guilib/LocalizeStrings.h"
 #include "CPUInfo.h"
 #include "CompileInfo.h"
 #include "settings/Settings.h"
-#include "platform/Filesystem.h"
 
 #ifdef TARGET_WINDOWS
 #include "dwmapi.h"
@@ -47,7 +45,7 @@
 #define WIN32_LEAN_AND_MEAN 1
 #endif // WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include "platform/win32/CharsetConverter.h"
+#include "utils/CharsetConverter.h"
 #endif
 #if defined(TARGET_DARWIN)
 #include "platform/darwin/DarwinUtils.h"
@@ -57,7 +55,7 @@
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
 #if defined(TARGET_ANDROID)
-#include <androidjni/Build.h>
+#include "platform/android/jni/Build.h"
 #if defined(HAS_LIBAMCODEC)
 #include "utils/AMLUtils.h"
 #endif
@@ -78,13 +76,9 @@
 #include <linux/version.h>
 #endif
 
-#include <system_error>
-
 /* Expand macro before stringify */
 #define STR_MACRO(x) #x
 #define XSTR_MACRO(x) STR_MACRO(x)
-
-using namespace XFILE;
 
 #ifdef TARGET_WINDOWS
 static bool sysGetVersionExWByRef(OSVERSIONINFOEXW& osVerInfo)
@@ -111,7 +105,7 @@ static bool sysGetVersionExWByRef(OSVERSIONINFOEXW& osVerInfo)
 }
 #endif // TARGET_WINDOWS
 
-#if defined(TARGET_LINUX) && !defined(TARGET_ANDROID)
+#ifdef TARGET_LINUX
 static std::string getValueFromOs_release(std::string key)
 {
   FILE* os_rel = fopen("/etc/os-release", "r");
@@ -245,11 +239,13 @@ static std::string getValueFromLsb_release(enum lsb_rel_info_type infoType)
 
   return response.substr(key.length(), response.find('\n') - key.length());
 }
-#endif // TARGET_LINUX && !TARGET_ANDROID
+#endif // TARGET_LINUX
 
 CSysInfo g_sysinfo;
 
-CSysInfoJob::CSysInfoJob() = default;
+CSysInfoJob::CSysInfoJob()
+{
+}
 
 bool CSysInfoJob::DoWork()
 {
@@ -407,7 +403,9 @@ CSysInfo::CSysInfo(void) : CInfoLoader(15 * 1000)
   m_iSystemTimeTotalUp = 0;
 }
 
-CSysInfo::~CSysInfo() = default;
+CSysInfo::~CSysInfo()
+{
+}
 
 bool CSysInfo::Load(const TiXmlNode *settings)
 {
@@ -447,49 +445,78 @@ const std::string& CSysInfo::GetAppName(void)
   return appName;
 }
 
-bool CSysInfo::GetDiskSpace(std::string drive,int& iTotal, int& iTotalFree, int& iTotalUsed, int& iPercentFree, int& iPercentUsed)
+bool CSysInfo::GetDiskSpace(const std::string& drive,int& iTotal, int& iTotalFree, int& iTotalUsed, int& iPercentFree, int& iPercentUsed)
 {
-  using namespace KODI::PLATFORM::FILESYSTEM;
+  bool bRet= false;
+  ULARGE_INTEGER ULTotal= { { 0 } };
+  ULARGE_INTEGER ULTotalFree= { { 0 } };
 
-  space_info total = { 0 };
-  std::error_code ec;
-
-  // None of this makes sense but the idea of total space
-  // makes no sense on any system really.
-  // Return space for / or for C: as it's correct in a sense
-  // and not much worse than trying to count a total for different
-  // drives/mounts
-  if (drive.empty() || drive == "*")
+  if( !drive.empty() && drive != "*" )
   {
-#if defined(TARGET_WINDOWS)
-    drive = "C";
+#ifdef TARGET_WINDOWS
+    UINT uidriveType = GetDriveType(( drive + ":\\" ).c_str());
+    if(uidriveType != DRIVE_UNKNOWN && uidriveType != DRIVE_NO_ROOT_DIR)
+      bRet= ( 0 != GetDiskFreeSpaceEx( ( drive + ":\\" ).c_str(), NULL, &ULTotal, &ULTotalFree) );
 #elif defined(TARGET_POSIX)
-    drive = "/";
+    bRet = (0 != GetDiskFreeSpaceEx(drive.c_str(), NULL, &ULTotal, &ULTotalFree));
 #endif
   }
-
-#ifdef TARGET_WINDOWS
-  using KODI::PLATFORM::WINDOWS::ToW;
-  UINT uidriveType = GetDriveType(ToW(drive + ":\\").c_str());
-  if (uidriveType != DRIVE_UNKNOWN && uidriveType != DRIVE_NO_ROOT_DIR)
-    total = space(drive + ":\\", ec);
-#elif defined(TARGET_POSIX)
-  total = space(drive, ec);
-#endif
-  if (ec.value() != 0)
-    return false;
-
-  iTotal = static_cast<int>(total.capacity / MB);
-  iTotalFree = static_cast<int>(total.free / MB);
-  iTotalUsed = iTotal - iTotalFree;
-  if (total.capacity > 0)
-    iPercentUsed = static_cast<int>(100.0f * (total.capacity - total.free) / total.capacity + 0.5f);
   else
-    iPercentUsed = 0;
+  {
+    ULARGE_INTEGER ULTotalTmp= { { 0 } };
+    ULARGE_INTEGER ULTotalFreeTmp= { { 0 } };
+#ifdef TARGET_WINDOWS
+    char* pcBuffer= NULL;
+    DWORD dwStrLength= GetLogicalDriveStrings( 0, pcBuffer );
+    if( dwStrLength != 0 )
+    {
+      dwStrLength+= 1;
+      pcBuffer= new char [dwStrLength];
+      GetLogicalDriveStrings( dwStrLength, pcBuffer );
+      int iPos= 0;
+      do {
+        if( DRIVE_FIXED == GetDriveType( pcBuffer + iPos  ) &&
+            GetDiskFreeSpaceEx( ( pcBuffer + iPos ), NULL, &ULTotal, &ULTotalFree ) )
+        {
+          ULTotalTmp.QuadPart+= ULTotal.QuadPart;
+          ULTotalFreeTmp.QuadPart+= ULTotalFree.QuadPart;
+        }
+        iPos += (strlen( pcBuffer + iPos) + 1 );
+      }while( strlen( pcBuffer + iPos ) > 0 );
+    }
+    delete[] pcBuffer;
+#else // for linux and osx
+    if( GetDiskFreeSpaceEx( "/", NULL, &ULTotal, &ULTotalFree ) )
+    {
+      ULTotalTmp.QuadPart+= ULTotal.QuadPart;
+      ULTotalFreeTmp.QuadPart+= ULTotalFree.QuadPart;
+    }
+#endif
+    if( ULTotalTmp.QuadPart || ULTotalFreeTmp.QuadPart )
+    {
+      ULTotal.QuadPart= ULTotalTmp.QuadPart;
+      ULTotalFree.QuadPart= ULTotalFreeTmp.QuadPart;
+      bRet= true;
+    }
+  }
 
-  iPercentFree = 100 - iPercentUsed;
+  if( bRet )
+  {
+    iTotal = (int)( ULTotal.QuadPart / MB );
+    iTotalFree = (int)( ULTotalFree.QuadPart / MB );
+    iTotalUsed = iTotal - iTotalFree;
+    if( ULTotal.QuadPart > 0 )
+    {
+      iPercentUsed = (int)( 100.0f * ( ULTotal.QuadPart - ULTotalFree.QuadPart ) / ULTotal.QuadPart + 0.5f );
+    }
+    else
+    {
+      iPercentUsed = 0;
+    }
+    iPercentFree = 100 - iPercentUsed;
+  }
 
-  return true;
+  return bRet;
 }
 
 std::string CSysInfo::GetCPUModel()
@@ -664,6 +691,12 @@ std::string CSysInfo::GetOsPrettyNameWithVersion(void)
   {
     switch (GetWindowsVersion())
     {
+    case WindowsVersionVista:
+      if (osvi.wProductType == VER_NT_WORKSTATION)
+        osNameVer.append("Vista");
+      else
+        osNameVer.append("Server 2008");
+      break;
     case WindowsVersionWin7:
       if (osvi.wProductType == VER_NT_WORKSTATION)
         osNameVer.append("7");
@@ -748,7 +781,26 @@ std::string CSysInfo::GetManufacturerName(void)
 #elif defined(TARGET_DARWIN)
     manufName = CDarwinUtils::GetManufacturer();
 #elif defined(TARGET_WINDOWS)
-    // We just don't care, might be useful on embedded
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\BIOS", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    {
+      wchar_t buf[400]; // more than enough
+      DWORD bufSize = sizeof(buf);
+      DWORD valType;
+      if (RegQueryValueExW(hKey, L"SystemManufacturer", NULL, &valType, (LPBYTE)buf, &bufSize) == ERROR_SUCCESS && valType == REG_SZ)
+      {
+        g_charsetConverter.wToUTF8(std::wstring(buf, bufSize / sizeof(wchar_t)), manufName);
+        size_t zeroPos = manufName.find(char(0));
+        if (zeroPos != std::string::npos)
+          manufName.erase(zeroPos); // remove any extra zero-terminations
+        std::string lower(manufName);
+        StringUtils::ToLower(lower);
+        if (lower == "system manufacturer" || lower == "to be filled by o.e.m." || lower == "unknown" ||
+            lower == "unidentified")
+          manufName.clear();
+      }
+      RegCloseKey(hKey);
+    }
 #endif
     inited = true;
   }
@@ -777,7 +829,26 @@ std::string CSysInfo::GetModelName(void)
         modelName.assign(buf.get(), nameLen - 1); // assign exactly 'nameLen-1' characters to 'modelName'
     }
 #elif defined(TARGET_WINDOWS)
-    // We just don't care, might be useful on embedded
+    HKEY hKey;
+    if (RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"HARDWARE\\DESCRIPTION\\System\\BIOS", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+    {
+      wchar_t buf[400]; // more than enough
+      DWORD bufSize = sizeof(buf);
+      DWORD valType; 
+      if (RegQueryValueExW(hKey, L"SystemProductName", NULL, &valType, (LPBYTE)buf, &bufSize) == ERROR_SUCCESS && valType == REG_SZ)
+      {
+        g_charsetConverter.wToUTF8(std::wstring(buf, bufSize / sizeof(wchar_t)), modelName);
+        size_t zeroPos = modelName.find(char(0));
+        if (zeroPos != std::string::npos)
+          modelName.erase(zeroPos); // remove any extra zero-terminations
+        std::string lower(modelName);
+        StringUtils::ToLower(lower);
+        if (lower == "system product name" || lower == "to be filled by o.e.m." || lower == "unknown" ||
+            lower == "unidentified")
+            modelName.clear();
+      }
+      RegCloseKey(hKey);
+    }
 #endif
     inited = true;
   }
@@ -831,7 +902,9 @@ CSysInfo::WindowsVersion CSysInfo::GetWindowsVersion()
     OSVERSIONINFOEXW osvi = {};
     if (sysGetVersionExWByRef(osvi))
     {
-      if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)
+      if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0)
+        m_WinVer = WindowsVersionVista;
+      else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)
         m_WinVer = WindowsVersionWin7;
       else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2)
         m_WinVer = WindowsVersionWin8;
@@ -840,7 +913,7 @@ CSysInfo::WindowsVersion CSysInfo::GetWindowsVersion()
       else if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0)
         m_WinVer = WindowsVersionWin10;
       /* Insert checks for new Windows versions here */
-      else if ( (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion > 3) || osvi.dwMajorVersion > 10)
+      else if ( (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion > 3) || osvi.dwMajorVersion > 6)
         m_WinVer = WindowsVersionFuture;
     }
   }
@@ -944,7 +1017,16 @@ const std::string& CSysInfo::GetKernelCpuFamily(void)
 
 int CSysInfo::GetXbmcBitness(void)
 {
-  return static_cast<int>(sizeof(void*) * 8);
+#if defined (__aarch64__) || defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || defined(__x86_64) || defined(_M_X64) || \
+  defined(_M_AMD64) || defined(__ppc64__) || defined(__mips64) || defined(__s390x__)
+  return 64;
+#elif defined(__thumb__) || defined(_M_ARMT) || defined(__arm__) || defined(_M_ARM) || defined(__mips__) || defined(mips) || defined(__mips) || defined(i386) || \
+  defined(__i386) || defined(__i386__) || defined(__i486__) || defined(__i586__) || defined(__i686__) || defined(_M_IX86) || defined(_X86_) || defined(__powerpc) || \
+  defined(__powerpc__) || defined(__ppc__) || defined(_M_PPC)
+  return 32;
+#else
+  return 0; // Unknown
+#endif
 }
 
 bool CSysInfo::HasInternet()
@@ -1042,17 +1124,17 @@ std::string CSysInfo::GetUserAgent()
   if (iDevStrDigit == 0)
     iDev = "unknown";
   result += iDev + "; ";
-  std::string iOSVersion(GetOsVersion());
-  size_t lastDotPos = iOSVersion.rfind('.');
-  if (lastDotPos != std::string::npos && iOSVersion.find('.') != lastDotPos
-      && iOSVersion.find_first_not_of('0', lastDotPos + 1) == std::string::npos)
-    iOSVersion.erase(lastDotPos);
-  StringUtils::Replace(iOSVersion, '.', '_');
+  std::string iOSVerison(GetOsVersion());
+  size_t lastDotPos = iOSVerison.rfind('.');
+  if (lastDotPos != std::string::npos && iOSVerison.find('.') != lastDotPos
+      && iOSVerison.find_first_not_of('0', lastDotPos + 1) == std::string::npos)
+    iOSVerison.erase(lastDotPos);
+  StringUtils::Replace(iOSVerison, '.', '_');
   if (iDev == "iPad" || iDev == "AppleTV")
     result += "CPU OS ";
   else
     result += "CPU iPhone OS ";
-  result += iOSVersion + " like Mac OS X";
+  result += iOSVerison + " like Mac OS X";
 #else
   result += "Macintosh; ";
   std::string cpuFam(GetBuildTargetCpuFamily());
@@ -1152,7 +1234,7 @@ std::string CSysInfo::GetUserAgent()
 
 std::string CSysInfo::GetDeviceName()
 {
-  std::string friendlyName = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SERVICES_DEVICENAME);
+  std::string friendlyName = CSettings::GetInstance().GetString(CSettings::SETTING_SERVICES_DEVICENAME);
   if (StringUtils::EqualsNoCase(friendlyName, CCompileInfo::GetAppName()))
   {
     std::string hostname("[unknown]");
@@ -1334,22 +1416,6 @@ std::string CSysInfo::GetUsedCompilerNameAndVer(void)
 #endif
 }
 
-std::string CSysInfo::GetPrivacyPolicy()
-{
-  if (m_privacyPolicy.empty())
-  {
-    CFile file;
-    XFILE::auto_buffer buf;
-    if (file.LoadFile("special://xbmc/privacy-policy.txt", buf) > 0)
-    {
-      std::string strBuf(buf.get(), buf.length());
-      m_privacyPolicy = strBuf;
-    }
-    else
-      m_privacyPolicy = g_localizeStrings.Get(19055);
-  }
-  return m_privacyPolicy;
-}
 
 CJob *CSysInfo::GetJob() const
 {

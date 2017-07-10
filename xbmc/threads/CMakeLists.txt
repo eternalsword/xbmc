@@ -11,6 +11,7 @@ set(HEADERS Atomics.h
             Event.h
             Helpers.h
             Lockables.h
+            MipsAtomics.h
             SharedSection.h
             SingleLock.h
             SystemClock.h

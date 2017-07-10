@@ -15,6 +15,10 @@
 <!--  eg <B>ActivateWindow(Music)</B>                                                     -->
 <!-- would automatically go to Music on the press of the B button.                        -->
 <!--                                                                                      -->
+<!--  Long presses                                                                        -->
+<!--   A limitation is that if a single press is mapped in a section, a global "longpress"-->
+<!--   will be ignored. The workaround is to duplicate the long mapping in the section.   -->
+<!--                                                                                      -->
 <!-- An empty action removes the corresponding mapping from default and parent keymaps.   -->
 <!-- This is different from a "noop" action, which disables a button.                     -->
 <!--                                                                                      -->
@@ -79,11 +83,12 @@
   </global>
   <Home>
     <remote>
+      <info>ActivateWindow(SystemInfo)</info>
       <clear>ActivateWindow(Weather)</clear>
       <hash>ActivateWindow(Settings)</hash>
     </remote>
   </Home>
-  <TVRecordings>
+  <MyTVRecordings>
     <remote>
       <clear>Delete</clear>
       <red>Red</red>
@@ -91,8 +96,8 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </remote>
-  </TVRecordings>
-  <TVTimers>
+  </MyTVRecordings>
+  <MyTVTimers>
     <remote>
       <clear>Delete</clear>
       <red>Red</red>
@@ -100,8 +105,8 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </remote>
-  </TVTimers>
-  <TVTimerRules>
+  </MyTVTimers>
+  <MyRadioRecordings>
     <remote>
       <clear>Delete</clear>
       <red>Red</red>
@@ -109,8 +114,8 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </remote>
-  </TVTimerRules>
-  <RadioRecordings>
+  </MyRadioRecordings>
+  <MyRadioTimers>
     <remote>
       <clear>Delete</clear>
       <red>Red</red>
@@ -118,25 +123,7 @@
       <yellow>Yellow</yellow>
       <blue>Blue</blue>
     </remote>
-  </RadioRecordings>
-  <RadioTimers>
-    <remote>
-      <clear>Delete</clear>
-      <red>Red</red>
-      <green>Green</green>
-      <yellow>Yellow</yellow>
-      <blue>Blue</blue>
-    </remote>
-  </RadioTimers>
-  <RadioTimerRules>
-    <remote>
-      <clear>Delete</clear>
-      <red>Red</red>
-      <green>Green</green>
-      <yellow>Yellow</yellow>
-      <blue>Blue</blue>
-    </remote>
-  </RadioTimerRules>
+  </MyRadioTimers>
   <FileManager>
     <remote>
       <clear>Delete</clear>
@@ -145,33 +132,28 @@
       <hash>Rename</hash>
     </remote>
   </FileManager>
-  <FileBrowser>
-    <remote>
-      <zero>Highlight</zero>
-    </remote>
-  </FileBrowser>
-  <MusicPlaylist>
+  <MyMusicPlaylist>
     <remote>
       <clear>Delete</clear>
       <zero>Delete</zero>
     </remote>
-  </MusicPlaylist>
-  <MusicPlaylistEditor>
+  </MyMusicPlaylist>
+  <MyMusicPlaylistEditor>
     <remote>
       <zero>Queue</zero>
     </remote>
-  </MusicPlaylistEditor>
+  </MyMusicPlaylistEditor>
   <Music>
     <remote>
       <zero>Queue</zero>
       <star>Queue</star>
     </remote>
   </Music>
-  <Pictures>
+  <MyPictures>
     <remote>
       <clear>Delete</clear>
     </remote>
-  </Pictures>
+  </MyPictures>
   <FullscreenVideo>
     <remote>
       <zero>Number0</zero>
@@ -196,7 +178,7 @@
       <select>OSD</select>
       <title>PlayerProcessInfo</title>
       <info>Info</info>
-      <guide>ActivateWindow(PVRChannelGuide)</guide>
+      <guide>ActivateWindow(PVROSDGuide)</guide>
       <teletext>ActivateWindow(Teletext)</teletext>
       <subtitle>NextSubtitle</subtitle>
       <star>NextSubtitle</star>
@@ -207,20 +189,6 @@
       <pageminus>SkipPrevious</pageminus>
     </remote>
   </FullscreenVideo>
-  <FullscreenGame>
-    <remote>
-      <left>StepBack</left>
-      <right>StepForward</right>
-      <back>Back</back>
-      <menu>OSD</menu>
-      <contentsmenu>OSD</contentsmenu>
-      <rootmenu>OSD</rootmenu>
-      <start>OSD</start>
-      <select>OSD</select>
-      <title>CodecInfo</title>
-      <info>Info</info>
-    </remote>
-  </FullscreenGame>
   <VideoTimeSeek>
     <remote>
       <select>Select</select>
@@ -259,18 +227,8 @@
       <rootmenu>OSD</rootmenu>
       <start>OSD</start>
       <info>Info</info>
-      <guide>ActivateWindow(PVRChannelGuide)</guide>
+      <guide>ActivateWindow(PVROSDGuide)</guide>
       <playlist>ActivateWindow(PVROSDChannels)</playlist>
-      <zero>Number0</zero>
-      <one>Number1</one>
-      <two>Number2</two>
-      <three>Number3</three>
-      <four>Number4</four>
-      <five>Number5</five>
-      <six>Number6</six>
-      <seven>Number7</seven>
-      <eight>Number8</eight>
-      <nine>Number9</nine>
     </remote>
   </Visualisation>
   <MusicOSD>
@@ -383,12 +341,12 @@
       <clear>Delete</clear>
     </remote>
   </Videos>
-  <VideoPlaylist>
+  <MyVideoPlaylist>
     <remote>
       <clear>Delete</clear>
       <zero>Delete</zero>
     </remote>
-  </VideoPlaylist>
+  </MyVideoPlaylist>
   <VirtualKeyboard>
     <remote>
       <back>Back</back>
@@ -609,7 +567,7 @@
       <nine>number9</nine>
     </remote>
   </PVROSDChannels>
-  <PVRChannelGuide>
+  <PVROSDGuide>
     <remote>
       <back>Close</back>
       <menu>Close</menu>
@@ -628,7 +586,7 @@
       <eight>number8</eight>
       <nine>number9</nine>
     </remote>
-  </PVRChannelGuide>
+  </PVROSDGuide>
   <TVChannels>
     <remote>
       <zero>Number0</zero>

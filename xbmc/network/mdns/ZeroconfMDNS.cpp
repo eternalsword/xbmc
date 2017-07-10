@@ -35,6 +35,8 @@
 #include <mDnsEmbedded.h>
 #endif //HAS_MDNS_EMBEDDED
 
+#pragma comment(lib, "dnssd.lib")
+
 extern HWND g_hWnd;
 
 void CZeroconfMDNS::Process()
@@ -50,7 +52,7 @@ void CZeroconfMDNS::Process()
 }
 
 
-CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZeroconfEmbedded")
+CZeroconfMDNS::CZeroconfMDNS()  : CThread("ZerocconfEmbedded")
 {
   m_service = NULL;
 #if defined(HAS_MDNS_EMBEDDED)

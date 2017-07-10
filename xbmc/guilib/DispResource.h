@@ -23,7 +23,7 @@
 class IDispResource
 {
 public:
-  virtual ~IDispResource() = default;
+  virtual ~IDispResource() {};
   virtual void OnLostDisplay() {};
   virtual void OnResetDisplay() {};
   virtual void OnAppFocusChange(bool focus) {};

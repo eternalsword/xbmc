@@ -89,7 +89,6 @@ public:
     m_textWidth = 0;
     m_totalWidth = 0;
     m_widthValid = false;
-    m_loopCount = 0;
   }
   float GetPixelsPerFrame();
 
@@ -102,8 +101,6 @@ public:
   mutable float m_textWidth;
   mutable float m_totalWidth;
   mutable bool m_widthValid;
-
-  unsigned int m_loopCount;
 
   static const int defaultSpeed = 60;
 private:

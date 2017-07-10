@@ -27,7 +27,7 @@ class CVideoDbUrl : public CDbUrl
 {
 public:
   CVideoDbUrl();
-  ~CVideoDbUrl() override;
+  virtual ~CVideoDbUrl();
 
   const std::string& GetItemType() const { return m_itemType; }
 

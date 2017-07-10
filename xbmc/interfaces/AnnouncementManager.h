@@ -35,7 +35,7 @@ namespace ANNOUNCEMENT
   {
   public:
     CAnnouncementManager();
-    ~CAnnouncementManager() override;
+    virtual ~CAnnouncementManager();
 
     static CAnnouncementManager& GetInstance();
 
@@ -53,7 +53,7 @@ namespace ANNOUNCEMENT
         const std::shared_ptr<const CFileItem>& item, const CVariant &data);
 
   protected:
-    void Process() override;
+    void Process();
     void DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, CFileItemPtr item, const CVariant &data);
     void DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data);
 

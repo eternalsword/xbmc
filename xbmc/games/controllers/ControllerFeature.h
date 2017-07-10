@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2015-2017 Team Kodi
+ *      Copyright (C) 2015-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -26,8 +26,6 @@
 
 class TiXmlElement;
 
-namespace KODI
-{
 namespace GAME
 {
 
@@ -41,28 +39,22 @@ public:
 
   CControllerFeature& operator=(const CControllerFeature& rhs);
 
-  JOYSTICK::FEATURE_TYPE Type(void) const { return m_type; }
-  JOYSTICK::FEATURE_CATEGORY Category(void) const { return m_category; }
-  const std::string&     CategoryLabel(void) const { return m_strCategory; }
+  JOYSTICK::FEATURE_TYPE Type(void) const       { return m_type; }
+  const std::string&     Group(void) const      { return m_group; }
   const std::string&     Name(void) const       { return m_strName; }
   const std::string&     Label(void) const      { return m_strLabel; }
   unsigned int           LabelID(void) const    { return m_labelId; }
-  JOYSTICK::INPUT_TYPE InputType(void) const { return m_inputType; }
+  JOYSTICK::INPUT_TYPE   InputType(void) const  { return m_inputType; }
 
-  bool Deserialize(const TiXmlElement* pElement,
-                   const CController* controller,
-                   JOYSTICK::FEATURE_CATEGORY category,
-                   const std::string& strCategory);
+  bool Deserialize(const TiXmlElement* pElement, const CController* controller, const std::string& strGroup);
 
 private:
   JOYSTICK::FEATURE_TYPE m_type;
-  JOYSTICK::FEATURE_CATEGORY m_category;
-  std::string            m_strCategory;
+  std::string            m_group;
   std::string            m_strName;
   std::string            m_strLabel;
   unsigned int           m_labelId;
-  JOYSTICK::INPUT_TYPE m_inputType;
+  JOYSTICK::INPUT_TYPE   m_inputType;
 };
 
-}
 }

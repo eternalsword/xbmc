@@ -32,12 +32,12 @@ class CGUIWindowDebugInfo :
 {
 public:
   CGUIWindowDebugInfo();
-  ~CGUIWindowDebugInfo() override;
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  bool OnMessage(CGUIMessage &message) override;
+  virtual ~CGUIWindowDebugInfo();
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual bool OnMessage(CGUIMessage &message);
 protected:
-  void UpdateVisibility() override;
+  virtual void UpdateVisibility();
 private:
   CGUITextLayout *m_layout;
 #ifdef TARGET_POSIX

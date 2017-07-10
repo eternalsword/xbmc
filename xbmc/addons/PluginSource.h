@@ -28,15 +28,15 @@ class CPluginSource : public CAddon
 {
 public:
 
-  enum Content { UNKNOWN, AUDIO, IMAGE, EXECUTABLE, VIDEO, GAME };
+  enum Content { UNKNOWN, AUDIO, IMAGE, EXECUTABLE, VIDEO };
 
-  static std::unique_ptr<CPluginSource> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
+  static std::unique_ptr<CPluginSource> FromExtension(AddonProps props, const cp_extension_t* ext);
 
-  explicit CPluginSource(CAddonInfo addonInfo);
-  CPluginSource(CAddonInfo addonInfo, const std::string& provides);
+  explicit CPluginSource(AddonProps props);
+  CPluginSource(AddonProps props, const std::string& provides);
 
-  TYPE FullType() const override;
-  bool IsType(TYPE type) const override;
+  virtual TYPE FullType() const;
+  virtual bool IsType(TYPE type) const;
   bool Provides(const Content& content) const
   {
     return content == UNKNOWN ? false : m_providedContent.count(content) > 0;

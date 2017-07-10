@@ -36,7 +36,9 @@ CUPowerSource::CUPowerSource(const char *powerSource)
   Update();
 }
 
-CUPowerSource::~CUPowerSource() = default;
+CUPowerSource::~CUPowerSource() 
+{ 
+}
 
 void CUPowerSource::Update()
 {
@@ -60,21 +62,25 @@ CUPowerSyscall::CUPowerSyscall()
 
   m_lowBattery = false;
 
+  dbus_error_init (&m_error);
   //! @todo do not use dbus_connection_pop_message() that requires the use of a
   //! private connection
-  if (m_connection.Connect(DBUS_BUS_SYSTEM, true))
+  m_connection = dbus_bus_get_private(DBUS_BUS_SYSTEM, &m_error);
+
+  if (m_connection)
   {
     dbus_connection_set_exit_on_disconnect(m_connection, false);
 
-    CDBusError error;
-    dbus_bus_add_match(m_connection, "type='signal',interface='org.freedesktop.UPower'", error);
+    dbus_bus_add_match(m_connection, "type='signal',interface='org.freedesktop.UPower'", &m_error);
     dbus_connection_flush(m_connection);
+  }
 
-    if (error)
-    {
-      error.Log("UPower: Failed to attach to signal");
-      m_connection.Destroy();
-    }
+  if (dbus_error_is_set(&m_error))
+  {
+    CLog::Log(LOGERROR, "UPower: Failed to attach to signal %s", m_error.message);
+    dbus_connection_close(m_connection);
+    dbus_connection_unref(m_connection);
+    m_connection = NULL;
   }
 
   m_CanPowerdown = false;
@@ -83,6 +89,18 @@ CUPowerSyscall::CUPowerSyscall()
   UpdateCapabilities();
 
   EnumeratePowerSources();
+}
+
+CUPowerSyscall::~CUPowerSyscall()
+{
+  if (m_connection)
+  {
+    dbus_connection_close(m_connection);
+    dbus_connection_unref(m_connection);
+    m_connection = NULL;
+  }
+
+  dbus_error_free (&m_error);
 }
 
 bool CUPowerSyscall::Powerdown()
@@ -181,7 +199,33 @@ void CUPowerSyscall::EnumeratePowerSources()
 
 bool CUPowerSyscall::HasUPower()
 {
-  return CDBusUtil::TryMethodCall(DBUS_BUS_SYSTEM, "org.freedesktop.UPower", "/org/freedesktop/UPower", "org.freedesktop.UPower", "EnumerateDevices");
+  DBusError error;
+  DBusConnection *con;
+  bool hasUPower = false;
+  
+  dbus_error_init (&error);
+  con = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+
+  if (dbus_error_is_set(&error))
+  {
+    CLog::Log(LOGDEBUG, "UPowerSyscall: %s - %s", error.name, error.message);
+    dbus_error_free(&error);
+    return false;
+  }
+
+  CDBusMessage deviceKitMessage("org.freedesktop.UPower", "/org/freedesktop/UPower", "org.freedesktop.UPower", "EnumerateDevices");
+
+  deviceKitMessage.Send(con, &error);
+
+  if (!dbus_error_is_set(&error))
+    hasUPower = true;
+  else
+    CLog::Log(LOGDEBUG, "UPower: %s - %s", error.name, error.message);
+
+  dbus_error_free (&error);
+  dbus_connection_unref(con);
+
+  return hasUPower;
 }
 
 bool CUPowerSyscall::PumpPowerEvents(IPowerEventsCallback *callback)
@@ -191,16 +235,16 @@ bool CUPowerSyscall::PumpPowerEvents(IPowerEventsCallback *callback)
   if (m_connection)
   {
     dbus_connection_read_write(m_connection, 0);
-    DBusMessagePtr msg(dbus_connection_pop_message(m_connection));
+    DBusMessage *msg = dbus_connection_pop_message(m_connection);
 
     if (msg)
     {
       result = true;
-      if (dbus_message_is_signal(msg.get(), "org.freedesktop.UPower", "Sleeping"))
+      if (dbus_message_is_signal(msg, "org.freedesktop.UPower", "Sleeping"))
         callback->OnSleep();
-      else if (dbus_message_is_signal(msg.get(), "org.freedesktop.UPower", "Resuming"))
+      else if (dbus_message_is_signal(msg, "org.freedesktop.UPower", "Resuming"))
         callback->OnWake();
-      else if (dbus_message_is_signal(msg.get(), "org.freedesktop.UPower", "Changed"))
+      else if (dbus_message_is_signal(msg, "org.freedesktop.UPower", "Changed"))
       {
         bool lowBattery = m_lowBattery;
         UpdateCapabilities();
@@ -208,7 +252,9 @@ bool CUPowerSyscall::PumpPowerEvents(IPowerEventsCallback *callback)
           callback->OnLowBattery();
       }
       else
-        CLog::Log(LOGDEBUG, "UPower: Received an unknown signal %s", dbus_message_get_member(msg.get()));
+        CLog::Log(LOGDEBUG, "UPower: Received an unknown signal %s", dbus_message_get_member(msg));
+
+      dbus_message_unref(msg);
     }
   }
   return result;

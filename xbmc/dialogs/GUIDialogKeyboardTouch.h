@@ -35,7 +35,6 @@ public:
 
 protected:
   void OnInitWindow() override;
-  using CGUIControlGroup::Process;
   void Process() override;
 
   char_callback_t m_pCharCallback;

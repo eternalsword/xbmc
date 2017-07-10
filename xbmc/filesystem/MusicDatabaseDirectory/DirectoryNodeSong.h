@@ -30,7 +30,7 @@ namespace XFILE
     public:
       CDirectoryNodeSong(const std::string& strEntryName, CDirectoryNode* pParent);
     protected:
-      bool GetContent(CFileItemList& items) const override;
+      virtual bool GetContent(CFileItemList& items) const;
     };
   }
 }

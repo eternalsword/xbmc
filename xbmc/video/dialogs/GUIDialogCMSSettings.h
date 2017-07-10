@@ -26,24 +26,25 @@ class CGUIDialogCMSSettings : public CGUIDialogSettingsManualBase
 {
 public:
   CGUIDialogCMSSettings();
-  ~CGUIDialogCMSSettings() override;
+  virtual ~CGUIDialogCMSSettings();
 
 protected:
   // implementations of ISettingCallback
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting *setting) override;
 
   // specialization of CGUIDialogSettingsBase
-  bool AllowResettingSettings() const override { return false; }
-  bool OnBack(int actionID) override;
-  void Save() override;
-  void SetupView() override;
+  virtual bool AllowResettingSettings() const override { return false; }
+  virtual bool OnBack(int actionID) override;
+  virtual void Save() override;
+  virtual void SetupView() override;
 
   // specialization of CGUIDialogSettingsManualBase
-  void InitializeSettings() override;
+  virtual void InitializeSettings() override;
 
 private:
+  bool m_viewModeChanged;
   static void Cms3dLutsFiller(
-    std::shared_ptr<const CSetting> setting,
+    const CSetting *setting,
     std::vector< std::pair<std::string, std::string> > &list,
     std::string &current,
     void *data);

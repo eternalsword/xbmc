@@ -30,8 +30,7 @@ class CWinEventsIOS : public IWinEvents
 public:
   void MessagePush(XBMC_Event *newEvent);
   bool MessagePump();
-private:
-  size_t GetQueueSize();
+  virtual size_t  GetQueueSize();
 };
 
 #endif // WINDOW_EVENTS_IOS_H

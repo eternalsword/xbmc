@@ -201,7 +201,7 @@ void CJobManager::CancelJobs()
   m_running = false;
 
   // clear any pending jobs
-  for (unsigned int priority = CJob::PRIORITY_LOW_PAUSABLE; priority <= CJob::PRIORITY_DEDICATED; ++priority)
+  for (unsigned int priority = CJob::PRIORITY_LOW_PAUSABLE; priority <= CJob::PRIORITY_HIGH; ++priority)
   {
     for_each(m_jobQueue[priority].begin(), m_jobQueue[priority].end(), std::mem_fun_ref(&CWorkItem::FreeJob));
     m_jobQueue[priority].clear();
@@ -220,7 +220,9 @@ void CJobManager::CancelJobs()
   }
 }
 
-CJobManager::~CJobManager() = default;
+CJobManager::~CJobManager()
+{
+}
 
 unsigned int CJobManager::AddJob(CJob *job, IJobCallback *callback, CJob::PRIORITY priority)
 {
@@ -247,7 +249,7 @@ void CJobManager::CancelJob(unsigned int jobID)
   CSingleLock lock(m_section);
 
   // check whether we have this job in the queue
-  for (unsigned int priority = CJob::PRIORITY_LOW_PAUSABLE; priority <= CJob::PRIORITY_DEDICATED; ++priority)
+  for (unsigned int priority = CJob::PRIORITY_LOW_PAUSABLE; priority <= CJob::PRIORITY_HIGH; ++priority)
   {
     JobQueue::iterator i = find(m_jobQueue[priority].begin(), m_jobQueue[priority].end(), jobID);
     if (i != m_jobQueue[priority].end())
@@ -285,7 +287,7 @@ void CJobManager::StartWorkers(CJob::PRIORITY priority)
 CJob *CJobManager::PopJob()
 {
   CSingleLock lock(m_section);
-  for (int priority = CJob::PRIORITY_DEDICATED; priority >= CJob::PRIORITY_LOW_PAUSABLE; --priority)
+  for (int priority = CJob::PRIORITY_HIGH; priority >= CJob::PRIORITY_LOW_PAUSABLE; --priority)
   {
     // Check whether we're pausing pausable jobs
     if (priority == CJob::PRIORITY_LOW_PAUSABLE && m_pauseJobs)
@@ -433,7 +435,5 @@ void CJobManager::RemoveWorker(const CJobWorker *worker)
 unsigned int CJobManager::GetMaxWorkers(CJob::PRIORITY priority)
 {
   static const unsigned int max_workers = 5;
-  if (priority == CJob::PRIORITY_DEDICATED)
-    return 10000; // A large number..
   return max_workers - (CJob::PRIORITY_HIGH - priority);
 }

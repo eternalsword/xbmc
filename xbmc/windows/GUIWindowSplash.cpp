@@ -31,7 +31,10 @@ CGUIWindowSplash::CGUIWindowSplash(void) : CGUIWindow(WINDOW_SPLASH, "")
   m_image = nullptr;
 }
 
-CGUIWindowSplash::~CGUIWindowSplash(void) = default;
+CGUIWindowSplash::~CGUIWindowSplash(void)
+{
+
+}
 
 void CGUIWindowSplash::OnInitWindow()
 {

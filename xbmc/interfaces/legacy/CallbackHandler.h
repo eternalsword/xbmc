@@ -33,7 +33,7 @@ namespace XBMCAddon
   class CallbackHandler : public AddonClass
   {
   protected:
-    inline CallbackHandler() = default;
+    inline CallbackHandler() {}
 
   public:
     virtual void invokeCallback(Callback* cb) = 0;
@@ -51,15 +51,15 @@ namespace XBMCAddon
    * Fix the stupid means of calling the clearPendingCalls by passing
    *  userData which is specific to the handler/language type.
    */
-  class RetardedAsyncCallbackHandler : public CallbackHandler
+  class RetardedAsynchCallbackHandler : public CallbackHandler
   {
   protected:
-    inline RetardedAsyncCallbackHandler() = default;
+    inline RetardedAsynchCallbackHandler() {}
   public:
 
-    ~RetardedAsyncCallbackHandler() override;
+    virtual ~RetardedAsynchCallbackHandler();
 
-    void invokeCallback(Callback* cb) override;
+    virtual void invokeCallback(Callback* cb);
     static void makePendingCalls();
     static void clearPendingCalls(void* userData);
 

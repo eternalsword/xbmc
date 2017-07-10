@@ -46,7 +46,7 @@ namespace XBMCAddon
 
     /**
      * This class extends the Interceptor<CGUIMediaWindow> in order to 
-     *  add behavior for a few more virtual functions that were unnecessary
+     *  add behavior for a few more virtual functions that were unneccessary
      *  in the Window or WindowDialog.
      */
 #define checkedb(methcall) ( window.isNotNull() ? xwin-> methcall : false )
@@ -62,30 +62,30 @@ namespace XBMCAddon
         InterceptorDialog<CGUIMediaWindow>("CGUIMediaWindow",_window,windowid,xmlfile), xwin(_window) 
       { }
 
-      void AllocResources(bool forceLoad = false) override
+      virtual void AllocResources(bool forceLoad = false) override
       { XBMC_TRACE; if(up()) CGUIMediaWindow::AllocResources(forceLoad); else checkedv(AllocResources(forceLoad)); }
-       void FreeResources(bool forceUnLoad = false) override
+      virtual  void FreeResources(bool forceUnLoad = false) override
       { XBMC_TRACE; if(up()) CGUIMediaWindow::FreeResources(forceUnLoad); else checkedv(FreeResources(forceUnLoad)); }
-      bool OnClick(int iItem, const std::string &player = "") override { XBMC_TRACE; return up() ? CGUIMediaWindow::OnClick(iItem, player) : checkedb(OnClick(iItem)); }
+      virtual bool OnClick(int iItem, const std::string &player = "") override { XBMC_TRACE; return up() ? CGUIMediaWindow::OnClick(iItem, player) : checkedb(OnClick(iItem)); }
 
-      void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override
+      virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override
       { XBMC_TRACE; if(up()) CGUIMediaWindow::Process(currentTime,dirtyregions); else checkedv(Process(currentTime,dirtyregions)); }
 
       // this is a hack to SKIP the CGUIMediaWindow
-      bool OnAction(const CAction &action) override
+      virtual bool OnAction(const CAction &action) override
       { XBMC_TRACE; return up() ? CGUIWindow::OnAction(action) : checkedb(OnAction(action)); }
 
     protected:
       // CGUIWindow
-      bool LoadXML(const std::string &strPath, const std::string &strPathLower) override
+      virtual bool LoadXML(const std::string &strPath, const std::string &strPathLower) override
       { XBMC_TRACE; return up() ? CGUIMediaWindow::LoadXML(strPath,strPathLower) : xwin->LoadXML(strPath,strPathLower); }
 
       // CGUIMediaWindow
-      void GetContextButtons(int itemNumber, CContextButtons &buttons) override
+      virtual void GetContextButtons(int itemNumber, CContextButtons &buttons) override
       { XBMC_TRACE; if (up()) CGUIMediaWindow::GetContextButtons(itemNumber,buttons); else xwin->GetContextButtons(itemNumber,buttons); }
-      bool Update(const std::string &strPath) override
+      virtual bool Update(const std::string &strPath) override
       { XBMC_TRACE; return up() ? CGUIMediaWindow::Update(strPath) : xwin->Update(strPath); }
-      void SetupShares() override { XBMC_TRACE; if(up()) CGUIMediaWindow::SetupShares(); else checkedv(SetupShares()); }
+      virtual void SetupShares() override { XBMC_TRACE; if(up()) CGUIMediaWindow::SetupShares(); else checkedv(SetupShares()); }
 
       friend class WindowXML;
       friend class WindowXMLDialog;
@@ -97,19 +97,17 @@ namespace XBMCAddon
     WindowXML::WindowXML(const String& xmlFilename,
                          const String& scriptPath,
                          const String& defaultSkin,
-                         const String& defaultRes,
-                         bool isMedia) :
+                         const String& defaultRes) :
       Window(true)
     {
       XBMC_TRACE;
       RESOLUTION_INFO res;
       std::string strSkinPath = g_SkinInfo->GetSkinPath(xmlFilename, &res);
-      m_isMedia = isMedia;
 
       if (!XFILE::CFile::Exists(strSkinPath))
       {
         std::string str("none");
-        ADDON::CAddonInfo addonInfo(str, ADDON::ADDON_SKIN);
+        ADDON::AddonProps props(str, ADDON::ADDON_SKIN);
         ADDON::CSkinInfo::TranslateResolution(defaultRes, res);
 
         // Check for the matching folder for the skin in the fallback skins folder
@@ -121,20 +119,20 @@ namespace XBMCAddon
         // Check for the matching folder for the skin in the fallback skins folder (if it exists)
         if (XFILE::CFile::Exists(basePath))
         {
-          addonInfo.SetPath(basePath);
-          std::shared_ptr<ADDON::CSkinInfo> skinInfo = std::make_shared<ADDON::CSkinInfo>(addonInfo, res);
-          skinInfo->Start();
-          strSkinPath = skinInfo->GetSkinPath(xmlFilename, &res);
+          props.path = basePath;
+          ADDON::CSkinInfo skinInfo(props, res);
+          skinInfo.Start();
+          strSkinPath = skinInfo.GetSkinPath(xmlFilename, &res);
         }
 
         if (!XFILE::CFile::Exists(strSkinPath))
         {
           // Finally fallback to the DefaultSkin as it didn't exist in either the XBMC Skin folder or the fallback skin folder
-          addonInfo.SetPath(URIUtils::AddFileToFolder(fallbackPath, defaultSkin));
-          std::shared_ptr<ADDON::CSkinInfo> skinInfo = std::make_shared<ADDON::CSkinInfo>(addonInfo, res);
+          props.path = URIUtils::AddFileToFolder(fallbackPath, defaultSkin);
+          ADDON::CSkinInfo skinInfo(props, res);
 
-          skinInfo->Start();
-          strSkinPath = skinInfo->GetSkinPath(xmlFilename, &res);
+          skinInfo.Start();
+          strSkinPath = skinInfo.GetSkinPath(xmlFilename, &res);
           if (!XFILE::CFile::Exists(strSkinPath))
             throw WindowException("XML File for Window is missing");
         }
@@ -271,13 +269,6 @@ namespace XBMCAddon
     {
       XBMC_TRACE;
       A(m_vecItems)->SetProperty(key, value);
-    }
-
-    void WindowXML::setContent(const String& value)
-    {
-      XBMC_TRACE;
-      LOCKGUI;
-      A(m_vecItems)->SetContent(value);
     }
 
     int WindowXML::getCurrentContainerId()
@@ -447,7 +438,7 @@ namespace XBMCAddon
     {
       XBMC_TRACE;
       // Hook Over calling  CGUIMediaWindow::OnClick(iItem) results in it trying to PLAY the file item
-      // which if its not media is BAD and 99 out of 100 times undesirable.
+      // which if its not media is BAD and 99 out of 100 times undesireable.
       return false;
     }
 
@@ -467,7 +458,19 @@ namespace XBMCAddon
     bool WindowXML::LoadXML(const String &strPath, const String &strLowerPath)
     {
       XBMC_TRACE;
-      return A(CGUIWindow::LoadXML(strPath, strLowerPath));
+      // load our window
+      CXBMCTinyXML xmlDoc;
+
+      std::string strPathLower = strPath;
+      StringUtils::ToLower(strPathLower);
+      if (!xmlDoc.LoadFile(strPath) && !xmlDoc.LoadFile(strPathLower) && !xmlDoc.LoadFile(strLowerPath))
+      {
+        // fail - can't load the file
+        CLog::Log(LOGERROR, "%s: Unable to load skin file %s", __FUNCTION__, strPath.c_str());
+        return false;
+      }
+
+      return interceptor->Load(xmlDoc.RootElement());
     }
 
     void WindowXML::SetupShares()

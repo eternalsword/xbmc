@@ -31,9 +31,13 @@ using namespace XFILE;
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 
-IFile::IFile() = default;
+IFile::IFile()
+{
+}
 
-IFile::~IFile() = default;
+IFile::~IFile()
+{
+}
 
 int IFile::Stat(struct __stat64* buffer)
 {

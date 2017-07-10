@@ -20,6 +20,8 @@
 
 #include "system.h"
 
+#ifdef HAS_DVD_DRIVE
+
 #include "CDDADirectory.h"
 #include "music/MusicDatabase.h"
 #include "FileItem.h"
@@ -30,9 +32,13 @@
 using namespace XFILE;
 using namespace MEDIA_DETECT;
 
-CCDDADirectory::CCDDADirectory(void) = default;
+CCDDADirectory::CCDDADirectory(void)
+{
+}
 
-CCDDADirectory::~CCDDADirectory(void) = default;
+CCDDADirectory::~CCDDADirectory(void)
+{
+}
 
 
 bool CCDDADirectory::GetDirectory(const CURL& url, CFileItemList &items)
@@ -81,3 +87,5 @@ bool CCDDADirectory::GetDirectory(const CURL& url, CFileItemList &items)
   }
   return true;
 }
+
+#endif

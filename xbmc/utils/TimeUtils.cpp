@@ -23,6 +23,10 @@
 #include "threads/SystemClock.h"
 #include "guilib/GraphicContext.h"
 
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
+
 #if   defined(TARGET_DARWIN)
 #include <mach/mach_time.h>
 #include <CoreVideo/CVHostTime.h>

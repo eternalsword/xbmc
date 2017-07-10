@@ -31,11 +31,11 @@ class CGUIWindowSplash : public CGUIWindow
 {
 public:
   CGUIWindowSplash(void);
-  ~CGUIWindowSplash(void) override;
-  bool OnAction(const CAction &action) override { return false; };
-  void Render() override;
+  virtual ~CGUIWindowSplash(void);
+  virtual bool OnAction(const CAction &action) { return false; };
+  virtual void Render();
 protected:
-  void OnInitWindow() override;
+  virtual void OnInitWindow();
 private:
   std::unique_ptr<CGUIImage> m_image;
 };

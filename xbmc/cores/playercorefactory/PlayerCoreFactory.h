@@ -41,7 +41,7 @@ class CPlayerCoreFactory : public ISettingsHandler
 public:
   static CPlayerCoreFactory& GetInstance();
 
-  void OnSettingsLoaded() override;
+  virtual void OnSettingsLoaded() override;
 
   IPlayer* CreatePlayer(const std::string& nameId, IPlayerCallback& callback) const;
   void GetPlayers(const CFileItem& item, std::vector<std::string>&players) const;   //Players supporting the specified file
@@ -63,7 +63,7 @@ protected:
   CPlayerCoreFactory();
   CPlayerCoreFactory(const CPlayerCoreFactory&);
   CPlayerCoreFactory& operator=(CPlayerCoreFactory const&);
-  ~CPlayerCoreFactory() override;
+  virtual ~CPlayerCoreFactory();
   int GetPlayerIndex(const std::string& strCoreName) const;
   std::string GetPlayerName(size_t idx) const;
 

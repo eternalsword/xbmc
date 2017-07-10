@@ -43,7 +43,9 @@ CRenderSystemGL::CRenderSystemGL() : CRenderSystemBase()
   m_enumRenderingSystem = RENDERING_SYSTEM_OPENGL;
 }
 
-CRenderSystemGL::~CRenderSystemGL() = default;
+CRenderSystemGL::~CRenderSystemGL()
+{
+}
 
 void CRenderSystemGL::CheckOpenGLQuirks()
 

@@ -61,7 +61,6 @@ public:
 
   virtual bool Open(const CURL& url) = 0;
   virtual bool OpenForWrite(const CURL& url, bool bOverWrite = false) { return false; };
-  virtual bool ReOpen(const CURL& url) { return false; };
   virtual bool Exists(const CURL& url) = 0;
   /**
    * Fills struct __stat64 with information about file specified by url.
@@ -122,6 +121,8 @@ public:
    * but accepts any read size, have it return the value 1         */
   virtual int  GetChunkSize() {return 0;}
   virtual double GetDownloadSpeed(){ return 0.0f; };
+
+  virtual bool SkipNext(){return false;}
 
   virtual bool Delete(const CURL& url) { return false; }
   virtual bool Rename(const CURL& url, const CURL& urlnew) { return false; }

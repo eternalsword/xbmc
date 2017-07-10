@@ -19,8 +19,8 @@
  */
 
 #include "WinEvents.h"
-
-#include "system.h"
+#include "peripherals/Peripherals.h"
+#include "threads/SingleLock.h"
 
 #if   defined(TARGET_WINDOWS)
 #include "windows/WinEventsWin32.h"
@@ -38,16 +38,12 @@
 #include "android/WinEventsAndroid.h"
 #define WinEventsType CWinEventsAndroid
 
-#elif defined(TARGET_LINUX) && defined(HAVE_MIR)
-#include "mir/WinEventsMir.h"
-#define WinEventsType CWinEventsMir
-
 #elif (defined(TARGET_FREEBSD) || defined(TARGET_LINUX)) && defined(HAS_SDL_WIN_EVENTS)
-#include "osx/WinEventsSDL.h"
+#include "WinEventsSDL.h"
 #define WinEventsType CWinEventsSDL
 
 #elif (defined(TARGET_FREEBSD) || defined(TARGET_LINUX)) && defined(HAS_X11_WIN_EVENTS)
-#include "X11/WinEventsX11.h"
+#include "WinEventsX11.h"
 #define WinEventsType CWinEventsX11
 
 #elif defined(TARGET_LINUX) && defined(HAS_LINUX_EVENTS)
@@ -56,14 +52,37 @@
 #endif
 
 static WinEventsType    g_imp;
+static CCriticalSection g_lock;
+static bool             g_init  = false;
+
+void Init()
+{
+  CSingleLock lock(g_lock);
+  if (!g_init)
+  {
+    PERIPHERALS::CPeripherals::GetInstance().RegisterObserver(&g_imp);
+    g_init = true;
+  }
+}
 
 void CWinEvents::MessagePush(XBMC_Event* ev)
 {
+  if (!g_init)
+    Init();
   g_imp.MessagePush(ev);
 }
 
 bool CWinEvents::MessagePump()
 {
+  if (!g_init)
+    Init();
   return g_imp.MessagePump();
+}
+
+size_t CWinEvents::GetQueueSize()
+{
+  if (!g_init)
+    Init();
+  return g_imp.GetQueueSize();
 }
 

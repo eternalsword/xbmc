@@ -21,19 +21,18 @@
 #include "DVDVideoPPFFmpeg.h"
 #include "utils/log.h"
 #include "cores/FFmpeg.h"
+#ifdef TARGET_POSIX
+#include "linux/XMemUtils.h"
+#endif
 
-extern "C" {
-#include "libavutil/mem.h"
-}
-
-CDVDVideoPPFFmpeg::CDVDVideoPPFFmpeg():
-  m_sType("")
+CDVDVideoPPFFmpeg::CDVDVideoPPFFmpeg(const std::string& mType):
+  m_sType(mType)
 {
   m_pMode = m_pContext = NULL;
   m_pSource = m_pTarget = NULL;
   m_iInitWidth = m_iInitHeight = 0;
   m_deinterlace = false;
-  memset(&m_FrameBuffer, 0, sizeof(VideoPicture));
+  memset(&m_FrameBuffer, 0, sizeof(DVDVideoPicture));
 }
 CDVDVideoPPFFmpeg::~CDVDVideoPPFFmpeg()
 {
@@ -58,7 +57,7 @@ void CDVDVideoPPFFmpeg::Dispose()
     {
       if( m_FrameBuffer.data[i] )
       {
-        av_freep(&(m_FrameBuffer.data[i]));
+        _aligned_free(m_FrameBuffer.data[i]);
         m_FrameBuffer.data[i] = NULL;
         m_FrameBuffer.iLineSize[i] = 0;
       }
@@ -107,7 +106,7 @@ void CDVDVideoPPFFmpeg::SetType(const std::string& mType, bool deinterlace)
     Dispose();
 }
 
-bool CDVDVideoPPFFmpeg::Process(VideoPicture* pPicture)
+bool CDVDVideoPPFFmpeg::Process(DVDVideoPicture* pPicture)
 {
   m_pSource =  pPicture;
 
@@ -161,7 +160,7 @@ bool CDVDVideoPPFFmpeg::Process(VideoPicture* pPicture)
 
 
 
-bool CDVDVideoPPFFmpeg::CheckFrameBuffer(const VideoPicture* pSource)
+bool CDVDVideoPPFFmpeg::CheckFrameBuffer(const DVDVideoPicture* pSource)
 {
   if( m_FrameBuffer.iFlags & DVP_FLAG_ALLOCATED && (m_FrameBuffer.iWidth != pSource->iWidth || m_FrameBuffer.iHeight != pSource->iHeight))
   {
@@ -176,7 +175,7 @@ bool CDVDVideoPPFFmpeg::CheckFrameBuffer(const VideoPicture* pSource)
 
   if(!(m_FrameBuffer.iFlags & DVP_FLAG_ALLOCATED))
   {
-    memset(&m_FrameBuffer, 0, sizeof(VideoPicture));
+    memset(&m_FrameBuffer, 0, sizeof(DVDVideoPicture));
 
     m_FrameBuffer.iLineSize[0] = pSource->iLineSize[0];   //Y
     m_FrameBuffer.iLineSize[1] = pSource->iLineSize[1]; //U
@@ -186,9 +185,9 @@ bool CDVDVideoPPFFmpeg::CheckFrameBuffer(const VideoPicture* pSource)
     m_FrameBuffer.iWidth = pSource->iWidth;
     m_FrameBuffer.iHeight = pSource->iHeight;
 
-    m_FrameBuffer.data[0] = (uint8_t*)av_malloc(m_FrameBuffer.iLineSize[0] * m_FrameBuffer.iHeight);
-    m_FrameBuffer.data[1] = (uint8_t*)av_malloc(m_FrameBuffer.iLineSize[1] * m_FrameBuffer.iHeight/2);
-    m_FrameBuffer.data[2] = (uint8_t*)av_malloc(m_FrameBuffer.iLineSize[2] * m_FrameBuffer.iHeight/2);
+    m_FrameBuffer.data[0] = (uint8_t*)_aligned_malloc(m_FrameBuffer.iLineSize[0] * m_FrameBuffer.iHeight  , 16);
+    m_FrameBuffer.data[1] = (uint8_t*)_aligned_malloc(m_FrameBuffer.iLineSize[1] * m_FrameBuffer.iHeight/2, 16);
+    m_FrameBuffer.data[2] = (uint8_t*)_aligned_malloc(m_FrameBuffer.iLineSize[2] * m_FrameBuffer.iHeight/2, 16);
 
     if( !m_FrameBuffer.data[0] || !m_FrameBuffer.data[1] || !m_FrameBuffer.data[2])
     {
@@ -203,11 +202,11 @@ bool CDVDVideoPPFFmpeg::CheckFrameBuffer(const VideoPicture* pSource)
 }
 
 
-bool CDVDVideoPPFFmpeg::GetPicture(VideoPicture* pPicture)
+bool CDVDVideoPPFFmpeg::GetPicture(DVDVideoPicture* pPicture)
 {
   if( m_pTarget )
   {
-    memmove(pPicture, m_pTarget, sizeof(VideoPicture));
+    memmove(pPicture, m_pTarget, sizeof(DVDVideoPicture));
     return true;
   }
   return false;

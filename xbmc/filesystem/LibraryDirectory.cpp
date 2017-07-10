@@ -36,9 +36,13 @@
 
 using namespace XFILE;
 
-CLibraryDirectory::CLibraryDirectory(void) = default;
+CLibraryDirectory::CLibraryDirectory(void)
+{
+}
 
-CLibraryDirectory::~CLibraryDirectory(void) = default;
+CLibraryDirectory::~CLibraryDirectory(void)
+{
+}
 
 bool CLibraryDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {

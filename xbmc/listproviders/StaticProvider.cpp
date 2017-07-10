@@ -1,6 +1,6 @@
 /*
- *      Copyright (C) 2013-2017 Team Kodi
- *      http://kodi.tv
+ *      Copyright (C) 2013 Team XBMC
+ *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -58,7 +58,9 @@ CStaticListProvider::CStaticListProvider(const std::vector<CGUIStaticItemPtr> &i
 {
 }
 
-CStaticListProvider::~CStaticListProvider() = default;
+CStaticListProvider::~CStaticListProvider()
+{
+}
 
 bool CStaticListProvider::Update(bool forceRefresh)
 {
@@ -76,7 +78,7 @@ bool CStaticListProvider::Update(bool forceRefresh)
   return changed; //! @todo Also returned changed if properties are changed (if so, need to update scroll to letter).
 }
 
-void CStaticListProvider::Fetch(std::vector<CGUIListItemPtr> &items)
+void CStaticListProvider::Fetch(std::vector<CGUIListItemPtr> &items) const
 {
   items.clear();
   for (std::vector<CGUIStaticItemPtr>::const_iterator i = m_items.begin(); i != m_items.end(); ++i)

@@ -24,7 +24,6 @@
 #include "DVDSubtitleStream.h"
 #include "DVDSubtitleLineCollection.h"
 
-#include <memory>
 #include <string>
 #include <stdio.h>
 
@@ -33,7 +32,7 @@ class CDVDStreamInfo;
 class CDVDSubtitleParser
 {
 public:
-  virtual ~CDVDSubtitleParser() = default;
+  virtual ~CDVDSubtitleParser() {}
   virtual bool Open(CDVDStreamInfo &hints) = 0;
   virtual void Dispose() = 0;
   virtual void Reset() = 0;
@@ -45,7 +44,7 @@ class CDVDSubtitleParserCollection
 {
 public:
   CDVDSubtitleParserCollection(const std::string& strFile) : m_filename(strFile) {}
-  virtual ~CDVDSubtitleParserCollection() = default;
+  virtual ~CDVDSubtitleParserCollection() { }
   virtual CDVDOverlay* Parse(double iPts)
   {
     CDVDOverlay* o = m_collection.Get(iPts);
@@ -65,16 +64,20 @@ class CDVDSubtitleParserText
      : public CDVDSubtitleParserCollection
 {
 public:
-  CDVDSubtitleParserText(std::unique_ptr<CDVDSubtitleStream> && stream, const std::string& filename)
+  CDVDSubtitleParserText(CDVDSubtitleStream* stream, const std::string& filename)
     : CDVDSubtitleParserCollection(filename)
-		, m_pStream(std::move(stream)) 
   {
+    m_pStream  = stream;
   }
 
-  virtual ~CDVDSubtitleParserText() = default;
+  virtual ~CDVDSubtitleParserText()
+  {
+    if(m_pStream)
+      delete m_pStream;
+  }
 
 protected:
-  using CDVDSubtitleParserCollection::Open;
+
   bool Open()
   {
     if(m_pStream)
@@ -83,10 +86,10 @@ protected:
         return true;
     }
     else
-      m_pStream.reset(new CDVDSubtitleStream());
+      m_pStream = new CDVDSubtitleStream();
 
     return m_pStream->Open(m_filename);
   }
 
-  std::unique_ptr<CDVDSubtitleStream> m_pStream;
+  CDVDSubtitleStream* m_pStream;
 };

@@ -26,10 +26,7 @@
 #include "EventClient.h"
 #include "EventPacket.h"
 #include "threads/SingleLock.h"
-#include "input/GamepadTranslator.h"
-#include "input/InputManager.h"
-#include "input/IRTranslator.h"
-#include "input/KeyboardTranslator.h"
+#include "input/ButtonTranslator.h"
 #include <map>
 #include <queue>
 #include "filesystem/File.h"
@@ -40,7 +37,6 @@
 #include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "utils/StringUtils.h"
-#include "ServiceBroker.h"
 
 using namespace EVENTCLIENT;
 using namespace EVENTPACKET;
@@ -76,26 +72,26 @@ void CEventButtonState::Load()
     {
       if ( m_mapName.compare("KB") == 0 ) // standard keyboard map
       {
-        m_iKeyCode = CKeyboardTranslator::TranslateString( m_buttonName.c_str() );
+        m_iKeyCode = CButtonTranslator::TranslateKeyboardString( m_buttonName.c_str() );
       }
       else if  ( m_mapName.compare("XG") == 0 ) // xbox gamepad map
       {
-        m_iKeyCode = CGamepadTranslator::TranslateString( m_buttonName.c_str() );
+        m_iKeyCode = CButtonTranslator::TranslateGamepadString( m_buttonName.c_str() );
       }
       else if  ( m_mapName.compare("R1") == 0 ) // xbox remote map
       {
-        m_iKeyCode = CIRTranslator::TranslateString( m_buttonName.c_str() );
+        m_iKeyCode = CButtonTranslator::TranslateRemoteString( m_buttonName.c_str() );
       }
-      else if  ( m_mapName.compare("R2") == 0 ) // xbox universal remote map
+      else if  ( m_mapName.compare("R2") == 0 ) // xbox unviversal remote map
       {
-        m_iKeyCode = CIRTranslator::TranslateUniversalRemoteString( m_buttonName.c_str() );
+        m_iKeyCode = CButtonTranslator::TranslateUniversalRemoteString( m_buttonName.c_str() );
       }
       else if ( (m_mapName.length() > 3) &&
                 (StringUtils::StartsWith(m_mapName, "LI:")) ) // starts with LI: ?
       {
 #if defined(HAS_LIRC) || defined(HAS_IRSERVERSUITE)
         std::string lircDevice = m_mapName.substr(3);
-        m_iKeyCode = CServiceBroker::GetInputManager().TranslateLircRemoteString( lircDevice.c_str(),
+        m_iKeyCode = CButtonTranslator::GetInstance().TranslateLircRemoteString( lircDevice.c_str(),
                                                                    m_buttonName.c_str() );
 #else
         CLog::Log(LOGERROR, "ES: LIRC support not enabled");
@@ -453,7 +449,7 @@ bool CEventClient::OnPacketBUTTON(CEventPacket *packet)
     {
       if(!active && it->m_bActive)
       {
-        /* since modifying the list invalidates the reverse iterator */
+        /* since modifying the list invalidates the referse iteratator */
         std::list<CEventButtonState>::iterator it2 = (++it).base();
 
         /* if last event had an amount, we must resend without amount */

@@ -24,7 +24,7 @@ class CVector
 public:
   CVector();
   CVector(float xCoord, float yCoord);
-  virtual ~CVector() = default;
+  virtual ~CVector() { }
   
   virtual void reset();
   

@@ -22,7 +22,7 @@
 #pragma once
 
 #ifdef __GNUC__
-// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even with optimizations.
+// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even whith optimizations.
 #define XBMC_FORCE_INLINE __attribute__((always_inline))
 #else
 #define XBMC_FORCE_INLINE
@@ -43,7 +43,9 @@ public:
   {
     NONE = 1000,
 
+
     // messages used in the whole system
+
     GENERAL_RESYNC,                 //
     GENERAL_FLUSH,                  // flush all buffers
     GENERAL_RESET,                  // reset codecs for new data
@@ -54,6 +56,7 @@ public:
     GENERAL_EOF,                    // eof of stream
 
     // player core related messages (cVideoPlayer.cpp)
+
     PLAYER_SET_AUDIOSTREAM,         //
     PLAYER_SET_VIDEOSTREAM,         //
     PLAYER_SET_SUBTITLESTREAM,      //
@@ -63,7 +66,6 @@ public:
     PLAYER_SEEK,                    //
     PLAYER_SEEK_CHAPTER,            //
     PLAYER_SETSPEED,                // set the playback speed
-    PLAYER_REQUEST_STATE,
 
     PLAYER_CHANNEL_NEXT,            // switches to next playback channel
     PLAYER_CHANNEL_PREV,            // switches to previous playback channel
@@ -73,16 +75,21 @@ public:
     PLAYER_CHANNEL_SELECT,          // switches to the provided channel
     PLAYER_STARTED,                 // sent whenever a sub player has finished it's first frame after open
     PLAYER_AVCHANGE,                // signal a change in audio or video parameters
-    PLAYER_ABORT,
-    PLAYER_REPORT_STATE,
 
     // demuxer related messages
+
     DEMUXER_PACKET,                 // data packet
     DEMUXER_RESET,                  // reset the demuxer
 
+
     // video related messages
+
     VIDEO_SET_ASPECT,               // set aspectratio of video
     VIDEO_DRAIN,                    // wait for decoder to output last frame
+
+    // audio related messages
+
+    AUDIO_SILENCE,
 
     // subtitle related messages
     SUBTITLE_CLUTCHANGE,
@@ -94,7 +101,9 @@ public:
     m_message = msg;
   }
 
-  virtual ~CDVDMsg() = default;
+  virtual ~CDVDMsg()
+  {
+  }
 
   /**
    * checks for message type
@@ -124,10 +133,11 @@ private:
 //////
 ////////////////////////////////////////////////////////////////////////////////
 
-#define SYNCSOURCE_AUDIO  0x01
-#define SYNCSOURCE_VIDEO  0x02
-#define SYNCSOURCE_PLAYER 0x04
-#define SYNCSOURCE_ANY    0x08
+#define SYNCSOURCE_AUDIO  0x00000001
+#define SYNCSOURCE_VIDEO  0x00000002
+#define SYNCSOURCE_SUB    0x00000004
+#define SYNCSOURCE_OWNER  0x80000000 /* only allowed for the constructor of the object */
+#define SYNCSOURCE_ALL    (SYNCSOURCE_AUDIO | SYNCSOURCE_VIDEO | SYNCSOURCE_SUB | SYNCSOURCE_OWNER)
 
 class CDVDMsgGeneralSynchronizePriv;
 class CDVDMsgGeneralSynchronize : public CDVDMsg
@@ -139,9 +149,8 @@ public:
 
   // waits until all threads waiting, released the object
   // if abort is set somehow
-  bool Wait(unsigned int ms, unsigned int source);
+  bool Wait(unsigned int ms         , unsigned int source);
   void Wait(std::atomic<bool>& abort, unsigned int source);
-
 private:
   class CDVDMsgGeneralSynchronizePriv* m_p;
 };
@@ -207,30 +216,31 @@ private:
 class CDVDMsgPlayerSeek : public CDVDMsg
 {
 public:
-  struct CMode
-  {
-    double time = 0;
-    bool relative = false;
-    bool backward = false;
-    bool accurate = true;
-    bool sync = true;
-    bool restore = true;
-    bool trickplay = false;
-  };
-
-  CDVDMsgPlayerSeek(CDVDMsgPlayerSeek::CMode mode) : CDVDMsg(PLAYER_SEEK),
-    m_mode(mode)
+  CDVDMsgPlayerSeek(int time, bool backward, bool flush = true, bool accurate = true, bool restore = true, bool trickplay = false, bool sync = true)
+    : CDVDMsg(PLAYER_SEEK)
+    , m_time(time)
+    , m_backward(backward)
+    , m_flush(flush)
+    , m_accurate(accurate)
+    , m_restore(restore)
+    , m_trickplay(trickplay)
+    , m_sync(sync)
   {}
-  double GetTime() { return m_mode.time; }
-  bool GetRelative() { return m_mode.relative; }
-  bool GetBackward() { return m_mode.backward; }
-  bool GetAccurate() { return m_mode.accurate; }
-  bool GetRestore() { return m_mode.restore; }
-  bool GetTrickPlay() { return m_mode.trickplay; }
-  bool GetSync() { return m_mode.sync; }
-
+  int  GetTime()              { return m_time; }
+  bool GetBackward()          { return m_backward; }
+  bool GetFlush()             { return m_flush; }
+  bool GetAccurate()          { return m_accurate; }
+  bool GetRestore()           { return m_restore; }
+  bool GetTrickPlay()         { return m_trickplay; }
+  bool GetSync()              { return m_sync; }
 private:
-  CMode m_mode;
+  int  m_time;
+  bool m_backward;
+  bool m_flush;
+  bool m_accurate;
+  bool m_restore; // whether to restore any EDL cut time
+  bool m_trickplay;
+  bool m_sync;
 };
 
 class CDVDMsgPlayerSeekChapter : public CDVDMsg

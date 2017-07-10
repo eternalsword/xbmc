@@ -97,7 +97,7 @@ public:
   CDateTime(const time_t& time);
   CDateTime(const tm& time);
   CDateTime(int year, int month, int day, int hour, int minute, int second);
-  ~CDateTime() override = default;
+  virtual ~CDateTime() {}
 
   static CDateTime GetCurrentDateTime();
   static CDateTime GetUTCDateTime();
@@ -163,7 +163,7 @@ public:
 
   operator FILETIME() const;
 
-  void Archive(CArchive& ar) override;
+  virtual void Archive(CArchive& ar);
 
   void Reset();
 
@@ -203,7 +203,6 @@ public:
   std::string GetAsSaveString() const;
   std::string GetAsDBDateTime() const;
   std::string GetAsDBDate() const;
-  std::string GetAsDBTime() const;
   std::string GetAsLocalizedDate(bool longDate=false) const;
   std::string GetAsLocalizedDate(const std::string &strFormat) const;
   std::string GetAsLocalizedTime(const std::string &format, bool withSeconds=true) const;

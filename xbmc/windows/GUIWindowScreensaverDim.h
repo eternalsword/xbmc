@@ -1,4 +1,5 @@
 #pragma once
+
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
@@ -21,19 +22,17 @@
 
 #include "guilib/GUIDialog.h"
 
-class CGUIWindowScreensaverDim : public CGUIDialog
+class CGUIWindowScreensaverDim :
+      public CGUIDialog
 {
 public:
   CGUIWindowScreensaverDim();
-
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-
+  virtual ~CGUIWindowScreensaverDim();
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
 protected:
-  void UpdateVisibility() override;
-
+  virtual void UpdateVisibility();
 private:
   float m_dimLevel;
   float m_newDimLevel;
-  bool m_visible;
 };

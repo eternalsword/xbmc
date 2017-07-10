@@ -109,7 +109,7 @@ namespace XbmcCommons
     /**
      * Construct a buffer given an externally managed memory buffer.
      * The ownership of the buffer is assumed to be the code that called
-     * this constructor, therefore the Buffer destructor will not free it.
+     * this constructor, therefore the Buffer descrutor will not free it.
      *
      * The newly constructed buffer is considered empty and is ready to
      * have data written into it.
@@ -125,7 +125,7 @@ namespace XbmcCommons
 
     /**
      * Construct a buffer buffer using the size buffer provided. The
-     * buffer will be internally managed and potentially shared with 
+     * buffer will be internally managed and potentiall shared with 
      * other Buffer instances. It will be freed upon destruction of
      * the last Buffer that references it.
      */
@@ -140,7 +140,7 @@ namespace XbmcCommons
      * shares the underlying data buffer with the Buffer it is a copy
      * of. Changes made to the data through this buffer will be seen
      * in the source buffer and vice/vrs. However, each buffer maintains
-     * its own indexing.
+     * it's own indexing.
      */
     inline Buffer(const Buffer& buf) : bufferRef(buf.bufferRef), buffer(buf.buffer), 
       mposition(buf.mposition), mcapacity(buf.mcapacity), mlimit(buf.mlimit) { }
@@ -152,7 +152,7 @@ namespace XbmcCommons
      * shares the underlying data buffer with the Buffer it is a copy
      * of. Changes made to the data through this buffer will be seen
      * in the source buffer and vice/vrs. However, each buffer maintains
-     * its own indexing.
+     * it's own indexing.
      */
     inline Buffer& operator=(const Buffer& buf)
     {

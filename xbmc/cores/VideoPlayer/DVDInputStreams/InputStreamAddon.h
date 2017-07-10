@@ -24,48 +24,44 @@
 #include <vector>
 
 #include "DVDInputStream.h"
-#include "IVideoPlayer.h"
-#include "addons/AddonProvider.h"
-#include "addons/binary-addons/AddonInstanceHandler.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Inputstream.h"
-
-class CInputStreamProvider
-  : public ADDON::IAddonProvider
-{
-public:
-  CInputStreamProvider(ADDON::BinaryAddonBasePtr addonBase, kodi::addon::IAddonInstance* parentInstance);
-
-  virtual void getAddonInstance(INSTANCE_TYPE instance_type, ADDON::BinaryAddonBasePtr& addonBase, kodi::addon::IAddonInstance*& parentInstance) override;
-
-private:
-  ADDON::BinaryAddonBasePtr m_addonBase;
-  kodi::addon::IAddonInstance* m_parentInstance;
-};
+#include "addons/InputStream.h"
 
 //! \brief Input stream class
-class CInputStreamAddon
-  : public ADDON::IAddonInstanceHandler,
-    public CDVDInputStream,
-    public CDVDInputStream::IDisplayTime,
-    public CDVDInputStream::IPosTime,
-    public CDVDInputStream::IDemux
+class CInputStreamAddon :
+  public CDVDInputStream,
+  public CDVDInputStream::IDisplayTime,
+  public CDVDInputStream::IPosTime,
+  public CDVDInputStream::IDemux
 {
 public:
-  CInputStreamAddon(ADDON::BinaryAddonBasePtr& addonBase, IVideoPlayer* player, const CFileItem& fileitem);
+  //! \brief constructor
+  CInputStreamAddon(const CFileItem& fileitem, std::shared_ptr<ADDON::CInputStream> inputStream);
+
+  //! \brief Destructor.
   virtual ~CInputStreamAddon();
 
-  static bool Supports(ADDON::BinaryAddonBasePtr& addonBase, const CFileItem& fileitem);
-
-  // CDVDInputStream
+  //! \brief Open a MPD file
   virtual bool Open() override;
+
+  //! \brief Close input stream
   virtual void Close() override;
+
+  //! \brief Read data from stream
   virtual int Read(uint8_t* buf, int buf_size) override;
+
+  //! \brief Seeek in stream
   virtual int64_t Seek(int64_t offset, int whence) override;
+
+  //! \brief Pause stream
   virtual bool Pause(double dTime) override;
-  virtual int64_t GetLength() override;
+  //! \brief Return true if we have reached EOF
   virtual bool IsEOF() override;
+
   virtual bool CanSeek() override;
   virtual bool CanPause() override;
+
+  //! \brief Get length of input data
+  virtual int64_t GetLength() override;
 
   // IDisplayTime
   virtual CDVDInputStream::IDisplayTime* GetIDisplayTime() override;
@@ -76,63 +72,25 @@ public:
   virtual CDVDInputStream::IPosTime* GetIPosTime() override;
   virtual bool PosTime(int ms) override;
 
-  // IDemux
+  //IDemux
   CDVDInputStream::IDemux* GetIDemux() override;
   virtual bool OpenDemux() override;
   virtual DemuxPacket* ReadDemux() override;
-  virtual CDemuxStream* GetStream(int streamId) const override;
+  virtual CDemuxStream* GetStream(int iStreamId) const override;
   virtual std::vector<CDemuxStream*> GetStreams() const override;
-  virtual void EnableStream(int streamId, bool enable) override;
+  virtual void EnableStream(int iStreamId, bool enable) override;
   virtual int GetNrOfStreams() const override;
-  virtual void SetSpeed(int speed) override;
-  virtual bool SeekTime(double time, bool backward = false, double* startpts = nullptr) override;
+  virtual void SetSpeed(int iSpeed) override;
+  virtual bool SeekTime(int time, bool backward = false, double* startpts = NULL) override;
   virtual void AbortDemux() override;
   virtual void FlushDemux() override;
   virtual void SetVideoResolution(int width, int height) override;
-  int64_t PositionStream();
-  bool IsRealTimeStream();
 
 protected:
-  void UpdateStreams();
-  void DisposeStreams();
-  int ConvertVideoCodecProfile(STREAMCODEC_PROFILE profile);
-
-  IVideoPlayer* m_player;
-
-private:
-  std::vector<std::string> m_fileItemProps;
-  INPUTSTREAM_CAPABILITIES m_caps;
-  std::map<int, CDemuxStream*> m_streams;
-
-  AddonInstance_InputStream m_struct;
-  std::shared_ptr<CInputStreamProvider> m_subAddonProvider;
-
-  /*!
-   * Callbacks from add-on to kodi
-   */
-  //@{
-  /*!
-   * @brief Allocate a demux packet. Free with FreeDemuxPacket
-   * @param kodiInstance A pointer to the add-on.
-   * @param iDataSize The size of the data that will go into the packet
-   * @return The allocated packet.
-   */
-  static DemuxPacket* cb_allocate_demux_packet(void* kodiInstance, int iDataSize = 0);
-
-  /*!
-  * @brief Allocate an encrypted demux packet. Free with FreeDemuxPacket
-  * @param kodiInstance A pointer to the add-on.
-  * @param dataSize The size of the data that will go into the packet
-  * @param encryptedSubsampleCount The number of subsample description blocks to allocate
-  * @return The allocated packet.
-  */
-  static DemuxPacket* cb_allocate_encrypted_demux_packet(void* kodiInstance, unsigned int dataSize, unsigned int encryptedSubsampleCount);
-
-  /*!
-   * @brief Free a packet that was allocated with AllocateDemuxPacket
-   * @param kodiInstance A pointer to the add-on.
-   * @param pPacket The packet to free.
-   */
-  static void cb_free_demux_packet(void* kodiInstance, DemuxPacket* pPacket);
-  //@}
+  std::shared_ptr<ADDON::CInputStream> m_addon;
+  bool m_hasDemux;
+  bool m_hasDisplayTime;
+  bool m_hasPosTime;
+  bool m_canPause;
+  bool m_canSeek;
 };

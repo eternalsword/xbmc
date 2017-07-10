@@ -28,9 +28,11 @@
 
 using namespace XFILE;
 
-CResourceDirectory::CResourceDirectory() = default;
+CResourceDirectory::CResourceDirectory()
+{ }
 
-CResourceDirectory::~CResourceDirectory() = default;
+CResourceDirectory::~CResourceDirectory()
+{ }
 
 bool CResourceDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {

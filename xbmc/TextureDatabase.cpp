@@ -152,9 +152,13 @@ std::string CTextureUtils::UnwrapImageURL(const std::string &image)
   return image;
 }
 
-CTextureDatabase::CTextureDatabase() = default;
+CTextureDatabase::CTextureDatabase()
+{
+}
 
-CTextureDatabase::~CTextureDatabase() = default;
+CTextureDatabase::~CTextureDatabase()
+{
+}
 
 bool CTextureDatabase::Open()
 {

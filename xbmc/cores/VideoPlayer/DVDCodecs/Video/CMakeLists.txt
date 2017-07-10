@@ -1,9 +1,7 @@
-set(SOURCES AddonVideoCodec.cpp
-            DVDVideoCodec.cpp
+set(SOURCES DVDVideoCodec.cpp
             DVDVideoCodecFFmpeg.cpp)
 
-set(HEADERS AddonVideoCodec.h
-            DVDVideoCodec.h
+set(HEADERS DVDVideoCodec.h
             DVDVideoCodecFFmpeg.h)
 
 if(NOT ENABLE_EXTERNAL_LIBAV)
@@ -16,6 +14,15 @@ if(AML_FOUND)
                       DVDVideoCodecAmlogic.cpp)
   list(APPEND HEADERS AMLCodec.h
                       DVDVideoCodecAmlogic.h)
+endif()
+
+if(OPENMAX_FOUND)
+  list(APPEND SOURCES DVDVideoCodecOpenMax.cpp
+                      OpenMax.cpp
+                      OpenMaxVideo.cpp)
+  list(APPEND HEADERS DVDVideoCodecOpenMax.h
+                      OpenMax.h
+                      OpenMaxVideo.h)
 endif()
 
 if(CORE_SYSTEM_NAME STREQUAL windows)

@@ -23,7 +23,8 @@
 #include "utils/StringUtils.h"
 #include "utils/log.h"
 
-CUrlOptions::CUrlOptions() = default;
+CUrlOptions::CUrlOptions()
+{ }
 
 CUrlOptions::CUrlOptions(const std::string &options, const char *strLead /* = "" */)
   : m_strLead(strLead)
@@ -31,9 +32,10 @@ CUrlOptions::CUrlOptions(const std::string &options, const char *strLead /* = ""
   AddOptions(options);
 }
 
-CUrlOptions::~CUrlOptions() = default;
+CUrlOptions::~CUrlOptions()
+{ }
 
-std::string CUrlOptions::GetOptionsString(bool withLeadingSeparator /* = false */) const
+std::string CUrlOptions::GetOptionsString(bool withLeadingSeperator /* = false */) const
 {
   std::string options;
   for (const auto &opt : m_options)
@@ -46,7 +48,7 @@ std::string CUrlOptions::GetOptionsString(bool withLeadingSeparator /* = false *
       options += "=" + CURL::Encode(opt.second.asString());
   }
 
-  if (withLeadingSeparator && !options.empty())
+  if (withLeadingSeperator && !options.empty())
   {
     if (m_strLead.empty())
       options = "?" + options;
@@ -119,7 +121,7 @@ void CUrlOptions::AddOptions(const std::string &options)
   {
     // remove leading ?, #, ; or | if present
     if (!m_strLead.empty())
-      CLog::Log(LOGWARNING, "%s: original leading str %s overridden by %c", __FUNCTION__, m_strLead.c_str(), strOptions.at(0));
+      CLog::Log(LOGWARNING, "%s: original leading str %s overrided by %c", __FUNCTION__, m_strLead.c_str(), strOptions.at(0));
     m_strLead = strOptions.at(0);
     strOptions.erase(0, 1);
   }

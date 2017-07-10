@@ -41,10 +41,6 @@ static const char     bt_service_prov[] = "XBMC JSON-RPC Provider";
 static const uint32_t bt_service_guid[] = {0x65AE4CC0, 0x775D11E0, 0xBE16CE28, 0x4824019B};
 #endif
 
-#if defined(TARGET_WINDOWS)
-#include "platform/win32/CharsetConverter.h"
-#endif
-
 #ifdef HAVE_LIBBLUETOOTH
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -333,13 +329,11 @@ bool CTCPServer::InitializeBlue()
   addrinfo.RemoteAddr.lpSockaddr      = (SOCKADDR*)&sa;
   addrinfo.RemoteAddr.iSockaddrLength = sizeof(sa);
 
-  using KODI::PLATFORM::WINDOWS::ToW;
-
   WSAQUERYSET service = {};
   service.dwSize = sizeof(service);
-  service.lpszServiceInstanceName = const_cast<LPWSTR>(ToW(bt_service_name).c_str());
+  service.lpszServiceInstanceName = (LPSTR)bt_service_name;
   service.lpServiceClassId        = (LPGUID)&bt_service_guid;
-  service.lpszComment             = const_cast<LPWSTR>(ToW(bt_service_desc).c_str());
+  service.lpszComment             = (LPSTR)bt_service_desc;
   service.dwNameSpace             = NS_BTH;
   service.lpNSProviderId          = NULL; /* RFCOMM? */
   service.lpcsaBuffer             = &addrinfo;
@@ -400,7 +394,7 @@ bool CTCPServer::InitializeBlue()
   sdp_uuid128_create(&svc_uuid, &bt_service_guid);
   sdp_set_service_id(record, svc_uuid);
 
-  // make the service record publicly browseable
+  // make the service record publicly browsable
   sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
   root_list = sdp_list_append(0, &root_uuid);
   sdp_set_browse_groups(record, root_list);

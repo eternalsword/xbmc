@@ -51,23 +51,20 @@ public:
   std::string GetInfo() const;
   int GetTotalCutTime() const;
   int RemoveCutTime(int iSeek) const;
-  double RestoreCutTime(double dClock) const;
+  int RestoreCutTime(int iClock) const;
 
-  bool InCut(int iSeek, Cut *pCut = NULL);
+  bool InCut(int iSeek, Cut *pCut = NULL) const;
   bool GetNearestCut(bool bPlus, const int iSeek, Cut *pCut) const;
 
-  int GetLastCheckASSTime() const;
-  void SetLastCheckASSTime(const int iCheckASSTime);
-
-  bool GetNextSceneMarker(bool bPlus, const int iClock, int *iSceneMarker);
+  bool GetNextSceneMarker(bool bPlus, const int iClock, int *iSceneMarker) const;
 
   static std::string MillisecondsToTimeString(const int iMilliseconds);
 
+protected:
 private:
   int m_iTotalCutTime; // ms
   std::vector<Cut> m_vecCuts;
   std::vector<int> m_vecSceneMarkers;
-  int m_lastCheckASSTime;
 
   bool ReadEdl(const std::string& strMovie, const float fFramesPerSecond);
   bool ReadComskip(const std::string& strMovie, const float fFramesPerSecond);

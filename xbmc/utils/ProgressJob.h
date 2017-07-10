@@ -33,12 +33,12 @@ class CGUIDialogProgressBarHandle;
 class CProgressJob : public CJob
 {
 public:
-  ~CProgressJob() override;
+  virtual ~CProgressJob();
 
   // implementation of CJob
-  const char *GetType() const override { return "ProgressJob"; }
-  bool operator==(const CJob* job) const override { return false; }
-  bool ShouldCancel(unsigned int progress, unsigned int total) const override;
+  virtual const char *GetType() const { return "ProgressJob"; }
+  virtual bool operator==(const CJob* job) const { return false; }
+  virtual bool ShouldCancel(unsigned int progress, unsigned int total) const;
 
   /*!
    \brief Executes the job showing a modal progress dialog.

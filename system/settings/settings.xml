@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<settings version="1">
+<settings>
   <section id="player" label="14200" help="38100">
     <category id="videoplayer" label="14215" help="38103">
       <group id="1" label="14230">
@@ -311,6 +311,12 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="videoplayer.useomx" type="boolean" label="13430" help="36161">
+          <requirement>HAVE_LIBOPENMAX</requirement>
+          <level>2</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
         <setting id="videoplayer.usevtb" type="boolean" label="13429" help="36160">
           <requirement>HasVTB</requirement>
           <level>2</level>
@@ -557,9 +563,9 @@
         </setting>
         <setting id="audiocds.encoder" type="addon" label="621" help="36287">
           <level>3</level>
-          <default>audioencoder.kodi.builtin.aac</default>
+          <default>audioencoder.xbmc.builtin.wav</default>
           <constraints>
-            <addontype>kodi.audioencoder</addontype>
+            <addontype>xbmc.audioencoder</addontype>
           </constraints>
           <control type="button" format="addon">
             <show more="true" details="true">installed</show>
@@ -667,22 +673,11 @@
           <control type="spinner" format="integer" delayed="true"/>
         </setting>
         <setting id="subtitles.font" type="string" label="14089" help="36185">
-          <level>1</level>
+          <level>3</level>
           <default>arial.ttf</default>
           <constraints>
             <options>fonts</options>
           </constraints>
-          <control type="list" format="string" />
-        </setting>
-        <setting id="subtitles.charset" type="string" parent="subtitles.font" label="735" help="36189">
-          <level>1</level>
-          <default>DEFAULT</default>
-          <constraints>
-            <options>charsets</options>
-          </constraints>
-          <dependencies>
-            <dependency type="enable" on="property" name="IsUsingTTFSubtitles" setting="subtitles.font" />
-          </dependencies>
           <control type="list" format="string" />
         </setting>
         <setting id="subtitles.height" type="integer" parent="subtitles.font" label="289" help="36186">
@@ -728,6 +723,17 @@
               <option label="766">6</option> <!-- Light grey -->
               <option label="767">7</option> <!-- Grey -->
             </options>
+          </constraints>
+          <dependencies>
+            <dependency type="enable" on="property" name="IsUsingTTFSubtitles" setting="subtitles.font" />
+          </dependencies>
+          <control type="list" format="string" />
+        </setting>
+        <setting id="subtitles.charset" type="string" parent="subtitles.font" label="735" help="36189">
+          <level>3</level>
+          <default>DEFAULT</default>
+          <constraints>
+            <options>charsets</options>
           </constraints>
           <dependencies>
             <dependency type="enable" on="property" name="IsUsingTTFSubtitles" setting="subtitles.font" />
@@ -971,8 +977,8 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
-        <setting id="myvideos.extractthumb" type="boolean" label="38190" help="36180">
-          <level>1</level>
+        <setting id="myvideos.extractthumb" type="boolean" label="20433" help="36180">
+          <level>4</level>
           <default>true</default>
           <control type="toggle" />
         </setting>
@@ -1047,7 +1053,7 @@
               <option label="20422">2</option> <!-- Always -->
             </options>
           </constraints>
-          <control type="list" format="string" />
+          <control type="spinner" format="string" />
         </setting>
         <setting id="videolibrary.tvshowsincludeallseasonsandspecials" type="integer" parent="videolibrary.tvshowsselectfirstunwatcheditem" label="21472" help="21473">
           <level>2</level>
@@ -1063,7 +1069,7 @@
           <dependencies>
             <dependency type="enable" setting="videolibrary.tvshowsselectfirstunwatcheditem" operator="!is">0</dependency> <!-- Never -->
           </dependencies>
-          <control type="list" format="string" />
+          <control type="spinner" format="string" />
         </setting>
         <setting id="videolibrary.actorthumbs" type="boolean" label="20402" help="36143">
           <level>2</level>
@@ -1174,11 +1180,6 @@
     </category>
     <category id="pictures" label="14217" help="38109">
       <group id="1" label="744">
-        <setting id="pictures.usetags" type="boolean" label="38207" help="38208">
-          <level>1</level>
-          <default>true</default>
-          <control type="toggle" />
-        </setting>
         <setting id="pictures.generatethumbs" type="boolean" label="13360" help="36307">
           <level>0</level>
           <default>true</default>
@@ -1232,7 +1233,14 @@
   </section>
   <section id="pvr" label="14204" help="36201">
     <category id="pvrmanager" label="128" help="36202">
-      <group id="1" label="14301">
+      <group id="1" label="14300">
+        <setting id="pvrmanager.hideconnectionlostwarning" type="boolean" label="19269" help="36210">
+          <level>2</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+      </group>
+      <group id="2" label="14301">
         <setting id="pvrmanager.syncchannelgroups" type="boolean" label="19221" help="36204">
           <level>1</level>
           <default>true</default>
@@ -1334,7 +1342,6 @@
               <option label="36426">1</option> <!-- EPG_SELECT_ACTION_SWITCH -->
               <option label="36427">2</option> <!-- EPG_SELECT_ACTION_INFO -->
               <option label="36428">3</option> <!-- EPG_SELECT_ACTION_RECORD -->
-              <option label="19096">5</option> <!-- EPG_SELECT_ACTION_SMART_SELECT -->
             </options>
           </constraints>
           <control type="list" format="string" />
@@ -1376,7 +1383,7 @@
     </category>
     <category id="pvrplayback" label="19177" help="36226">
       <group id="1" label="128">
-        <setting id="pvrplayback.switchtofullscreen" type="boolean" label="19171" help="36227">
+        <setting id="pvrplayback.playminimized" type="boolean" label="19171" help="36227">
           <level>1</level>
           <default>true</default>
           <control type="toggle" />
@@ -1412,7 +1419,7 @@
         </setting>
         <setting id="pvrplayback.confirmchannelswitch" type="boolean" label="19281" help="36231">
           <level>1</level>
-          <default>true</default>
+          <default>false</default>
           <control type="toggle" />
         </setting>
         <setting id="pvrplayback.channelentrytimeout" type="integer" label="19073" help="36232">
@@ -1470,6 +1477,11 @@
             <dependency type="enable" setting="pvrplayback.trafficadvisory">true</dependency>
           </dependencies>
         </setting>
+        <setting id="pvrplayback.sendrdstrafficmsg" type="boolean" label="29986" help="29987">
+          <level>2</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
       </group>
     </category>
     <category id="pvrrecord" label="19043" help="36233">
@@ -1498,6 +1510,28 @@
             <formatlabel>14044</formatlabel>
           </control>
         </setting>
+        <setting id="pvrrecord.defaultpriority" type="integer" label="19173" help="36235">
+          <level>2</level>
+          <default>50</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>100</maximum>
+          </constraints>
+          <control type="spinner" format="integer" />
+        </setting>
+        <setting id="pvrrecord.defaultlifetime" type="integer" label="19174" help="36236">
+          <level>2</level>
+          <default>99</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>365</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>17999</formatlabel>
+          </control>
+        </setting>
         <setting id="pvrrecord.marginstart" type="integer" label="19175" help="36237">
           <level>2</level>
           <default>0</default> <!-- 0 mins -->
@@ -1513,6 +1547,17 @@
             <options>pvrrecordmargins</options>
           </constraints>
           <control type="list" format="string"/>
+        </setting>
+        <setting id="pvrrecord.preventduplicateepisodes" type="integer" label="812" help="36423">
+          <level>2</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="815">0</option>  <!-- record all episodes (no dup detect) -->
+              <option label="816">1</option>  <!-- record only new episodes -->
+            </options>
+          </constraints>
+          <control type="spinner" format="string" />
         </setting>
         <setting id="pvrrecord.timernotifications" type="boolean" label="19233" help="36239">
           <level>2</level>
@@ -1821,29 +1866,16 @@
     <category id="upnp" label="20187" help="36322">
       <requirement>HAS_UPNP</requirement>
       <group id="1" label="16000">
-        <setting id="services.upnp" type="boolean" label="21358" help="39017">
+        <setting id="services.upnpserver" type="boolean" label="21360" help="36323">
           <level>0</level>
           <default>false</default>
-          <control type="toggle" />
-        </setting>
-        <setting id="services.upnpserver" type="boolean" parent="services.upnp" label="21360" help="36323">
-          <level>0</level>
-          <default>false</default>
-          <dependencies>
-            <dependency type="enable" setting="services.upnp">true</dependency>
-          </dependencies>
           <control type="toggle" />
         </setting>
         <setting id="services.upnpannounce" type="boolean" parent="services.upnpserver" label="20188" help="36324">
           <level>2</level>
           <default>true</default>
           <dependencies>
-            <dependency type="enable">
-              <and>
-                <condition setting="services.upnp" operator="is">true</condition>
-                <condition setting="services.upnpserver" operator="is">true</condition>
-              </and>
-            </dependency>
+            <dependency type="enable" setting="services.upnpserver">true</dependency>
           </dependencies>
           <control type="toggle" />
         </setting>
@@ -1851,12 +1883,7 @@
           <level>2</level>
           <default>false</default>
           <dependencies>
-            <dependency type="enable">
-              <and>
-                <condition setting="services.upnp" operator="is">true</condition>
-                <condition setting="services.upnpserver" operator="is">true</condition>
-              </and>
-            </dependency>
+            <dependency type="enable" setting="services.upnpserver">true</dependency>
           </dependencies>
           <control type="toggle" />
         </setting>
@@ -1864,21 +1891,13 @@
           <level>2</level>
           <default>false</default>
           <dependencies>
-            <dependency type="enable">
-              <and>
-                <condition setting="services.upnp" operator="is">true</condition>
-                <condition setting="services.upnpserver" operator="is">true</condition>
-              </and>
-            </dependency>
+            <dependency type="enable" setting="services.upnpserver">true</dependency>
           </dependencies>
           <control type="toggle" />
         </setting>
         <setting id="services.upnprenderer" type="boolean" label="21881" help="36325">
           <level>1</level>
           <default>false</default>
-          <dependencies>
-            <dependency type="enable" setting="services.upnp">true</dependency>
-          </dependencies>
           <control type="toggle" />
         </setting>
       </group>
@@ -1969,146 +1988,6 @@
             <dependency type="enable" on="property" name="AddonHasSettings" setting="weather.addon" />
           </dependencies>
           <control type="button" format="action" />
-        </setting>
-      </group>
-    </category>
-  </section>
-  <section id="games" label="15016" help="35200">
-    <category id="gamesgeneral" label="16000">
-      <group id="1" label="35201">
-        <setting id="gamesgeneral.enable" type="boolean">
-          <visible>false</visible>
-          <level>0</level>
-          <default>false</default>
-          <control type="toggle" />
-        </setting>
-        <setting id="gamesgeneral.enablerewind" type="boolean" label="35203" help="35204">
-          <level>0</level>
-          <default>true</default>
-          <control type="toggle" />
-        </setting>
-        <setting id="gamesgeneral.rewindtime" type="integer" label="35205" help="35206">
-          <level>2</level>
-          <default>60</default>
-          <constraints>
-            <minimum>10</minimum>
-            <step>10</step>
-            <maximum>600</maximum>
-          </constraints>
-          <dependencies>
-            <dependency type="enable" setting="gamesgeneral.enablerewind">true</dependency>
-          </dependencies>
-          <control type="slider" format="integer">
-            <popup>true</popup>
-            <formatlabel>14045</formatlabel>
-          </control>
-        </setting>
-      </group>
-    </category>
-    <category id="gameskeyboard" label="35150">
-      <group id="1" label="128">
-        <setting id="gameskeyboard.enablekeyboard" type="boolean" label="35152" help="35153">
-          <level>0</level>
-          <control type="toggle" />
-          <default>true</default>
-        </setting>
-      </group>
-      <group id="2" label="35151">
-        <setting id="gameskeyboard.keyboardplayers" type="integer" label="35154" help="35155">
-          <level>0</level>
-          <default>1</default>
-          <constraints>
-            <minimum>1</minimum>
-            <step>1</step>
-            <maximum>8</maximum>
-          </constraints>
-          <dependencies>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-          <control type="slider" format="integer">
-            <popup>true</popup>
-            <formatlabel>35156</formatlabel> <!-- TODO: Add a <formattype>integer</formattype> tag -->
-          </control>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig1" type="action" label="35157" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">1</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig2" type="action" label="35158" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">2</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig3" type="action" label="35159" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">3</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig4" type="action" label="35160" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">4</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig5" type="action" label="35161" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">5</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig6" type="action" label="35162" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">6</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig7" type="action" label="35163" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">7</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
-        </setting>
-        <setting id="gameskeyboard.keyboardplayerconfig8" type="action" label="35164" help="35155">
-          <level>0</level>
-          <control type="button" format="action" />
-          <dependencies>
-            <dependency type="visible">
-              <condition on="property" name="gte" setting="gameskeyboard.keyboardplayers">8</condition>
-            </dependency>
-            <dependency type="enable" setting="gameskeyboard.enablekeyboard">true</dependency>
-          </dependencies>
         </setting>
       </group>
     </category>
@@ -2208,7 +2087,7 @@
         <setting id="videoscreen.dither" type="boolean" label="36099" help="36598">
           <requirement>HAS_GL</requirement>
           <level>3</level>
-          <default>false</default>
+          <default>true</default>
           <control type="toggle" />
         </setting>
         <setting id="videoscreen.ditherdepth" type="integer" label="36100" help="36599">
@@ -2536,11 +2415,6 @@
           </constraints>
           <control type="list" format="string" />
         </setting>
-        <setting id="audiooutput.streamnoise" type="boolean" label="34112" help="34113">
-          <level>2</level>
-          <default>true</default>
-          <control type="toggle" />
-        </setting>
       </group>
       <group id="2" label="15108">
         <setting id="audiooutput.guisoundmode" type="integer" label="34120" help="36373">
@@ -2557,7 +2431,7 @@
         </setting>
         <setting id="lookandfeel.soundskin" type="addon" label="24006" help="36110">
           <level>0</level>
-          <default>resource.uisounds.kodi</default>
+          <default>resource.uisounds.confluence</default>
           <constraints>
             <addontype>kodi.resource.uisounds</addontype>
             <allowempty>true</allowempty>
@@ -2647,12 +2521,7 @@
           <level>2</level>
           <default>false</default>
           <dependencies>
-            <dependency type="visible">
-              <and>
-                <condition on="property" name="aesettingvisible" setting="audiooutput.config">audiooutput.dtspassthrough</condition>
-                <condition on="property" name="aesettingvisible" setting="audiooutput.passthroughdevice">audiooutput.dtspassthrough</condition>
-              </and>
-            </dependency>
+            <dependency type="visible" on="property" name="aesettingvisible" setting="audiooutput.config">audiooutput.passthrough</dependency>
             <dependency type="enable" setting="audiooutput.passthrough" operator="is">true</dependency>
           </dependencies>
           <control type="toggle" />
@@ -2686,6 +2555,43 @@
           <control type="toggle" />
         </setting>
       </group>
+      <group id="4" label="14251">
+        <setting id="audiooutput.dspaddonsenabled" type="boolean" label="36441" help="36438">
+          <level>3</level>
+          <default>false</default>
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.passthrough">audiooutput.dspaddonsenabled</condition>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.ac3passthrough">audiooutput.dspaddonsenabled</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <control type="toggle" />
+        </setting>
+        <setting id="audiooutput.dspsettings" type="action" label="36436" help="36437">
+          <level>3</level>
+          <control type="button" format="action" />
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.dspaddonsenabled">audiooutput.dspsettings</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+        <setting id="audiooutput.dspresetdb" type="action" label="14082" help="36439">
+          <level>3</level>
+          <control type="button" format="action" />
+          <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition on="property" name="aesettingvisible" setting="audiooutput.dspaddonsenabled">audiooutput.dspresetdb</condition>
+              </or>
+            </dependency>
+          </dependencies>
+        </setting>
+      </group>
     </category>
     <category id="input" label="14125" help="36374">
       <group id="1" label="35000">
@@ -2696,13 +2602,6 @@
           </dependencies>
           <control type="button" format="action" />
         </setting>
-        <setting id="input.peripherallibraries" type="action" label="35047" help="35048">
-          <level>1</level>
-          <dependencies>
-            <dependency type="enable" on="property" name="HasPeripheralLibraries" />
-          </dependencies>
-          <control type="button" format="action" />
-        </setting>
       </group>
       <group id="2" label="14094">
         <setting id="input.enablemouse" type="boolean" label="21369" help="36377">
@@ -2710,42 +2609,28 @@
           <control type="toggle" />
           <default>true</default>
         </setting>
-        <setting id="input.asknewcontrollers" type="boolean">
-          <level>0</level>
-          <control type="toggle" />
-          <default>true</default>
-          <visible>false</visible>
-        </setting>
         <setting id="input.controllerconfig" type="action" label="35063" help="35064">
           <level>0</level>
-          <control type="button" format="action" />
-        </setting>
-        <setting id="input.rumblenotify" type="boolean" label="35053" help="35054">
-          <level>1</level>
           <dependencies>
-            <dependency type="visible" on="property" name="HasRumbleFeature" />
+            <dependency type="enable" on="property" name="SupportsPeripheralControllers" />
           </dependencies>
-          <control type="toggle" />
-          <default>false</default>
+          <control type="button" format="action" />
         </setting>
         <setting id="input.testrumble" type="action" label="35051" help="35052">
           <level>2</level>
           <dependencies>
-            <dependency type="visible" on="property" name="HasRumbleFeature" />
-            <dependency type="enable" on="property" name="HasRumbleController" />
+            <dependency type="enable" on="property" name="HasRumbleFeature" />
           </dependencies>
           <control type="button" format="action" />
         </setting>
         <setting id="input.controllerpoweroff" type="boolean" label="35088" help="35089">
-          <level>1</level>
-          <dependencies>
-            <dependency type="visible" on="property" name="HasPowerOffFeature" />
-          </dependencies>
+          <level>0</level>
           <default>false</default>
+          <dependencies>
+            <dependency type="enable" on="property" name="SupportsPeripheralControllers" />
+          </dependencies>
           <control type="toggle" />
         </setting>
-      </group>
-      <group id="3" label="13600">
       </group>
     </category>
     <category id="network" label="798" help="36379">
@@ -2868,18 +2753,6 @@
           </constraints>
           <control type="list" format="string" />
         </setting>
-        <setting id="powermanagement.waitfornetwork" type="integer" label="39011" help="39012">
-          <level>2</level>
-          <default>0</default>
-          <constraints>
-            <minimum label="351">0</minimum>
-            <step>1</step>
-            <maximum>30</maximum>
-          </constraints>
-          <control type="spinner" format="string">
-            <formatlabel>14045</formatlabel>
-          </control>
-        </setting>
       </group>
       <group id="2" label="14256">
         <setting id="powermanagement.wakeonaccess" type="boolean" label="13026" help="36350">
@@ -2905,7 +2778,7 @@
         </setting>
         <setting id="general.addonnotifications" type="boolean" label="36609" help="36612">
           <level>0</level>
-          <default>false</default>
+          <default>true</default>
           <control type="toggle" />
           <dependencies>
             <dependency type="enable" setting="general.addonupdates">0</dependency>
@@ -3148,7 +3021,7 @@
   </section>
   <section id="interface" label="14206" help="38102">
     <category id="skin" label="166" help="36102">
-      <group id="1" label="24997">
+      <group id="1" label="16000">
         <setting id="lookandfeel.skin" type="addon" label="166" help="36103">
           <level>0</level>
           <default>skin.estuary</default>
@@ -3159,7 +3032,7 @@
             <show more="true" details="true">installed</show>
           </control>
         </setting>
-        <setting id="lookandfeel.skinsettings" type="action" parent="lookandfeel.skin" label="14261" help="36104">
+        <setting id="lookandfeel.skinsettings" type="action" parent="lookandfeel.skin" label="21417" help="36104">
           <level>0</level>
           <dependencies>
             <dependency type="enable" on="property" name="AddonHasSettings" setting="lookandfeel.skin" />
@@ -3178,7 +3051,7 @@
           <control type="list" format="string" />
         </setting>
         <setting id="lookandfeel.skincolors" type="string" parent="lookandfeel.skin" label="14078" help="36106">
-          <level>1</level>
+          <level>2</level>
           <default>SKINDEFAULT</default>
           <constraints>
             <options>skincolors</options>
@@ -3189,7 +3062,7 @@
           <control type="list" format="string" />
         </setting>
         <setting id="lookandfeel.font" type="string" parent="lookandfeel.skin" label="13303" help="36107">
-          <level>1</level>
+          <level>2</level>
           <default>Default</default>
           <constraints>
             <options>skinfonts</options>
@@ -3200,12 +3073,12 @@
           <control type="list" format="string" />
         </setting>
         <setting id="lookandfeel.skinzoom" type="integer" parent="lookandfeel.skin" label="20109" help="36108">
-          <level>1</level>
+          <level>2</level>
           <default>0</default>
           <constraints>
-            <minimum>-30</minimum>
+            <minimum>-20</minimum>
             <step>2</step>
-            <maximum>30</maximum>
+            <maximum>20</maximum>
           </constraints>
           <dependencies>
             <dependency type="update" setting="lookandfeel.skin" />
@@ -3264,10 +3137,6 @@
           <control type="list" format="string">
             <multiselect>true</multiselect>
           </control>
-        </setting>
-        <setting id="locale.activekeyboardlayout" type="string" label="0" help="0">
-          <level>4</level>
-          <default>English QWERTY</default>
         </setting>
       </group>
       <group id="2" label="14270">
@@ -3374,7 +3243,7 @@
       <group id="1" label="16000">
         <setting id="screensaver.mode" type="addon" label="356" help="36130">
           <level>0</level>
-          <default>default</default> <!-- will be properly set on startup -->
+          <default>screensaver.xbmc.builtin.dim</default>
           <constraints>
             <addontype>xbmc.ui.screensaver</addontype>
             <allowempty>true</allowempty>

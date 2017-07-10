@@ -20,7 +20,6 @@
 
 #include "GUIViewStatePrograms.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "view/ViewState.h"
 #include "settings/MediaSourceSettings.h"
 #include "filesystem/Directory.h"
@@ -35,7 +34,7 @@ using namespace XFILE;
 CGUIViewStateWindowPrograms::CGUIViewStateWindowPrograms(const CFileItemList& items) : CGUIViewState(items)
 {
   AddSortMethod(SortByLabel, 551, LABEL_MASKS("%K", "%I", "%L", ""),  // Titel, Size | Foldername, empty
-    CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
+    CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING) ? SortAttributeIgnoreArticle : SortAttributeNone);
 
   const CViewState *viewState = CViewStateSettings::GetInstance().Get("programs");
   SetSortMethod(viewState->m_sortDescription);
@@ -57,7 +56,7 @@ std::string CGUIViewStateWindowPrograms::GetLockType()
 
 std::string CGUIViewStateWindowPrograms::GetExtensions()
 {
-  return ".cut";
+  return ".xbe|.cut";
 }
 
 VECSOURCES& CGUIViewStateWindowPrograms::GetSources()

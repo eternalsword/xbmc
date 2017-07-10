@@ -58,10 +58,9 @@ extern "C" HMODULE __stdcall dllLoadLibraryExtended(LPCSTR lib_file, LPCSTR sour
   /* extract name */
   const char* p = strrchr(lib_file, PATH_SEPARATOR_CHAR);
   if (p)
-    strncpy(libname, p+1, sizeof(libname) - 1);
+    strcpy(libname, p+1);
   else
-    strncpy(libname, lib_file, sizeof(libname) - 1);
-  libname[sizeof(libname) - 1] = '\0';
+    strcpy(libname, lib_file);
 
   if( libname[0] == '\0' )
     return NULL;
@@ -134,7 +133,7 @@ extern "C" HMODULE __stdcall dllLoadLibraryExA(LPCSTR lpLibFileName, HANDLE hFil
   return dllLoadLibraryExExtended(lpLibFileName, hFile, dwFlags, NULL);
 }
 
-extern "C" int __stdcall dllFreeLibrary(HINSTANCE hLibModule)
+extern "C" BOOL __stdcall dllFreeLibrary(HINSTANCE hLibModule)
 {
   LibraryLoader* dllhandle = DllLoaderContainer::GetModule(hLibModule);
 
@@ -202,7 +201,7 @@ extern "C" FARPROC __stdcall dllGetProcAddress(HMODULE hModule, LPCSTR function)
     {
       DllTrackInfo* track = tracker_get_dlltrackinfo(loc);
       /* some dll's require us to always return a function or it will fail, other's  */
-      /* decide functionality depending on if the functions exist and may fail      */
+      /* decide functionallity depending on if the functions exist and may fail      */
       if( dll->IsSystemDll() && track
        && stricmp(track->pDll->GetName(), "CoreAVCDecoder.ax") == 0 )
       {
@@ -252,4 +251,34 @@ extern "C" HMODULE WINAPI dllGetModuleHandleA(LPCSTR lpModuleName)
 
   CLog::Log(LOGDEBUG, "GetModuleHandleA('%s') failed", lpModuleName);
   return NULL;
+}
+
+extern "C" DWORD WINAPI dllGetModuleFileNameA(HMODULE hModule, LPSTR lpFilename, DWORD nSize)
+{
+  if (NULL == hModule)
+  {
+#ifdef TARGET_WINDOWS
+    return GetModuleFileNameA(hModule, lpFilename, nSize);
+#else
+    CLog::Log(LOGDEBUG, "%s - No hModule specified", __FUNCTION__);
+    return 0;
+#endif
+  }
+
+  LibraryLoader* dll = DllLoaderContainer::GetModule(hModule);
+  if( !dll )
+  {
+    CLog::Log(LOGERROR, "%s - Invalid hModule specified", __FUNCTION__);
+    return 0;
+  }
+
+  const char* sName = dll->GetFileName();
+  if (sName)
+  {
+    strncpy(lpFilename, sName, nSize);
+    lpFilename[nSize] = 0;
+    return strlen(lpFilename);
+  }
+
+  return 0;
 }

@@ -28,7 +28,18 @@
 static const std::string XBTF_MAGIC = "XBTF";
 static const std::string XBTF_VERSION = "2";
 
-#include "TextureFormats.h"
+#define XB_FMT_MASK   0xffff ///< mask for format info - other flags are outside this
+#define XB_FMT_DXT_MASK   15
+#define XB_FMT_UNKNOWN     0
+#define XB_FMT_DXT1        1
+#define XB_FMT_DXT3        2
+#define XB_FMT_DXT5        4
+#define XB_FMT_DXT5_YCoCg  8
+#define XB_FMT_A8R8G8B8   16 // texture.xbt byte order (matches BGRA8)
+#define XB_FMT_A8         32
+#define XB_FMT_RGBA8      64
+#define XB_FMT_RGB8      128
+#define XB_FMT_OPAQUE  65536
 
 class CXBTFFrame
 {
@@ -101,7 +112,7 @@ private:
 class CXBTFBase
 {
 public:
-  virtual ~CXBTFBase() = default;
+  virtual ~CXBTFBase() { }
 
   uint64_t GetHeaderSize() const;
 
@@ -112,7 +123,7 @@ public:
   void UpdateFile(const CXBTFFile& file);
 
 protected:
-  CXBTFBase() = default;
+  CXBTFBase() { }
 
   std::map<std::string, CXBTFFile> m_files;
 };

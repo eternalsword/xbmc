@@ -34,7 +34,8 @@ CKeyboardLayout::CKeyboardLayout()
   m_codingtable = NULL;
 }
 
-CKeyboardLayout::~CKeyboardLayout() = default;
+CKeyboardLayout::~CKeyboardLayout()
+{ }
 
 bool CKeyboardLayout::Load(const TiXmlElement* element)
 {

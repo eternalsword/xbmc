@@ -31,9 +31,15 @@ CProcessInfo* CProcessInfo::CreateInstance()
 
 
 // base class definitions
-CProcessInfoLinux::CProcessInfoLinux() = default;
+CProcessInfoLinux::CProcessInfoLinux()
+{
 
-CProcessInfoLinux::~CProcessInfoLinux() = default;
+}
+
+CProcessInfoLinux::~CProcessInfoLinux()
+{
+
+}
 
 void CProcessInfoLinux::SetSwDeinterlacingMethods()
 {

@@ -21,6 +21,8 @@
 #include "system.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+
+#include "cores/AudioEngine/AEFactory.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/AEResampleFactory.h"
 
@@ -29,9 +31,12 @@
 
 using namespace ActiveAE;
 
-CActiveAEStream::CActiveAEStream(AEAudioFormat *format, unsigned int streamid, CActiveAE *ae)
+/* typecast AE to CActiveAE */
+#define AE (*((CActiveAE*)CAEFactory::GetEngine()))
+
+
+CActiveAEStream::CActiveAEStream(AEAudioFormat *format, unsigned int streamid)
 {
-  m_activeAE = ae;
   m_format = *format;
   m_id = streamid;
   m_bufferedTime = 0;
@@ -205,7 +210,7 @@ double CActiveAEStream::CalcResampleRatio(double error)
   double proportional = 0.0;
 
   double proportionaldiv = 2.0;
-  proportional = error / GetErrorInterval() / proportionaldiv;
+  proportional = error / m_errorInterval / proportionaldiv;
 
   double clockspeed = 1.0;
   if (m_pClock)
@@ -219,15 +224,6 @@ double CActiveAEStream::CalcResampleRatio(double error)
   double ret = 1.0 / clockspeed + proportional + m_resampleIntegral;
   //CLog::Log(LOGNOTICE,"----- error: %f, rr: %f, prop: %f, int: %f",
   //                    error, ret, proportional, m_resampleIntegral);
-  return ret;
-}
-
-int CActiveAEStream::GetErrorInterval()
-{
-  int ret = m_errorInterval;
-  double rr = m_processingBuffers->GetRR();
-  if (rr > 1.02 || rr < 0.98)
-    ret *= 3;
   return ret;
 }
 
@@ -348,14 +344,14 @@ unsigned int CActiveAEStream::AddData(const uint8_t* const *data, unsigned int o
 double CActiveAEStream::GetDelay()
 {
   AEDelayStatus status;
-  m_activeAE->GetDelay(status, this);
+  AE.GetDelay(status, this);
   return status.GetDelay();
 }
 
 CAESyncInfo CActiveAEStream::GetSyncInfo()
 {
   CAESyncInfo info;
-  m_activeAE->GetSyncInfo(info, this);
+  AE.GetSyncInfo(info, this);
   return info;
 }
 
@@ -367,22 +363,22 @@ bool CActiveAEStream::IsBuffering()
 
 double CActiveAEStream::GetCacheTime()
 {
-  return m_activeAE->GetCacheTime(this);
+  return AE.GetCacheTime(this);
 }
 
 double CActiveAEStream::GetCacheTotal()
 {
-  return m_activeAE->GetCacheTotal(this);
+  return AE.GetCacheTotal(this);
 }
 
 void CActiveAEStream::Pause()
 {
-  m_activeAE->PauseStream(this, true);
+  AE.PauseStream(this, true);
 }
 
 void CActiveAEStream::Resume()
 {
-  m_activeAE->PauseStream(this, false);
+  AE.PauseStream(this, false);
 }
 
 void CActiveAEStream::Drain(bool wait)
@@ -462,7 +458,7 @@ void CActiveAEStream::Flush()
   {
     m_currentBuffer = NULL;
     m_leftoverBytes = 0;
-    m_activeAE->FlushStream(this);
+    AE.FlushStream(this);
     ResetFreeBuffers();
     m_streamIsFlushed = true;
   }
@@ -476,7 +472,7 @@ float CActiveAEStream::GetAmplification()
 void CActiveAEStream::SetAmplification(float amplify)
 {
   m_streamAmplify = amplify;
-  m_activeAE->SetStreamAmplification(this, m_streamAmplify);
+  AE.SetStreamAmplification(this, m_streamAmplify);
 }
 
 float CActiveAEStream::GetReplayGain()
@@ -487,7 +483,7 @@ float CActiveAEStream::GetReplayGain()
 void CActiveAEStream::SetReplayGain(float factor)
 {
   m_streamRgain = std::max( 0.0f, factor);
-  m_activeAE->SetStreamReplaygain(this, m_streamRgain);
+  AE.SetStreamReplaygain(this, m_streamRgain);
 }
 
 float CActiveAEStream::GetVolume()
@@ -498,7 +494,7 @@ float CActiveAEStream::GetVolume()
 void CActiveAEStream::SetVolume(float volume)
 {
   m_streamVolume = std::max( 0.0f, std::min(1.0f, volume));
-  m_activeAE->SetStreamVolume(this, m_streamVolume);
+  AE.SetStreamVolume(this, m_streamVolume);
 }
 
 double CActiveAEStream::GetResampleRatio()
@@ -509,20 +505,20 @@ double CActiveAEStream::GetResampleRatio()
 void CActiveAEStream::SetResampleRatio(double ratio)
 {
   if (ratio != m_streamResampleRatio)
-    m_activeAE->SetStreamResampleRatio(this, ratio);
+    AE.SetStreamResampleRatio(this, ratio);
   m_streamResampleRatio = ratio;
 }
 
 void CActiveAEStream::SetResampleMode(int mode)
 {
   if (mode != m_streamResampleMode)
-    m_activeAE->SetStreamResampleMode(this, mode);
+    AE.SetStreamResampleMode(this, mode);
   m_streamResampleMode = mode;
 }
 
 void CActiveAEStream::SetFFmpegInfo(int profile, enum AVMatrixEncoding matrix_encoding, enum AVAudioServiceType audio_service_type)
 {
-  m_activeAE->SetStreamFFmpegInfo(this, profile, matrix_encoding, audio_service_type);
+  AE.SetStreamFFmpegInfo(this, profile, matrix_encoding, audio_service_type);
 }
 
 void CActiveAEStream::FadeVolume(float from, float target, unsigned int time)
@@ -531,7 +527,7 @@ void CActiveAEStream::FadeVolume(float from, float target, unsigned int time)
     return;
 
   m_streamFading = true;
-  m_activeAE->SetStreamFade(this, from, target, time);
+  AE.SetStreamFade(this, from, target, time);
 }
 
 bool CActiveAEStream::IsFading()
@@ -542,7 +538,7 @@ bool CActiveAEStream::IsFading()
 
 bool CActiveAEStream::HasDSP()
 {
-  return false;
+  return AE.HasDSP();
 }
 
 const unsigned int CActiveAEStream::GetFrameSize() const
@@ -583,7 +579,7 @@ void CActiveAEStream::RegisterSlave(IAEStream *slave)
 // CActiveAEStreamBuffers
 //------------------------------------------------------------------------------
 
-CActiveAEStreamBuffers::CActiveAEStreamBuffers(const AEAudioFormat& inputFormat, const AEAudioFormat& outputFormat, AEQuality quality)
+CActiveAEStreamBuffers::CActiveAEStreamBuffers(AEAudioFormat inputFormat, AEAudioFormat outputFormat, AEQuality quality)
 {
   m_inputFormat = inputFormat;
   m_resampleBuffers = new CActiveAEBufferPoolResample(inputFormat, outputFormat, quality);
@@ -607,7 +603,7 @@ bool CActiveAEStreamBuffers::HasInputLevel(int level)
 
 bool CActiveAEStreamBuffers::Create(unsigned int totaltime, bool remap, bool upmix, bool normalize, bool useDSP)
 {
-  if (!m_resampleBuffers->Create(totaltime, remap, upmix, normalize))
+  if (!m_resampleBuffers->Create(totaltime, remap, upmix, normalize, useDSP))
     return false;
 
   if (!m_atempoBuffers->Create(totaltime))
@@ -618,7 +614,7 @@ bool CActiveAEStreamBuffers::Create(unsigned int totaltime, bool remap, bool upm
 
 void CActiveAEStreamBuffers::SetExtraData(int profile, enum AVMatrixEncoding matrix_encoding, enum AVAudioServiceType audio_service_type)
 {
-  /*! @todo Implement set dsp config with new AudioDSP buffer implementation */
+  m_resampleBuffers->SetExtraData(profile, matrix_encoding, audio_service_type);
 }
 
 bool CActiveAEStreamBuffers::ProcessBuffers()
@@ -659,7 +655,7 @@ bool CActiveAEStreamBuffers::ProcessBuffers()
 
 void CActiveAEStreamBuffers::ConfigureResampler(bool normalizelevels, bool dspenabled, bool stereoupmix, AEQuality quality)
 {
-  m_resampleBuffers->ConfigureResampler(normalizelevels, stereoupmix, quality);
+  m_resampleBuffers->ConfigureResampler(normalizelevels, dspenabled, stereoupmix, quality);
 }
 
 float CActiveAEStreamBuffers::GetDelay()
@@ -757,7 +753,7 @@ void CActiveAEStreamBuffers::ForceResampler(bool force)
 
 void CActiveAEStreamBuffers::SetDSPConfig(bool usedsp, bool bypassdsp)
 {
- /*! @todo Implement set dsp config with new AudioDSP buffer implementation */
+  m_resampleBuffers->SetDSPConfig(usedsp, bypassdsp);
 }
 
 CActiveAEBufferPool* CActiveAEStreamBuffers::GetResampleBuffers()

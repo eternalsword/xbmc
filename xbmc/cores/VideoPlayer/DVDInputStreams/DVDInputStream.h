@@ -65,7 +65,7 @@ public:
   class IDisplayTime
   {
     public:
-    virtual ~IDisplayTime() = default;
+    virtual ~IDisplayTime() {};
     virtual int GetTotalTime() = 0;
     virtual int GetTime() = 0;
   };
@@ -73,14 +73,14 @@ public:
   class IPosTime
   {
     public:
-    virtual ~IPosTime() = default;
+    virtual ~IPosTime() {};
     virtual bool PosTime(int ms) = 0;
   };
 
   class IChapter
   {
     public:
-    virtual ~IChapter() = default;
+    virtual ~IChapter() {};
     virtual int  GetChapter() = 0;
     virtual int  GetChapterCount() = 0;
     virtual void GetChapterName(std::string& name, int ch=-1) = 0;
@@ -91,7 +91,7 @@ public:
   class IMenus
   {
     public:
-    virtual ~IMenus() = default;
+    virtual ~IMenus() {};
     virtual void ActivateButton() = 0;
     virtual void SelectButton(int iButton) = 0;
     virtual int  GetCurrentButton() = 0;
@@ -117,7 +117,7 @@ public:
   class IDemux
   {
     public:
-    virtual ~IDemux() = default;
+    virtual ~IDemux() {}
     virtual bool OpenDemux() = 0;
     virtual DemuxPacket* ReadDemux() = 0;
     virtual CDemuxStream* GetStream(int iStreamId) const = 0;
@@ -125,7 +125,7 @@ public:
     virtual void EnableStream(int iStreamId, bool enable) = 0;
     virtual int GetNrOfStreams() const = 0;
     virtual void SetSpeed(int iSpeed) = 0;
-    virtual bool SeekTime(double time, bool backward = false, double* startpts = NULL) = 0;
+    virtual bool SeekTime(int time, bool backward = false, double* startpts = NULL) = 0;
     virtual void AbortDemux() = 0;
     virtual void FlushDemux() = 0;
     virtual void SetVideoResolution(int width, int height) {};
@@ -163,7 +163,7 @@ public:
   virtual void SetReadRate(unsigned rate) {}
 
   /*! \brief Get the cache status
-   \return true when cache status was successfully obtained
+   \return true when cache status was succesfully obtained
    */
   virtual bool GetCacheStatus(XFILE::SCacheStatus *status) { return false; }
 

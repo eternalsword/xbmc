@@ -30,12 +30,12 @@ class Touch : public CVector
 {
 public:
   Touch() { reset(); }
-  ~Touch() override = default;
+  virtual ~Touch() { }
 
   /*!
    * \brief Resets the x/y coordinates and the time
    */
-  void reset() override { CVector::reset(); time = -1; }
+  virtual void reset() { CVector::reset(); time = -1; }
 
   /*!
    * \brief Checks if the touch is valid i.e. if the x/y coordinates and the

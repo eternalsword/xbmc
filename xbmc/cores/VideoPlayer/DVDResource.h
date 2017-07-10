@@ -21,29 +21,28 @@
  */
 
 #include <assert.h>
-#include <atomic>
+#include "threads/Atomics.h"
 
 template<typename T> struct IDVDResourceCounted
 {
   IDVDResourceCounted() : m_refs(1) {}
-  virtual ~IDVDResourceCounted() = default;
+  virtual ~IDVDResourceCounted() {}
 
   IDVDResourceCounted(const IDVDResourceCounted &) = delete;
   IDVDResourceCounted &operator=(const IDVDResourceCounted &) = delete;
 
-  virtual T*  Acquire()
+  virtual T*   Acquire()
   {
-    ++m_refs;
+    AtomicIncrement(&m_refs);
     return (T*)this;
   }
 
   virtual long Release()
   {
-    long count = --m_refs;
+    long count = AtomicDecrement(&m_refs);
     assert(count >= 0);
-    if (count == 0)
-      delete (T*)this;
+    if (count == 0) delete (T*)this;
     return count;
   }
-  std::atomic<long> m_refs;
+  long m_refs;
 };

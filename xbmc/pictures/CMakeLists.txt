@@ -1,11 +1,7 @@
-set(SOURCES ExifParse.cpp
-            GUIDialogPictureInfo.cpp
+set(SOURCES GUIDialogPictureInfo.cpp
             GUIViewStatePictures.cpp
             GUIWindowPictures.cpp
             GUIWindowSlideShow.cpp
-            IptcParse.cpp
-            JpegParse.cpp
-            libexif.cpp
             Picture.cpp
             PictureInfoLoader.cpp
             PictureInfoTag.cpp
@@ -13,7 +9,8 @@ set(SOURCES ExifParse.cpp
             PictureThumbLoader.cpp
             SlideShowPicture.cpp)
 
-set(HEADERS GUIDialogPictureInfo.h
+set(HEADERS DllLibExif.h
+            GUIDialogPictureInfo.h
             GUIViewStatePictures.h
             GUIWindowPictures.h
             GUIWindowSlideShow.h

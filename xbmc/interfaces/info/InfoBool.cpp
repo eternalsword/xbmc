@@ -23,12 +23,12 @@
 
 namespace INFO
 {
-  InfoBool::InfoBool(const std::string &expression, int context, unsigned int &refreshCounter)
+  InfoBool::InfoBool(const std::string &expression, int context)
     : m_value(false),
       m_context(context),
       m_listItemDependent(false),
       m_expression(expression),
-      m_parentRefreshCounter(refreshCounter)
+      m_dirty(true)
   {
     StringUtils::ToLower(m_expression);
   }

@@ -25,10 +25,10 @@ class CGUIWindowEventLog : public CGUIMediaWindow
 {
 public:
   CGUIWindowEventLog();
-  ~CGUIWindowEventLog() override;
+  virtual ~CGUIWindowEventLog();
 
   // specialization of CGUIControl
-  bool OnMessage(CGUIMessage& message) override;
+  virtual bool OnMessage(CGUIMessage& message) override;
 
 protected:
   // specialization of CGUIMediaWindow

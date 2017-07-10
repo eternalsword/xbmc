@@ -43,7 +43,7 @@ class CVideoInfoDownloader : public CThread
 {
 public:
   CVideoInfoDownloader(const ADDON::ScraperPtr &scraper);
-  ~CVideoInfoDownloader() override;
+  virtual ~CVideoInfoDownloader();
 
   // threaded lookup functions
 
@@ -85,7 +85,7 @@ protected:
   ADDON::ScraperPtr   m_info;
 
   // threaded stuff
-  void Process() override;
+  void Process();
   void CloseThread();
 
   int InternalFindMovie(const std::string& strMovie, MOVIELIST& movielist, bool cleanChars = true);

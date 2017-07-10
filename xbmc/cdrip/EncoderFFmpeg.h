@@ -32,11 +32,11 @@ class CEncoderFFmpeg : public IEncoder
 {
 public:
   CEncoderFFmpeg();
-  ~CEncoderFFmpeg() override = default;
+  virtual ~CEncoderFFmpeg() {}
 
-  bool Init(AddonToKodiFuncTable_AudioEncoder& callbacks) override;
-  int Encode(int nNumBytesRead, uint8_t *pbtStream) override;
-  bool Close() override;
+  bool Init(audioenc_callbacks &callbacks);
+  int Encode(int nNumBytesRead, uint8_t *pbtStream);
+  bool Close();
 private:
 
   AVFormatContext  *m_Format;
@@ -67,7 +67,7 @@ private:
   AVFrame          *m_ResampledFrame;
   bool              m_NeedConversion;
 
-  AddonToKodiFuncTable_AudioEncoder m_callbacks;
+  audioenc_callbacks m_callbacks;
 
   bool WriteFrame();
 };

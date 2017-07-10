@@ -32,13 +32,13 @@ class CXbtDirectory : public IFileDirectory
 {
 public:
   CXbtDirectory();
-  ~CXbtDirectory() override;
+  ~CXbtDirectory();
 
   // specialization of IDirectory
-  DIR_CACHE_TYPE GetCacheType(const CURL& url) const override { return DIR_CACHE_ALWAYS; };
-  bool GetDirectory(const CURL& url, CFileItemList& items) override;
+  virtual DIR_CACHE_TYPE GetCacheType(const CURL& url) const override { return DIR_CACHE_ALWAYS; };
+  virtual bool GetDirectory(const CURL& url, CFileItemList& items) override;
 
   // specialization of IFileDirectory
-  bool ContainsFiles(const CURL& url) override;
+  virtual bool ContainsFiles(const CURL& url) override;
 };
 }

@@ -29,7 +29,8 @@ CMultiPathFile::CMultiPathFile(void)
   : COverrideFile(false)
 { }
 
-CMultiPathFile::~CMultiPathFile(void) = default;
+CMultiPathFile::~CMultiPathFile(void)
+{ }
 
 bool CMultiPathFile::Open(const CURL& url)
 {

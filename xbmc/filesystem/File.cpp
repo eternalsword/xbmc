@@ -104,27 +104,19 @@ bool CFile::Copy(const CURL& url2, const CURL& dest, XFILE::IFileCallback* pCall
 #else
         pathsep = "/";
 #endif
-        // Try to use the recursive creation first, if it fails
-        // it might not be implemented for that subsystem so let's
-        // fall back to the old method in that case
-        if (!CDirectory::Create(url))
+        StringUtils::Tokenize(url.GetFileName(),tokens,pathsep.c_str());
+        std::string strCurrPath;
+        // Handle special
+        if (!url.GetProtocol().empty()) {
+          pathsep = "/";
+          strCurrPath += url.GetProtocol() + "://";
+        } // If the directory has a / at the beginning, don't forget it
+        else if (strDirectory[0] == pathsep[0])
+          strCurrPath += pathsep;
+        for (std::vector<std::string>::iterator iter=tokens.begin();iter!=tokens.end();++iter)
         {
-          StringUtils::Tokenize(url.GetFileName(), tokens, pathsep.c_str());
-          std::string strCurrPath;
-          // Handle special
-          if (!url.GetProtocol().empty())
-          {
-            pathsep = "/";
-            strCurrPath += url.GetProtocol() + "://";
-          } // If the directory has a / at the beginning, don't forget it
-          else if (strDirectory[0] == pathsep[0])
-            strCurrPath += pathsep;
-
-          for (std::vector<std::string>::iterator iter = tokens.begin(); iter != tokens.end(); ++iter)
-          {
-            strCurrPath += *iter + pathsep;
-            CDirectory::Create(strCurrPath);
-          }
+          strCurrPath += *iter+pathsep;
+          CDirectory::Create(strCurrPath);
         }
       }
     }
@@ -262,19 +254,6 @@ bool CFile::Open(const std::string& strFileName, const unsigned int flags)
 
 bool CFile::Open(const CURL& file, const unsigned int flags)
 {
-  if (m_pFile)
-  {
-    if ((flags & READ_REOPEN) == 0)
-    {
-      CLog::Log(LOGERROR, "File::Open - already open: %s", file.GetRedacted().c_str());
-      return false;      
-    }
-    else
-    {
-      return m_pFile->ReOpen(URIUtils::SubstitutePath(file));
-    }
-  }
-
   m_flags = flags;
   try
   {
@@ -301,10 +280,6 @@ bool CFile::Open(const CURL& file, const unsigned int flags)
       {
         // for internet stream, if it contains multiple stream, file cache need handle it specially.
         m_pFile = new CFileCache(m_flags);
-
-        if (!m_pFile)
-          return false;
-
         return m_pFile->Open(url);
       }
     }
@@ -491,6 +466,13 @@ int CFile::Stat(struct __stat64 *buffer)
   }
 
   return m_pFile->Stat(buffer);
+}
+
+bool CFile::SkipNext()
+{
+  if (m_pFile)
+    return m_pFile->SkipNext();
+  return false;
 }
 
 int CFile::Stat(const std::string& strFileName, struct __stat64* buffer)

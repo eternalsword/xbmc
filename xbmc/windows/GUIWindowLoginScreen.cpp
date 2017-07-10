@@ -26,13 +26,11 @@
 #include "ContextMenuManager.h"
 #include "FileItem.h"
 #include "GUIPassword.h"
-#include "ServiceBroker.h"
 #include "addons/AddonManager.h"
 #include "addons/Skin.h"
 #include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogOK.h"
-#include "favourites/FavouritesService.h"
 #include "guilib/GUIMessage.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
@@ -152,7 +150,7 @@ bool CGUIWindowLoginScreen::OnAction(const CAction &action)
     std::string actionName = action.GetName();
     StringUtils::ToLower(actionName);
     if ((actionName.find("shutdown") != std::string::npos) &&
-        CServiceBroker::GetPVRManager().CanSystemPowerdown())
+        PVR::g_PVRManager.CanSystemPowerdown())
       CBuiltins::GetInstance().Execute(action.GetName());
     return true;
   }
@@ -216,9 +214,9 @@ void CGUIWindowLoginScreen::Update()
       strLabel = StringUtils::Format(g_localizeStrings.Get(20112).c_str(), profile->getDate().c_str());
     item->SetLabel2(strLabel);
     item->SetArt("thumb", profile->getThumb());
-    if (profile->getThumb().empty())
+    if (profile->getThumb().empty() || profile->getThumb() == "-")
       item->SetArt("thumb", "DefaultUser.png");
-    item->SetLabelPreformatted(true);
+    item->SetLabelPreformated(true);
     m_vecItems->Add(item);
   }
   m_viewControl.SetItems(*m_vecItems);
@@ -244,7 +242,7 @@ bool CGUIWindowLoginScreen::OnPopupMenu(int iItem)
   if (choice == 2)
   {
     if (g_passwordManager.CheckLock(CProfilesManager::GetInstance().GetMasterProfile().getLockMode(),CProfilesManager::GetInstance().GetMasterProfile().getLockCode(),20075))
-      g_passwordManager.iMasterLockRetriesLeft = CServiceBroker::GetSettings().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES);
+      g_passwordManager.iMasterLockRetriesLeft = CSettings::GetInstance().GetInt(CSettings::SETTING_MASTERLOCK_MAXRETRIES);
     else // be inconvenient
       CApplicationMessenger::GetInstance().PostMsg(TMSG_SHUTDOWN);
 
@@ -274,12 +272,14 @@ CFileItemPtr CGUIWindowLoginScreen::GetCurrentListItem(int offset)
 
 void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 {
-  CServiceBroker::GetContextMenuManager().Deinit();
-
-  CServiceBroker::GetServiceAddons().Stop();
+  // stop service addons and give it some time before we start it again
+  ADDON::CAddonMgr::GetInstance().StopServices(true);
 
   // stop PVR related services
-  CServiceBroker::GetPVRManager().Unload();
+  g_application.StopPVRManager();
+
+  // stop audio DSP services with a blocking message
+  CServiceBroker::GetADSP().Deactivate();
 
   if (profile != 0 || !CProfilesManager::GetInstance().IsMasterProfile())
   {
@@ -299,9 +299,9 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
 
   if (CProfilesManager::GetInstance().GetLastUsedProfileIndex() != profile)
   {
-    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(PLAYLIST_VIDEO);
-    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(PLAYLIST_MUSIC);
-    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(PLAYLIST_NONE);
+    g_playlistPlayer.ClearPlaylist(PLAYLIST_VIDEO);
+    g_playlistPlayer.ClearPlaylist(PLAYLIST_MUSIC);
+    g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_NONE);
   }
 
   // reload the add-ons, or we will first load all add-ons from the master account without checking disabled status
@@ -322,15 +322,8 @@ void CGUIWindowLoginScreen::LoadProfile(unsigned int profile)
   JSONRPC::CJSONRPC::Initialize();
 #endif
 
-  // Restart context menu manager
-  CServiceBroker::GetContextMenuManager().Init();
-
-  // restart PVR services
-  CServiceBroker::GetPVRManager().Reinit();
-
-  CServiceBroker::GetFavouritesService().ReInit(CProfilesManager::GetInstance().GetProfileUserDataFolder());
-
-  CServiceBroker::GetServiceAddons().Start();
+  // start services which should run on login
+  ADDON::CAddonMgr::GetInstance().StartServices(false);
 
   int firstWindow = g_SkinInfo->GetFirstWindow();
   // the startup window is considered part of the initialization as it most likely switches to the final window

@@ -26,8 +26,8 @@
 #include "addons/Repository.h"
 #include "addons/RepositoryUpdater.h"
 #include "addons/GUIDialogAddonInfo.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
-#include "guilib/LocalizeStrings.h"
+#include "addons/GUIDialogAddonSettings.h"
+
 
 namespace ADDON
 {
@@ -48,11 +48,11 @@ class CStaticContextMenuAction : public IContextMenuItem
 {
 public:
   explicit CStaticContextMenuAction(uint32_t label) : m_label(label) {}
-  std::string GetLabel(const CFileItem& item) const final
+  std::string GetLabel(const CFileItem& item) const override final
   {
     return g_localizeStrings.Get(m_label);
   }
-  bool IsGroup() const final { return false; }
+  bool IsGroup() const override final { return false; }
 private:
   const uint32_t m_label;
 };

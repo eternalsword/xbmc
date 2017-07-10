@@ -30,7 +30,9 @@ CInfoLoader::CInfoLoader(unsigned int timeToRefresh)
   m_busy = false;
 }
 
-CInfoLoader::~CInfoLoader() = default;
+CInfoLoader::~CInfoLoader()
+{
+}
 
 void CInfoLoader::OnJobComplete(unsigned int jobID, bool success, CJob *job)
 {

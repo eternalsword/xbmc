@@ -1,4 +1,4 @@
-package @APP_PACKAGE@;
+package org.xbmc.@APP_NAME_LC@;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -425,69 +425,75 @@ public class Splash extends Activity {
     ((TextView) myAlertDialog.findViewById(android.R.id.message))
         .setMovementMethod(LinkMovementMethod.getInstance());
   }
+  
+  private void SetupEnvironment() {
+    File fProp = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + "/xbmc_env.properties");
+    if (fProp.exists()) {
+      Log.i(TAG, "Loading xbmc_env.properties");
+      try {
+        Properties sysProp = new Properties(System.getProperties());
+        FileInputStream xbmcenvprop = new FileInputStream(fProp);
+        sysProp.load(xbmcenvprop);
+        System.setProperties(sysProp);
 
-  private void SetupEnvironment()
-  {
-    sXbmcHome = XBMCProperties.getStringProperty("xbmc.home", "");
-    if (!sXbmcHome.isEmpty())
-    {
-      fXbmcHome = new File(sXbmcHome);
-      int loop = 20;
-      while (!fXbmcHome.exists() && loop > 0)
-      {
-        // Wait a while in case of non-primary sdcard
-        try
-        {
-          Thread.sleep(1000);
-        } catch (InterruptedException e)
-        {
-          continue;
+        sXbmcHome = System.getProperty("xbmc.home", "");
+        if (!sXbmcHome.isEmpty()) {
+          File fXbmcHome = new File(sXbmcHome);
+          int loop = 20;
+          while (!fXbmcHome.exists() && loop > 0) {
+             // Wait a while in case of non-primary sdcard
+            try {
+              Thread.sleep(1000);
+            } catch (InterruptedException e) {
+              continue;
+            }
+            loop--;
+          }
+          if (!fXbmcHome.exists()) {
+            System.setProperty("xbmc.home", "");
+            sXbmcHome = "";
+          }
         }
-        loop--;
-      }
-      if (!fXbmcHome.exists())
-      {
-        System.setProperty("xbmc.home", "");
-        sXbmcHome = "";
+
+        sXbmcdata = System.getProperty("xbmc.data", "");
+        if (!sXbmcdata.isEmpty()) {
+          File fXbmcData = new File(sXbmcdata);
+          int loop = 20;
+          while (!fXbmcData.exists() && loop > 0) {
+             // Wait a while in case of non-primary sdcard
+            try {
+              Thread.sleep(1000);
+            } catch (InterruptedException e) {
+              continue;
+            }
+            loop--;
+          }
+
+           if (!fXbmcData.exists()) {
+             sXbmcdata = "";
+             System.setProperty("xbmc.data", "");
+           }
+        }
+
+      } catch (NotFoundException e) {
+        Log.e(TAG, "Cannot find xbmc_env properties file");
+      } catch (IOException e) {
+        Log.e(TAG, "Failed to open xbmc_env properties file");
       }
     }
     if (sXbmcHome.isEmpty()) {
       File fCacheDir = getCacheDir();
       sXbmcHome = fCacheDir.getAbsolutePath() + "/apk";
-      fXbmcHome = new File(sXbmcHome);
     }
 
-    sXbmcdata = XBMCProperties.getStringProperty("xbmc.data", "");
-    if (!sXbmcdata.isEmpty())
-    {
-      File fXbmcData = new File(sXbmcdata);
-      int loop = 20;
-      while (!fXbmcData.exists() && loop > 0)
-      {
-        // Wait a while in case of non-primary sdcard
-        try
-        {
-          Thread.sleep(1000);
-        } catch (InterruptedException e)
-        {
-          continue;
-        }
-        loop--;
-      }
-
-      if (!fXbmcData.exists())
-      {
-        sXbmcdata = "";
-        System.setProperty("xbmc.data", "");
-      }
-    }
+    fXbmcHome = new File(sXbmcHome);
 
     sPackagePath = getPackageResourcePath();
     fPackagePath = new File(sPackagePath);
     String obbfn = "";
     if (fPackagePath.length() < 40 * 1024 * 1024)
     {
-      sPackagePath = XBMCProperties.getStringProperty("@APP_NAME_LC@.obb", "");
+      sPackagePath = System.getProperty("@APP_NAME@.obb", "");
       if (sPackagePath.equals(""))
       {
         try
@@ -601,7 +607,7 @@ public class Splash extends Activity {
       Matcher m = reMount.matcher(Mounts[i]);
       if (m.find()) {
         if (m.group(1).startsWith("/dev/block/vold") && !m.group(2).startsWith("/mnt/secure/asec")) {
-          Log.d(TAG, "adding mount: " + m.group(2));
+          Log.d(TAG, "addind mount: " + m.group(2));
           mMounts.add(m.group(2));
         }
       }
@@ -651,7 +657,7 @@ public class Splash extends Activity {
   protected void startXBMC() {
     // Run @APP_NAME@
     Intent intent = getIntent();
-    intent.setClass(this, @APP_PACKAGE@.Main.class);
+    intent.setClass(this, org.xbmc.@APP_NAME_LC@.Main.class);
     intent.addFlags(Intent.FLAG_ACTIVITY_PREVIOUS_IS_TOP);
     startActivity(intent);
     finish();
@@ -661,9 +667,6 @@ public class Splash extends Activity {
   public void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
-    // Be sure properties are initialized for native
-    XBMCProperties.initializeProperties();
-
     // Check if @APP_NAME@ is not already running
     ActivityManager activityManager = (ActivityManager) getBaseContext()
         .getSystemService(Context.ACTIVITY_SERVICE);
@@ -671,7 +674,7 @@ public class Splash extends Activity {
         .getRunningTasks(Integer.MAX_VALUE);
     for (RunningTaskInfo task : tasks)
       if (task.topActivity.toString().equalsIgnoreCase(
-          "ComponentInfo{@APP_PACKAGE@/@APP_PACKAGE@.Main}")) {
+          "ComponentInfo{org.xbmc.@APP_NAME_LC@/org.xbmc.@APP_NAME_LC@.Main}")) {
         // @APP_NAME@ already running; just activate it
         startXBMC();
         return;
@@ -679,45 +682,53 @@ public class Splash extends Activity {
 
     mStateMachine.sendEmptyMessage(Checking);
 
-    String pkg_arch = "";
-    // Read the properties
-    try {
-      Resources resources = this.getResources();
-      InputStream xbmcprop = resources.openRawResource(R.raw.xbmc);
-      Properties properties = new Properties();
-      properties.load(xbmcprop);
-      pkg_arch = properties.getProperty("native_arch");
-    } catch (NotFoundException e) {
-      mErrorMsg = "Cannot find properties file";
-      Log.e(TAG, mErrorMsg);
-      mState = InError;
-    } catch (IOException e) {
-      mErrorMsg = "Failed to open properties file";
+    String curArch = "";
+    String curArch2 = "";
+    try
+    {
+      curArch = Build.CPU_ABI.substring(0,3);
+    } catch (IndexOutOfBoundsException e)
+    {
+      mErrorMsg = "Error! Unexpected architecture: " + Build.CPU_ABI;
       Log.e(TAG, mErrorMsg);
       mState = InError;
     }
-
-    boolean arch_ok = false;
-    String[] abis = Build.SUPPORTED_ABIS;
-    for (int i=0; i<abis.length; ++i)
+    try
     {
-      Log.i(TAG, "ABI: " + abis[i]);
-      if (abis[i].equalsIgnoreCase(pkg_arch))
-      {
-        arch_ok = true;
-        //break;
+      curArch2 = Build.CPU_ABI2.substring(0,3);
+    } catch (IndexOutOfBoundsException e) {}
+
+    if (mState != InError)
+    {
+      // Check if we are on the proper arch
+
+      // Read the properties
+      try {
+        Resources resources = this.getResources();
+        InputStream xbmcprop = resources.openRawResource(R.raw.xbmc);
+        Properties properties = new Properties();
+        properties.load(xbmcprop);
+
+        if (!curArch.equalsIgnoreCase(properties.getProperty("native_arch"))
+              && !curArch2.equalsIgnoreCase(properties.getProperty("native_arch")))
+        {
+          mErrorMsg = "This @APP_NAME@ package is not compatible with your device (device=" + curArch + " vs. package=" + properties.getProperty("native_arch") +").\nPlease check the <a href=\"http://wiki.kodi.tv/index.php?title=XBMC_for_Android_specific_FAQ\">Kodi Android wiki</a> for more information.";
+          Log.e(TAG, mErrorMsg);
+          mState = InError;
+        }
+      } catch (NotFoundException e) {
+        mErrorMsg = "Cannot find properties file";
+        Log.e(TAG, mErrorMsg);
+        mState = InError;
+      } catch (IOException e) {
+        mErrorMsg = "Failed to open properties file";
+        Log.e(TAG, mErrorMsg);
+        mState = InError;
       }
     }
 
-    if (!arch_ok)
-    {
-      mErrorMsg = "This package is not compatible with your device (" + pkg_arch +").\nPlease check the <a href=\"http://wiki.kodi.tv/index.php?title=XBMC_for_Android_specific_FAQ\">Kodi Android wiki</a> for more information.";
-      Log.e(TAG, mErrorMsg);
-      mState = InError;
-    }
-
     if (mState != InError) {
-      if (pkg_arch.equalsIgnoreCase("arm")) {
+      if (curArch.equalsIgnoreCase("arm")) {
         // arm arch: check if the cpu supports neon
         boolean ret = ParseCpuFeature();
         //Log.d(TAG, "/proc/cpuinfo = " + mCpuinfo);

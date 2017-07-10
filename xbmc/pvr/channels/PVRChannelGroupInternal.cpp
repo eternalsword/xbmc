@@ -24,20 +24,18 @@
 #include <utility>
 
 #include "dialogs/GUIDialogOK.h"
-#include "ServiceBroker.h"
-#include "guilib/LocalizeStrings.h"
+#include "epg/EpgContainer.h"
+#include "pvr/addons/PVRClients.h"
+#include "pvr/PVRDatabase.h"
+#include "pvr/PVRManager.h"
+#include "pvr/timers/PVRTimers.h"
+#include "PVRChannelGroupsContainer.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/Variant.h"
 
-#include "pvr/PVRDatabase.h"
-#include "pvr/PVRManager.h"
-#include "pvr/addons/PVRClients.h"
-#include "pvr/channels/PVRChannelGroupsContainer.h"
-#include "pvr/epg/EpgContainer.h"
-#include "pvr/timers/PVRTimers.h"
-
 using namespace PVR;
+using namespace EPG;
 
 CPVRChannelGroupInternal::CPVRChannelGroupInternal(bool bRadio) :
   m_iHiddenChannels(0)
@@ -56,7 +54,7 @@ CPVRChannelGroupInternal::CPVRChannelGroupInternal(const CPVRChannelGroup &group
 CPVRChannelGroupInternal::~CPVRChannelGroupInternal(void)
 {
   Unload();
-  CServiceBroker::GetPVRManager().Events().Unsubscribe(this);
+  g_PVRManager.Events().Unsubscribe(this);
 }
 
 bool CPVRChannelGroupInternal::Load(void)
@@ -64,7 +62,7 @@ bool CPVRChannelGroupInternal::Load(void)
   if (CPVRChannelGroup::Load())
   {
     UpdateChannelPaths();
-    CServiceBroker::GetPVRManager().Events().Subscribe(this, &CPVRChannelGroupInternal::OnPVRManagerEvent);
+    g_PVRManager.Events().Subscribe(this, &CPVRChannelGroupInternal::OnPVRManagerEvent);
     return true;
   }
 
@@ -162,20 +160,19 @@ bool CPVRChannelGroupInternal::AddToGroup(const CPVRChannelPtr &channel, int iCh
 
 bool CPVRChannelGroupInternal::RemoveFromGroup(const CPVRChannelPtr &channel)
 {
+  CSingleLock lock(m_critSection);
   assert(channel.get());
 
   if (!IsGroupMember(channel))
     return false;
 
   /* check if this channel is currently playing if we are hiding it */
-  CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().GetCurrentChannel());
+  CPVRChannelPtr currentChannel(g_PVRManager.GetCurrentChannel());
   if (currentChannel && currentChannel == channel)
   {
     CGUIDialogOK::ShowAndGetInput(CVariant{19098}, CVariant{19102});
     return false;
   }
-
-  CSingleLock lock(m_critSection);
 
   /* switch the hidden flag */
   if (!channel->IsHidden())
@@ -222,7 +219,7 @@ int CPVRChannelGroupInternal::GetMembers(CFileItemList &results, bool bGroupMemb
 
 int CPVRChannelGroupInternal::LoadFromDb(bool bCompress /* = false */)
 {
-  const CPVRDatabasePtr database(CServiceBroker::GetPVRManager().GetTVDatabase());
+  CPVRDatabase *database = GetPVRDatabase();
   if (!database)
     return -1;
 
@@ -247,7 +244,7 @@ int CPVRChannelGroupInternal::LoadFromDb(bool bCompress /* = false */)
 bool CPVRChannelGroupInternal::LoadFromClients(void)
 {
   /* get the channels from the backends */
-  return CServiceBroker::GetPVRManager().Clients()->GetChannels(this) == PVR_ERROR_NO_ERROR;
+  return g_PVRClients->GetChannels(this) == PVR_ERROR_NO_ERROR;
 }
 
 bool CPVRChannelGroupInternal::IsGroupMember(const CPVRChannelPtr &channel) const
@@ -302,7 +299,7 @@ bool CPVRChannelGroupInternal::UpdateGroupEntries(const CPVRChannelGroup &channe
     if (g_advancedSettings.m_bPVRChannelIconsAutoScan)
       SearchAndSetChannelIcons();
 
-    CServiceBroker::GetPVRManager().Timers()->UpdateChannels();
+    g_PVRTimers->UpdateChannels();
     Persist();
 
     bReturn = true;
@@ -311,15 +308,30 @@ bool CPVRChannelGroupInternal::UpdateGroupEntries(const CPVRChannelGroup &channe
   return bReturn;
 }
 
-void CPVRChannelGroupInternal::CreateChannelEpg(const CPVRChannelPtr &channel, bool bForce /* = false */)
+void CPVRChannelGroupInternal::CreateChannelEpg(CPVRChannelPtr channel, bool bForce /* = false */)
 {
-  if (channel)
-    channel->CreateEPG(bForce);
+  if (!channel)
+    return;
+
+  CSingleLock lock(channel->m_critSection);
+  if (!channel->m_bEPGCreated || bForce)
+  {
+    CEpgPtr epg = g_EpgContainer.CreateChannelEpg(channel);
+    if (epg)
+    {
+      channel->m_bEPGCreated = true;
+      if (epg->EpgID() != channel->m_iEpgId)
+      {
+        channel->m_iEpgId = epg->EpgID();
+        channel->m_bChanged = true;
+      }
+    }
+  }
 }
 
 bool CPVRChannelGroupInternal::CreateChannelEpgs(bool bForce /* = false */)
 {
-  if (!CServiceBroker::GetPVRManager().EpgContainer().IsStarted())
+  if (!g_EpgContainer.IsStarted())
     return false;
   {
     CSingleLock lock(m_critSection);
@@ -338,5 +350,5 @@ bool CPVRChannelGroupInternal::CreateChannelEpgs(bool bForce /* = false */)
 void CPVRChannelGroupInternal::OnPVRManagerEvent(const PVR::PVREvent& event)
 {
   if (event == ManagerStarted)
-    CServiceBroker::GetPVRManager().TriggerEpgsCreate();
+    g_PVRManager.TriggerEpgsCreate();
 }

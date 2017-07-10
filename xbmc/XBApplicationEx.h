@@ -23,8 +23,6 @@
 
 #include "guilib/IWindowManagerCallback.h"
 
-class CAppParamParser;
-
 // Do not change the numbering, external scripts depend on them
 enum {
   EXITCODE_QUIT      = 0,
@@ -37,7 +35,7 @@ class CXBApplicationEx : public IWindowManagerCallback
 {
 public:
   CXBApplicationEx();
-  ~CXBApplicationEx() override;
+  ~CXBApplicationEx();
 
   // Variables for timing
   bool m_bStop;
@@ -51,7 +49,9 @@ public:
   virtual void SetRenderGUI(bool renderGUI) {};
 
 public:
-  INT Run(const CAppParamParser &params);
+  // Functions to create, run, and clean up the application
+  virtual bool Create();
+  INT Run();
   VOID Destroy();
 
 private:

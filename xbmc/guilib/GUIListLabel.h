@@ -37,16 +37,16 @@ class CGUIListLabel :
 {
 public:
   CGUIListLabel(int parentID, int controlID, float posX, float posY, float width, float height, const CLabelInfo& labelInfo, const CGUIInfoLabel &label, CGUIControl::GUISCROLLVALUE scroll);
-  ~CGUIListLabel(void) override;
-  CGUIListLabel *Clone() const override { return new CGUIListLabel(*this); };
+  virtual ~CGUIListLabel(void);
+  virtual CGUIListLabel *Clone() const { return new CGUIListLabel(*this); };
 
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  bool CanFocus() const override { return false; };
-  void UpdateInfo(const CGUIListItem *item = NULL) override;
-  void SetFocus(bool focus) override;
-  void SetInvalid() override;
-  void SetWidth(float width) override;
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual bool CanFocus() const { return false; };
+  virtual void UpdateInfo(const CGUIListItem *item = NULL);
+  virtual void SetFocus(bool focus);
+  virtual void SetInvalid();
+  virtual void SetWidth(float width);
 
   void SetLabel(const std::string &label);
   void SetSelected(bool selected);
@@ -57,10 +57,10 @@ public:
     CGUILabel::CheckAndCorrectOverlap(label1.m_label, label2.m_label);
   }
 
-  CRect CalcRenderRegion() const override;
+  virtual CRect CalcRenderRegion() const;
 
 protected:
-  bool UpdateColors() override;
+  virtual bool UpdateColors();
 
   CGUILabel     m_label;
   CGUIInfoLabel m_info;

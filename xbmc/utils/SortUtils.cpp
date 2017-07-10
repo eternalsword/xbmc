@@ -29,7 +29,7 @@
 
 #include <algorithm>
 
-std::string ArrayToString(SortAttribute attributes, const CVariant &variant, const std::string &separator = " / ")
+std::string ArrayToString(SortAttribute attributes, const CVariant &variant, const std::string &seperator = " / ")
 {
   std::vector<std::string> strArray;
   if (variant.isArray())
@@ -42,7 +42,7 @@ std::string ArrayToString(SortAttribute attributes, const CVariant &variant, con
         strArray.push_back(it->asString());
     }
 
-    return StringUtils::Join(strArray, separator);
+    return StringUtils::Join(strArray, seperator);
   }
   else if (variant.isString())
   {
@@ -135,15 +135,7 @@ std::string ByAlbumType(SortAttribute attributes, const SortItem &values)
 
 std::string ByArtist(SortAttribute attributes, const SortItem &values)
 {
-  std::string label;
-  if (attributes & SortAttributeUseArtistSortName)
-  {
-    const CVariant &artistsort = values.at(FieldArtistSort);
-    if (!artistsort.isNull())
-      label = artistsort.asString();
-  }
-  if (label.empty())
-    label = ArrayToString(attributes, values.at(FieldArtist));
+  std::string label = ArrayToString(attributes, values.at(FieldArtist));
 
   const CVariant &album = values.at(FieldAlbum);
   if (!album.isNull())
@@ -158,15 +150,7 @@ std::string ByArtist(SortAttribute attributes, const SortItem &values)
 
 std::string ByArtistThenYear(SortAttribute attributes, const SortItem &values)
 {
-  std::string label;
-  if (attributes & SortAttributeUseArtistSortName)
-  {
-    const CVariant &artistsort = values.at(FieldArtistSort);
-    if (!artistsort.isNull())
-      label = artistsort.asString();
-  }
-  if (label.empty())
-    label = ArrayToString(attributes, values.at(FieldArtist));
+  std::string label = ArrayToString(attributes, values.at(FieldArtist));
 
   const CVariant &year = values.at(FieldYear);
   if (!year.isNull())
@@ -637,18 +621,15 @@ std::map<SortBy, Fields> fillSortingFields()
   sortingFields[SortByTrackNumber].insert(FieldTrackNumber);
   sortingFields[SortByTime].insert(FieldTime);
   sortingFields[SortByArtist].insert(FieldArtist);
-  sortingFields[SortByArtist].insert(FieldArtistSort);
   sortingFields[SortByArtist].insert(FieldYear);
   sortingFields[SortByArtist].insert(FieldAlbum);
   sortingFields[SortByArtist].insert(FieldTrackNumber);
   sortingFields[SortByArtistThenYear].insert(FieldArtist);
-  sortingFields[SortByArtistThenYear].insert(FieldArtistSort);
   sortingFields[SortByArtistThenYear].insert(FieldYear);
   sortingFields[SortByArtistThenYear].insert(FieldAlbum);
   sortingFields[SortByArtistThenYear].insert(FieldTrackNumber);
   sortingFields[SortByAlbum].insert(FieldAlbum);
   sortingFields[SortByAlbum].insert(FieldArtist);
-  sortingFields[SortByAlbum].insert(FieldArtistSort);
   sortingFields[SortByAlbum].insert(FieldTrackNumber);
   sortingFields[SortByAlbumType].insert(FieldAlbumType);
   sortingFields[SortByGenre].insert(FieldGenre);

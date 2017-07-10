@@ -20,7 +20,6 @@
 
 #include "AutoSwitch.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/WindowIDs.h"
 #include "settings/Settings.h"
@@ -32,9 +31,11 @@
 #define METHOD_BYFILECOUNT 3
 #define METHOD_BYFOLDERTHUMBS 4
 
-CAutoSwitch::CAutoSwitch(void) = default;
+CAutoSwitch::CAutoSwitch(void)
+{}
 
-CAutoSwitch::~CAutoSwitch(void) = default;
+CAutoSwitch::~CAutoSwitch(void)
+{}
 
 /// \brief Generic function to add a layer of transparency to the calling window
 /// \param vecItems Vector of FileItems passed from the calling window
@@ -43,7 +44,7 @@ int CAutoSwitch::GetView(const CFileItemList &vecItems)
   int iSortMethod = -1;
   int iPercent = 0;
   int iCurrentWindow = g_windowManager.GetActiveWindow();
-  bool bHideParentFolderItems = !CServiceBroker::GetSettings().GetBool(CSettings::SETTING_FILELISTS_SHOWPARENTDIRITEMS);
+  bool bHideParentFolderItems = !CSettings::GetInstance().GetBool(CSettings::SETTING_FILELISTS_SHOWPARENTDIRITEMS);
 
   switch (iCurrentWindow)
   {
@@ -128,7 +129,7 @@ bool CAutoSwitch::ByFiles(bool bHideParentDirItems, const CFileItemList& vecItem
   bool bThumbs = false;
   int iCompare = 0;
 
-  // parent directorys are visible, increment
+  // parent directorys are visible, incrememt
   if (!bHideParentDirItems)
   {
     iCompare = 1;

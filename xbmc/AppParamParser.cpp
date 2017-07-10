@@ -21,6 +21,7 @@
 #include "AppParamParser.h"
 #include "PlayListPlayer.h"
 #include "Application.h"
+#include "messaging/ApplicationMessenger.h"
 #include "settings/AdvancedSettings.h"
 #include "utils/log.h"
 #include "utils/SystemInfo.h"
@@ -41,7 +42,7 @@ CAppParamParser::CAppParamParser()
   m_testmode = false;
 }
 
-void CAppParamParser::Parse(const char* const* argv, int nArgs)
+void CAppParamParser::Parse(const char* argv[], int nArgs)
 {
   if (nArgs > 1)
   {
@@ -56,13 +57,13 @@ void CAppParamParser::Parse(const char* const* argv, int nArgs)
         {
           if ((argv[next][0] != '-') && (argv[next][0] == '/'))
           {
-            m_remoteControlName = argv[next];
+            CInputManager::GetInstance().SetRemoteControlName(argv[next]);
             i++;
           }
         }
       }
       else if (strnicmp(argv[i], "-n", 2) == 0 || strnicmp(argv[i], "--nolirc", 8) == 0)
-        m_remoteControlEnabled = false;
+        CInputManager::GetInstance().DisableRemoteControl();
 
       if (stricmp(argv[i], "-d") == 0)
       {
@@ -76,6 +77,7 @@ void CAppParamParser::Parse(const char* const* argv, int nArgs)
       }
     }
   }
+  PlayPlaylist();
 }
 
 void CAppParamParser::DisplayVersion()
@@ -141,11 +143,19 @@ void CAppParamParser::ParseArg(const std::string &arg)
   {
     if (m_testmode)
       g_application.SetEnableTestMode(true);
-
     CFileItemPtr pItem(new CFileItem(arg));
     pItem->SetPath(arg);
-
     m_playlist.Add(pItem);
   }
 }
 
+void CAppParamParser::PlayPlaylist()
+{
+  if (m_playlist.Size() > 0)
+  {
+    g_playlistPlayer.Add(0, m_playlist);
+    g_playlistPlayer.SetCurrentPlaylist(0);
+  }
+
+  CApplicationMessenger::GetInstance().PostMsg(TMSG_PLAYLISTPLAYER_PLAY, -1);
+}

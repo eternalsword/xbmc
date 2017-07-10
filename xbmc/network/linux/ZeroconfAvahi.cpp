@@ -21,6 +21,8 @@
 #include "PlatformDefs.h"
 #include "ZeroconfAvahi.h"
 
+#ifdef HAS_AVAHI
+
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -429,3 +431,6 @@ void CZeroconfAvahi::addService(tServiceMap::mapped_type fp_service_info, AvahiC
     //! @todo what now? reset the group? free it?
   }
 }
+
+#endif // HAS_AVAHI
+

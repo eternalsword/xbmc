@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2005-2017 Team Kodi
+ *      Copyright (C) 2007-2015 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -20,62 +20,43 @@
 
 #pragma once
 
+#include "system.h"
+
 #if defined(TARGET_ANDROID)
 
-#include "system.h"
-#include "cores/VideoPlayer/VideoRenderers/BaseRenderer.h"
-#include <chrono>
+#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
 
-class CRendererMediaCodecSurface : public CBaseRenderer
+class CRendererMediaCodecSurface : public CLinuxRendererGLES
 {
 public:
   CRendererMediaCodecSurface();
   virtual ~CRendererMediaCodecSurface();
-
+  
   virtual bool RenderCapture(CRenderCapture* capture);
-  virtual void AddVideoPictureHW(VideoPicture &picture, int index);
-  virtual void ReleaseBuffer(int idx);
-  virtual bool Configure(unsigned int width, unsigned int height, unsigned int d_width, unsigned int d_height, float fps, unsigned flags, ERenderFormat format, void *hwPic, unsigned int orientation);
-  virtual bool IsConfigured() { return m_bConfigured; };
-  virtual CRenderInfo GetRenderInfo();
-  virtual int GetImage(YV12Image *image, int source = -1, bool readonly = false);
-  virtual void ReleaseImage(int source, bool preserve = false) {};
-  virtual void FlipPage(int source);
-  virtual void PreInit() {};
-  virtual void UnInit() {};
-  virtual void Reset();
-  virtual void Update() {};
-  virtual void RenderUpdate(bool clear, unsigned int flags = 0, unsigned int alpha = 255);
-  virtual bool SupportsMultiPassRendering() { return false; };
 
   // Player functions
-  virtual bool IsGuiLayer() { return false; };
+  virtual void AddVideoPictureHW(DVDVideoPicture &picture, int index);
+  virtual void ReleaseBuffer(int idx);
+  virtual bool IsGuiLayer();
 
   // Feature support
-  virtual bool Supports(EINTERLACEMETHOD method) { return false; };
-  virtual bool Supports(ESCALINGMETHOD method) { return false; };
+  virtual bool Supports(EINTERLACEMETHOD method);
 
-  virtual bool Supports(ERENDERFEATURE feature);
+  virtual EINTERLACEMETHOD AutoInterlaceMethod();
+  virtual CRenderInfo GetRenderInfo();
 
-  virtual EINTERLACEMETHOD AutoInterlaceMethod() { return VS_INTERLACEMETHOD_NONE; };
 protected:
-  virtual void ReorderDrawPoints() override;
 
-private:
-
-  int m_iRenderBuffer;
-  static const int m_numRenderBuffers = 4;
-
-  struct BUFFER
-  {
-    void *hwPic;
-    int duration;
-  } m_buffers[m_numRenderBuffers];
-
-  std::chrono::time_point<std::chrono::system_clock> m_prevTime;
-  bool m_bConfigured;
-  unsigned int m_updateCount;
-  CRect m_surfDestRect;
+  // textures
+  virtual bool UploadTexture(int index);
+  virtual void DeleteTexture(int index);
+  virtual bool CreateTexture(int index);
+  
+  // hooks for hw dec renderer
+  virtual bool LoadShadersHook();
+  virtual bool RenderHook(int index);  
+  virtual int  GetImageHook(YV12Image *image, int source = AUTOSOURCE, bool readonly = false);
+  virtual bool RenderUpdateVideoHook(bool clear, DWORD flags = 0, DWORD alpha = 255);
 };
 
 #endif

@@ -30,7 +30,9 @@ CHttpHeader::CHttpHeader()
   m_headerdone = false;
 }
 
-CHttpHeader::~CHttpHeader() = default;
+CHttpHeader::~CHttpHeader()
+{
+}
 
 void CHttpHeader::Parse(const std::string& strData)
 {

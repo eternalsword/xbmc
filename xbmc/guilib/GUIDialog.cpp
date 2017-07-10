@@ -20,7 +20,6 @@
 
 #include "GUIDialog.h"
 #include "GUIWindowManager.h"
-#include "GUIControlFactory.h"
 #include "GUILabelControl.h"
 #include "threads/SingleLock.h"
 #include "utils/TimeUtils.h"
@@ -43,21 +42,8 @@ CGUIDialog::CGUIDialog(int id, const std::string &xmlFile, DialogModalityType mo
   m_bAutoClosed = false;
 }
 
-CGUIDialog::~CGUIDialog(void) = default;
-
-bool CGUIDialog::Load(TiXmlElement* pRootElement)
-{
-  bool retVal = CGUIWindow::Load(pRootElement);
-
-  if (retVal && IsCustom())
-  {
-    // custom dialog's modality type is modeless if visible condition is specified.
-    if (m_visibleCondition)
-      m_modalityType = DialogModalityType::MODELESS;
-  }
-
-  return retVal;
-}
+CGUIDialog::~CGUIDialog(void)
+{}
 
 void CGUIDialog::OnWindowLoaded()
 {

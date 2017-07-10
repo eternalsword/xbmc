@@ -72,6 +72,7 @@ bool PNGDecoder::CanDecode(const std::string &filename)
 bool PNGDecoder::LoadFile(const std::string &filename, DecodedFrames &frames)
 {
   png_byte header[8];
+  RGBAImage *ret = NULL;
   
   CFile fp;
   if (!fp.Open(filename))

@@ -20,6 +20,10 @@
 
 #pragma once
 
+#if (defined HAVE_CONFIG_H) && (!defined WIN32)
+  #include "config.h"
+#endif
+
 #ifdef SWIGPYTHON
 
 #include <Python.h>

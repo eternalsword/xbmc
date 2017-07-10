@@ -29,11 +29,11 @@ namespace ADDON
 class CLanguageResource : public CResource
 {
 public:
-  static std::unique_ptr<CLanguageResource> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
+  static std::unique_ptr<CLanguageResource> FromExtension(AddonProps props, const cp_extension_t* ext);
 
-  explicit CLanguageResource(CAddonInfo addonInfo) : CResource(std::move(addonInfo)), m_forceUnicodeFont(false) {};
+  explicit CLanguageResource(AddonProps props) : CResource(std::move(props)), m_forceUnicodeFont(false) {};
 
-  CLanguageResource(CAddonInfo addonInfo,
+  CLanguageResource(AddonProps props,
       const CLocale& locale,
       const std::string& charsetGui,
       bool forceUnicodeFont,
@@ -43,11 +43,11 @@ public:
       const std::string& dvdLanguageSubtitle,
       const std::set<std::string>& sortTokens);
 
-  bool IsInUse() const override;
+  virtual bool IsInUse() const;
 
-  void OnPostInstall(bool update, bool modal) override;
+  virtual void OnPostInstall(bool update, bool modal);
 
-  bool IsAllowed(const std::string &file) const override;
+  virtual bool IsAllowed(const std::string &file) const;
 
   const CLocale& GetLocale() const { return m_locale; }
 

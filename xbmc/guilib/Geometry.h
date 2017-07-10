@@ -21,7 +21,7 @@
 #pragma once
 
 #ifdef __GNUC__
-// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even with optimizations.
+// under gcc, inline will only take place if optimizations are applied (-O). this will force inline even whith optimizations.
 #define XBMC_FORCE_INLINE __attribute__((always_inline))
 #else
 #define XBMC_FORCE_INLINE
@@ -199,7 +199,7 @@ public:
 
   std::vector<this_type> SubtractRect(this_type splitterRect)
   {
-    std::vector<this_type> newRectanglesList;
+    std::vector<this_type> newRectaglesList;
     this_type intersection = splitterRect.Intersect(*this);
 
     if (!intersection.IsEmpty())
@@ -209,29 +209,29 @@ public:
       // add rect above intersection if not empty
       add = this_type(x1, y1, x2, intersection.y1);
       if (!add.IsEmpty())
-        newRectanglesList.push_back(add);
+        newRectaglesList.push_back(add);
 
       // add rect below intersection if not empty
       add = this_type(x1, intersection.y2, x2, y2);
       if (!add.IsEmpty())
-        newRectanglesList.push_back(add);
+        newRectaglesList.push_back(add);
 
       // add rect left intersection if not empty
       add = this_type(x1, intersection.y1, intersection.x1, intersection.y2);
       if (!add.IsEmpty())
-        newRectanglesList.push_back(add);
+        newRectaglesList.push_back(add);
 
       // add rect right intersection if not empty
       add = this_type(intersection.x2, intersection.y1, x2, intersection.y2);
       if (!add.IsEmpty())
-        newRectanglesList.push_back(add);
+        newRectaglesList.push_back(add);
     }
     else
     {
-      newRectanglesList.push_back(*this);
+      newRectaglesList.push_back(*this);
     }
 
-    return newRectanglesList;
+    return newRectaglesList;
   }
 
   std::vector<this_type> SubtractRects(std::vector<this_type > intersectionList)

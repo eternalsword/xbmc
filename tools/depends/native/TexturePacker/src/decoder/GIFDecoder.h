@@ -24,12 +24,12 @@
 class GIFDecoder : public IDecoder
 {
   public:
-    ~GIFDecoder() override = default;
-    bool CanDecode(const std::string &filename) override;
-    bool LoadFile(const std::string &filename, DecodedFrames &frames) override;
-    void FreeDecodedFrames(DecodedFrames &frames) override;
-    const char* GetImageFormatName() override { return "GIF"; }
-    const char* GetDecoderName() override { return "libgif"; }
+    virtual ~GIFDecoder(){}
+    virtual bool CanDecode(const std::string &filename);
+    virtual bool LoadFile(const std::string &filename, DecodedFrames &frames);
+    virtual void FreeDecodedFrames(DecodedFrames &frames);
+    virtual const char* GetImageFormatName() { return "GIF"; }
+    virtual const char* GetDecoderName() { return "libgif"; }
   protected:
-    void FillSupportedExtensions() override;
+    virtual void FillSupportedExtensions();
 };

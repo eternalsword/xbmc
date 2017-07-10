@@ -55,7 +55,7 @@ CRendererMediaCodec::~CRendererMediaCodec()
 
 }
 
-void CRendererMediaCodec::AddVideoPictureHW(VideoPicture &picture, int index)
+void CRendererMediaCodec::AddVideoPictureHW(DVDVideoPicture &picture, int index)
 {
 #ifdef DEBUG_VERBOSE
   unsigned int time = XbmcThreads::SystemClockMillis();
@@ -63,9 +63,9 @@ void CRendererMediaCodec::AddVideoPictureHW(VideoPicture &picture, int index)
 #endif
 
   YUVBUFFER &buf = m_buffers[index];
-  if (picture.hwPic)
+  if (picture.mediacodec)
   {
-    buf.hwDec = static_cast<CDVDMediaCodecInfo*>(picture.hwPic)->Retain();
+    buf.hwDec = picture.mediacodec->Retain();
 #ifdef DEBUG_VERBOSE
     mindex = ((CDVDMediaCodecInfo *)buf.hwDec)->GetIndex();
 #endif
@@ -143,16 +143,16 @@ bool CRendererMediaCodec::RenderHook(int index)
   glActiveTexture(GL_TEXTURE0);
   glBindTexture(GL_TEXTURE_EXTERNAL_OES, plane.id);
 
-  if (m_currentField != FIELD_FULL)
+  if (index != FIELD_FULL)
   {
     g_Windowing.EnableGUIShader(SM_TEXTURE_RGBA_BOB_OES);
     GLint   fieldLoc = g_Windowing.GUIShaderGetField();
     GLint   stepLoc = g_Windowing.GUIShaderGetStep();
 
     // Y is inverted, so invert fields
-    if     (m_currentField == FIELD_TOP)
+    if     (index == FIELD_TOP)
       glUniform1i(fieldLoc, 0);
-    else if(m_currentField == FIELD_BOT)
+    else if(index == FIELD_BOT)
       glUniform1i(fieldLoc, 1);
     glUniform1f(stepLoc, 1.0f / (float)plane.texheight);
   }
@@ -190,7 +190,7 @@ bool CRendererMediaCodec::RenderHook(int index)
   }
 
   // Set texture coordinates (MediaCodec is flipped in y)
-  if (m_currentField == FIELD_FULL)
+  if (index == FIELD_FULL)
   {
     tex[0][0] = tex[3][0] = plane.rect.x1;
     tex[0][1] = tex[1][1] = plane.rect.y2;

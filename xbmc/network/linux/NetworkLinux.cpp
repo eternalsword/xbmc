@@ -63,6 +63,7 @@
 #include "PlatformDefs.h"
 #include "NetworkLinux.h"
 #include "Util.h"
+#include "utils/StringUtils.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
 
@@ -80,7 +81,9 @@ CNetworkInterfaceLinux::CNetworkInterfaceLinux(CNetworkLinux* network, std::stri
    memcpy(m_interfaceMacAddrRaw, interfaceMacAddrRaw, sizeof(m_interfaceMacAddrRaw));
 }
 
-CNetworkInterfaceLinux::~CNetworkInterfaceLinux(void) = default;
+CNetworkInterfaceLinux::~CNetworkInterfaceLinux(void)
+{
+}
 
 std::string& CNetworkInterfaceLinux::GetName(void)
 {

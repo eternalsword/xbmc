@@ -66,11 +66,11 @@ class CTextureCacheJob : public CJob
 {
 public:
   CTextureCacheJob(const std::string &url, const std::string &oldHash = "");
-  ~CTextureCacheJob() override;
+  virtual ~CTextureCacheJob();
 
-  const char* GetType() const override { return kJobTypeCacheImage; };
-  bool operator==(const CJob *job) const override;
-  bool DoWork() override;
+  virtual const char* GetType() const { return kJobTypeCacheImage; };
+  virtual bool operator==(const CJob *job) const;
+  virtual bool DoWork();
 
   /*! \brief retrieve a hash for the given image
    Combines the size, ctime and mtime of the image file into a "unique" hash
@@ -97,7 +97,7 @@ private:
    a image URL is much more likely to be static and the actual image at the URL is unlikely
    to change, so no point checking all the time.
    \param url the url to check
-   \return true if the image given by the URL should be checked for updates, false otherwise
+   \return true if the image given by the URL should be checked for updates, false otehrwise
    */
   bool UpdateableURL(const std::string &url) const;
 
@@ -134,9 +134,9 @@ class CTextureUseCountJob : public CJob
 public:
   CTextureUseCountJob(const std::vector<CTextureDetails> &textures);
 
-  const char* GetType() const override { return "usecount"; };
-  bool operator==(const CJob *job) const override;
-  bool DoWork() override;
+  virtual const char* GetType() const { return "usecount"; };
+  virtual bool operator==(const CJob *job) const;
+  virtual bool DoWork();
 
 private:
   std::vector<CTextureDetails> m_textures;

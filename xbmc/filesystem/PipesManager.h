@@ -39,7 +39,7 @@ namespace XFILE
 class IPipeListener
 {
 public:
-  virtual ~IPipeListener() = default;
+  virtual ~IPipeListener() {}
   virtual void OnPipeOverFlow() = 0;
   virtual void OnPipeUnderFlow() = 0;
 };
@@ -87,7 +87,7 @@ class Pipe
     bool IsEof();
     
     int	GetAvailableRead();
-    void SetOpenThreshold(int threshold);
+    void SetOpenThreashold(int threashold);
 
   protected:
     
@@ -98,7 +98,7 @@ class Pipe
     CRingBuffer m_buffer;
     std::string  m_strPipeName;
     int         m_nRefCount;
-    int         m_nOpenThreshold;
+    int         m_nOpenThreashold;
 
     CEvent     m_readEvent;
     CEvent     m_writeEvent;

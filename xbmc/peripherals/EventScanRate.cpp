@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016-2017 Team Kodi
+ *      Copyright (C) 2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
 using namespace PERIPHERALS;
 
-CEventRateHandle::CEventRateHandle(double RateHz, IEventRateCallback* callback) :
+CEventRateHandle::CEventRateHandle(float RateHz, IEventRateCallback* callback) :
   m_rateHz(RateHz),
   m_callback(callback)
 {

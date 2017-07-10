@@ -149,7 +149,7 @@ namespace XBMCAddon
 
     int InfoTagVideo::getPlayCount()
     {
-      return infoTag->GetPlayCount();
+      return infoTag->m_playCount;
     }
 
     String InfoTagVideo::getLastPlayed()
@@ -170,11 +170,6 @@ namespace XBMCAddon
     String InfoTagVideo::getFirstAired()
     {
       return infoTag->m_firstAired.GetAsLocalizedDate();
-    }
-
-    String InfoTagVideo::getTrailer()
-    {
-      return infoTag->m_strTrailer;
     }
   }
 }

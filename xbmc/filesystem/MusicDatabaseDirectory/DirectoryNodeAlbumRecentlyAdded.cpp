@@ -19,10 +19,8 @@
  */
 
 #include "DirectoryNodeAlbumRecentlyAdded.h"
-
-#include "FileItem.h"
-#include "guilib/LocalizeStrings.h"
 #include "music/MusicDatabase.h"
+#include "FileItem.h"
 #include "utils/StringUtils.h"
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;

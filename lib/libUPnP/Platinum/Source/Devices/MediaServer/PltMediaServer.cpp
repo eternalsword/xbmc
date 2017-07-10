@@ -400,8 +400,7 @@ PLT_MediaServer::ParseTagList(const NPT_String& updates, NPT_Map<NPT_String,NPT_
     for (NPT_List<NPT_XmlNode*>::Iterator children = didl_partial->GetChildren().GetFirstItem(); children; children++) {
         NPT_XmlElementNode* child = (*children)->AsElementNode();
         if (!child) continue;
-        const NPT_String *txt = child->GetText();
-        tags[child->GetTag()] = txt ? *txt : "";
+        tags[child->GetTag()] = *child->GetText();
     }
 
     return NPT_SUCCESS;

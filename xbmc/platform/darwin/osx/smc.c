@@ -103,14 +103,14 @@ kern_return_t SMCCall(int index, SMCKeyData_t *inputStructure, SMCKeyData_t *out
   return IOConnectCallStructMethod( conn, index,
                                    // inputStructure
                                    inputStructure, structureInputSize,
-                                   // outputStructure
+                                   // ouputStructure
                                    outputStructure, &structureOutputSize );
 #else
   return IOConnectMethodStructureIStructureO( conn, index,
                                              structureInputSize, /* structureInputSize */
                                              &structureOutputSize,   /* structureOutputSize */
                                              inputStructure,        /* inputStructure */
-                                             outputStructure);       /* outputStructure */
+                                             outputStructure);       /* ouputStructure */
 #endif
   
 }

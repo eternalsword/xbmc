@@ -18,7 +18,9 @@
  *
  */
 
-#if defined(TARGET_WINDOWS)
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#elif defined(TARGET_WINDOWS)
 #include "system.h"
 #endif
 
@@ -32,7 +34,6 @@
 
 #include "OMXPlayerVideo.h"
 
-#include "ServiceBroker.h"
 #include "linux/XMemUtils.h"
 #include "utils/BitstreamStats.h"
 
@@ -45,7 +46,6 @@
 #include "cores/VideoPlayer/VideoRenderers/RenderFormats.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
 #include "guilib/GraphicContext.h"
-#include "TimingConstants.h"
 
 #include "linux/RBP.h"
 
@@ -87,6 +87,7 @@ OMXPlayerVideo::OMXPlayerVideo(OMXClock *av_clock,
   m_stalled               = false;
   m_iSubtitleDelay        = 0;
   m_bRenderSubs           = false;
+  m_flags                 = 0;
   m_bAllowFullscreen      = false;
   m_iCurrentPts           = DVD_NOPTS_VALUE;
   m_fForcedAspectRatio    = 0.0f;
@@ -110,10 +111,10 @@ OMXPlayerVideo::~OMXPlayerVideo()
   CloseStream(false);
 }
 
-bool OMXPlayerVideo::OpenStream(CDVDStreamInfo hints)
+bool OMXPlayerVideo::OpenStream(CDVDStreamInfo &hints)
 {
   m_hints       = hints;
-  m_hdmi_clock_sync = (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) != ADJUST_REFRESHRATE_OFF);
+  m_hdmi_clock_sync = (CSettings::GetInstance().GetInt(CSettings::SETTING_VIDEOPLAYER_ADJUSTREFRESHRATE) != ADJUST_REFRESHRATE_OFF);
   m_syncState = IDVDStreamPlayer::SYNC_STARTING;
   m_flush       = false;
   m_stalled     = m_messageQueue.GetPacketCount(CDVDMsg::DEMUXER_PACKET) == 0;
@@ -314,7 +315,7 @@ void OMXPlayerVideo::Output(double pts, bool bDropPacket)
   ProcessOverlays(media_pts + preroll);
 
   time += m_av_clock->GetAbsoluteClock();
-  m_renderManager.FlipPage(m_bAbortOutput, time/DVD_TIME_BASE, EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE, FS_NONE, false);
+  m_renderManager.FlipPage(m_bAbortOutput, time/DVD_TIME_BASE, EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE, FS_NONE);
 }
 
 void OMXPlayerVideo::Process()
@@ -562,6 +563,16 @@ bool OMXPlayerVideo::OpenDecoder()
   return bVideoDecoderOpen;
 }
 
+int  OMXPlayerVideo::GetDecoderBufferSize()
+{
+  return m_omxVideo.GetInputBufferSize();
+}
+
+int  OMXPlayerVideo::GetDecoderFreeSpace()
+{
+  return m_omxVideo.GetFreeSpace();
+}
+
 void OMXPlayerVideo::SubmitEOS()
 {
   m_omxVideo.SubmitEOS();
@@ -614,6 +625,11 @@ double OMXPlayerVideo::GetOutputDelay()
     time = time * DVD_PLAYSPEED_NORMAL / abs(m_speed);
 
   return time;
+}
+
+int OMXPlayerVideo::GetFreeSpace()
+{
+  return m_omxVideo.GetFreeSpace();
 }
 
 void OMXPlayerVideo::SetVideoRect(const CRect &InSrcRect, const CRect &InDestRect)
@@ -712,7 +728,7 @@ void OMXPlayerVideo::ResolutionUpdateCallBack(uint32_t width, uint32_t height, f
 
   ERenderFormat format = RENDER_FMT_BYPASS;
 
-  /* figure out stereomode expected based on user settings and hints */
+  /* figure out steremode expected based on user settings and hints */
   unsigned flags = GetStereoModeFlags(GetStereoMode());
 
   if(m_bAllowFullscreen)
@@ -720,6 +736,9 @@ void OMXPlayerVideo::ResolutionUpdateCallBack(uint32_t width, uint32_t height, f
     flags |= CONF_FLAGS_FULLSCREEN;
     m_bAllowFullscreen = false; // only allow on first configure
   }
+
+  m_processInfo.SetVideoDimensions(width, height);
+  m_processInfo.SetVideoDAR(display_aspect);
 
   unsigned int iDisplayWidth  = width;
   unsigned int iDisplayHeight = height;
@@ -732,14 +751,12 @@ void OMXPlayerVideo::ResolutionUpdateCallBack(uint32_t width, uint32_t height, f
 
   m_fFrameRate = DVD_TIME_BASE / CDVDCodecUtils::NormalizeFrameduration((double)DVD_TIME_BASE / framerate);
   m_processInfo.SetVideoFps(m_fFrameRate);
-  m_processInfo.SetVideoDimensions(width, height);
-  m_processInfo.SetVideoDAR((float)iDisplayWidth / (float)iDisplayHeight);
 
   CLog::Log(LOGDEBUG,"%s - change configuration. video:%dx%d. framerate: %4.2f. %dx%d format: BYPASS",
       __FUNCTION__, video_width, video_height, m_fFrameRate, iDisplayWidth, iDisplayHeight);
 
-  VideoPicture picture;
-  memset(&picture, 0, sizeof(VideoPicture));
+  DVDVideoPicture picture;
+  memset(&picture, 0, sizeof(DVDVideoPicture));
 
   picture.iWidth = width;
   picture.iHeight = height;

@@ -23,11 +23,9 @@
 #include <utility>
 
 #include "FileItem.h"
-#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "GUIDialogContextMenu.h"
 #include "GUIDialogSmartPlaylistRule.h"
-#include "GUIDialogSelect.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
@@ -112,7 +110,7 @@ bool CGUIDialogSmartPlaylistEditor::OnMessage(CGUIMessage& message)
       else if (iControl == CONTROL_RULE_REMOVE)
         OnRuleRemove(GetSelectedItem());
       else if (iControl == CONTROL_NAME)
-        OnName();
+        OnEditChanged(iControl, m_playlist.m_playlistName);
       else if (iControl == CONTROL_OK)
         OnOK();
       else if (iControl == CONTROL_CANCEL)
@@ -184,18 +182,15 @@ bool CGUIDialogSmartPlaylistEditor::OnMessage(CGUIMessage& message)
       }
     }
     break;
-    case GUI_MSG_WINDOW_DEINIT:
-    {
-      m_playlist.Reset();
-    }
-    break;
   }
   return CGUIDialog::OnMessage(message);
 }
 
 void CGUIDialogSmartPlaylistEditor::OnPopupMenu(int item)
 {
-  if (item < 0 || static_cast<size_t>(item) >= m_playlist.m_ruleCombination.m_rules.size())
+  if (item < 0 || item >= m_ruleLabels->Size())
+    return;
+  if (m_playlist.m_ruleCombination.m_rules.size() == 1 && m_playlist.m_ruleCombination.m_rules[0]->m_field == FieldNone)
     return;
   // highlight the item
   m_ruleLabels->Get(item)->Select(true);
@@ -213,23 +208,20 @@ void CGUIDialogSmartPlaylistEditor::OnPopupMenu(int item)
 }
 
 void CGUIDialogSmartPlaylistEditor::OnRuleList(int item)
-{ 
-  if (item < 0 || item > static_cast<int>(m_playlist.m_ruleCombination.m_rules.size()))
-    return;
-  if (item == static_cast<int>(m_playlist.m_ruleCombination.m_rules.size()))
-    OnRuleAdd();
-  else
-  {
-    CSmartPlaylistRule rule = *std::static_pointer_cast<CSmartPlaylistRule>(m_playlist.m_ruleCombination.m_rules[item]);
-    if (CGUIDialogSmartPlaylistRule::EditRule(rule, m_playlist.GetType()))
-      *m_playlist.m_ruleCombination.m_rules[item] = rule;
-  }
+{
+  if (item < 0 || item >= (int)m_playlist.m_ruleCombination.m_rules.size()) return;
+
+  CSmartPlaylistRule rule = *std::static_pointer_cast<CSmartPlaylistRule>(m_playlist.m_ruleCombination.m_rules[item]);
+
+  if (CGUIDialogSmartPlaylistRule::EditRule(rule,m_playlist.GetType()))
+    *m_playlist.m_ruleCombination.m_rules[item] = rule;
+
   UpdateButtons();
 }
 
 void CGUIDialogSmartPlaylistEditor::OnOK()
 {
-  std::string systemPlaylistsPath = CServiceBroker::GetSettings().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
+  std::string systemPlaylistsPath = CSettings::GetInstance().GetString(CSettings::SETTING_SYSTEM_PLAYLISTSPATH);
   // save our playlist
   if (m_path.empty())
   {
@@ -278,81 +270,33 @@ void CGUIDialogSmartPlaylistEditor::OnCancel()
 
 void CGUIDialogSmartPlaylistEditor::OnMatch()
 {
-  // toggle between AND and OR setting
-  if (m_playlist.m_ruleCombination.GetType() == CSmartPlaylistRuleCombination::CombinationOr)
-    m_playlist.m_ruleCombination.SetType(CSmartPlaylistRuleCombination::CombinationAnd);
-  else
-    m_playlist.m_ruleCombination.SetType(CSmartPlaylistRuleCombination::CombinationOr);
+  CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_MATCH);
+  OnMessage(msg);
+  m_playlist.m_ruleCombination.SetType(msg.GetParam1() == 0 ? CSmartPlaylistRuleCombination::CombinationAnd : CSmartPlaylistRuleCombination::CombinationOr);
   UpdateButtons();
-}
-
-void CGUIDialogSmartPlaylistEditor::OnName()
-{
-  std::string name = m_playlist.m_playlistName;
-  if (CGUIKeyboardFactory::ShowAndGetInput(name, CVariant{16012}, false))
-  {
-    m_playlist.m_playlistName = name;
-    UpdateButtons();
-  }
 }
 
 void CGUIDialogSmartPlaylistEditor::OnLimit()
 {
-  std::vector<int> limits = {0, 10, 25, 50, 100, 250, 500, 1000};
-  CGUIDialogSelect* dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
-  dialog->Reset();
-  int selected = -1;
-  for (auto limit = limits.begin(); limit != limits.end(); limit++)
-  {
-    if (*limit == static_cast<int>(m_playlist.m_limit))
-      selected = std::distance(limits.begin(), limit);
-    if (*limit == 0)
-      dialog->Add(g_localizeStrings.Get(21428));
-    else
-      dialog->Add(StringUtils::Format(g_localizeStrings.Get(21436).c_str(), *limit));
-  }
-  dialog->SetHeading(CVariant{ 21427 });
-  dialog->SetSelected(selected);
-  dialog->Open();
-  int newSelected = dialog->GetSelectedItem();
-  if (!dialog->IsConfirmed() || newSelected < 0 || limits[newSelected] == static_cast<int>(m_playlist.m_limit))
-    return;
-  m_playlist.m_limit = limits[newSelected];
+  CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_LIMIT);
+  OnMessage(msg);
+  m_playlist.m_limit = msg.GetParam1();
   UpdateButtons();
 }
 
 void CGUIDialogSmartPlaylistEditor::OnType()
 {
-  std::vector<PLAYLIST_TYPE> allowedTypes = GetAllowedTypes(m_mode);
-  CGUIDialogSelect* dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
-  dialog->Reset();
-  for (auto allowedType: allowedTypes)
-    dialog->Add(GetLocalizedType(allowedType));
-  dialog->SetHeading(CVariant{ 564 });
-  dialog->SetSelected(GetLocalizedType(ConvertType(m_playlist.GetType())));
-  dialog->Open();
-  int newSelected = dialog->GetSelectedItem();
-  if (!dialog->IsConfirmed() || newSelected < 0 || allowedTypes[newSelected] == ConvertType(m_playlist.GetType()))
-    return;
- 
-  m_playlist.SetType(ConvertType(allowedTypes[newSelected]));
+  CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_TYPE);
+  OnMessage(msg);
+  m_playlist.SetType(ConvertType((PLAYLIST_TYPE)msg.GetParam1()));
   UpdateButtons();
 }
 
 void CGUIDialogSmartPlaylistEditor::OnOrder()
 {
-  std::vector<SortBy> orders = CSmartPlaylistRule::GetOrders(m_playlist.GetType());
-  CGUIDialogSelect* dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
-  dialog->Reset();
-  for (auto order: orders)
-    dialog->Add(g_localizeStrings.Get(SortUtils::GetSortLabel(order)));
-  dialog->SetHeading(CVariant{ 21429 });
-  dialog->SetSelected(g_localizeStrings.Get(SortUtils::GetSortLabel(m_playlist.m_orderField)));
-  dialog->Open();
-  int newSelected = dialog->GetSelectedItem();
-  if (!dialog->IsConfirmed() || newSelected < 0 || orders[newSelected] == m_playlist.m_orderField)
-    return;
-  m_playlist.m_orderField = orders[newSelected];
+  CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_ORDER_FIELD);
+  OnMessage(msg);
+  m_playlist.m_orderField = (SortBy)msg.GetParam1();
   UpdateButtons();
 }
 
@@ -367,22 +311,11 @@ void CGUIDialogSmartPlaylistEditor::OnOrderDirection()
 
 void CGUIDialogSmartPlaylistEditor::OnGroupBy()
 {
-  std::vector<Field> groups = CSmartPlaylistRule::GetGroups(m_playlist.GetType());
-  Field currentGroup = CSmartPlaylistRule::TranslateGroup(m_playlist.GetGroup().c_str());
-  CGUIDialogSelect* dialog = g_windowManager.GetWindow<CGUIDialogSelect>(WINDOW_DIALOG_SELECT);
-  dialog->Reset();
-  for (auto group : groups)
-    dialog->Add(CSmartPlaylistRule::GetLocalizedGroup(group));
-  dialog->SetHeading(CVariant{ 21458 });
-  dialog->SetSelected(CSmartPlaylistRule::GetLocalizedGroup(currentGroup));
-  dialog->Open();
-  int newSelected = dialog->GetSelectedItem();
-   // check if selection has changed
-  if (!dialog->IsConfirmed() || newSelected < 0 || groups[newSelected] == currentGroup)
-    return;
-  m_playlist.SetGroup(CSmartPlaylistRule::TranslateGroup(groups[newSelected]));
+  CGUIMessage msg(GUI_MSG_ITEM_SELECTED, GetID(), CONTROL_GROUP_BY);
+  OnMessage(msg);
+  m_playlist.SetGroup(CSmartPlaylistRule::TranslateGroup((Field)msg.GetParam1()));
 
-  if (m_playlist.IsGroupMixed() && !CSmartPlaylistRule::CanGroupMix(currentGroup))
+  if (m_playlist.IsGroupMixed() && !CSmartPlaylistRule::CanGroupMix((Field)msg.GetParam1()))
     m_playlist.SetGroupMixed(false);
 
   UpdateButtons();
@@ -398,6 +331,11 @@ void CGUIDialogSmartPlaylistEditor::UpdateButtons()
 {
   CONTROL_ENABLE(CONTROL_OK); // always enabled since we can have no rules -> match everything (as we do with default partymode playlists)
   
+  // if there's no rule available, add a dummy one the user can edit
+  if (m_playlist.m_ruleCombination.m_rules.size() <= 0)
+    m_playlist.m_ruleCombination.AddRule(CSmartPlaylistRule());
+
+  // name
   if (m_mode == "partyvideo" || m_mode == "partymusic")
   {
     SET_CONTROL_LABEL2(CONTROL_NAME, g_localizeStrings.Get(16035));
@@ -408,48 +346,49 @@ void CGUIDialogSmartPlaylistEditor::UpdateButtons()
   
   UpdateRuleControlButtons();
 
-  if (m_playlist.m_ruleCombination.GetType() == CSmartPlaylistRuleCombination::CombinationOr)
-    SET_CONTROL_LABEL2(CONTROL_MATCH, g_localizeStrings.Get(21426)); // one or more of the rules
-  else
-    SET_CONTROL_LABEL2(CONTROL_MATCH, g_localizeStrings.Get(21425)); // all of the rules
   CONTROL_ENABLE_ON_CONDITION(CONTROL_MATCH, m_playlist.m_ruleCombination.m_rules.size() > 1);
-  if (m_playlist.m_limit == 0)
-    SET_CONTROL_LABEL2(CONTROL_LIMIT, g_localizeStrings.Get(21428)); // no limit
-  else
-    SET_CONTROL_LABEL2(CONTROL_LIMIT, StringUtils::Format(g_localizeStrings.Get(21436).c_str(), m_playlist.m_limit));
+
   int currentItem = GetSelectedItem();
   CGUIMessage msgReset(GUI_MSG_LABEL_RESET, GetID(), CONTROL_RULE_LIST);
   OnMessage(msgReset);
   m_ruleLabels->Clear();
-  for (const auto& rule: m_playlist.m_ruleCombination.m_rules)
+  for (unsigned int i = 0; i < m_playlist.m_ruleCombination.m_rules.size(); i++)
   {
     CFileItemPtr item(new CFileItem("", false));
-    item->SetLabel(std::static_pointer_cast<CSmartPlaylistRule>(rule)->GetLocalizedRule());
+    if (m_playlist.m_ruleCombination.m_rules[i]->m_field == FieldNone)
+      item->SetLabel(g_localizeStrings.Get(21423));
+    else
+      item->SetLabel(std::static_pointer_cast<CSmartPlaylistRule>(m_playlist.m_ruleCombination.m_rules[i])->GetLocalizedRule());
     m_ruleLabels->Add(item);
   }
-  CFileItemPtr item(new CFileItem("", false));
-  item->SetLabel(g_localizeStrings.Get(21423));
-  m_ruleLabels->Add(item);
   CGUIMessage msg(GUI_MSG_LABEL_BIND, GetID(), CONTROL_RULE_LIST, 0, 0, m_ruleLabels);
   OnMessage(msg);
   SendMessage(GUI_MSG_ITEM_SELECT, GetID(), CONTROL_RULE_LIST, currentItem);
 
   if (m_playlist.m_orderDirection != SortOrderDescending)
   {
-    SET_CONTROL_LABEL2(CONTROL_ORDER_DIRECTION, g_localizeStrings.Get(21430));
+    CONTROL_SELECT(CONTROL_ORDER_DIRECTION);
   }
   else
   {
-    SET_CONTROL_LABEL2(CONTROL_ORDER_DIRECTION, g_localizeStrings.Get(21431));
+    CONTROL_DESELECT(CONTROL_ORDER_DIRECTION);
   }
 
-  SET_CONTROL_LABEL2(CONTROL_ORDER_FIELD, g_localizeStrings.Get(SortUtils::GetSortLabel(m_playlist.m_orderField)));
-  SET_CONTROL_LABEL2(CONTROL_TYPE, GetLocalizedType(ConvertType(m_playlist.GetType())));
+  // sort out the order fields
+  std::vector< std::pair<std::string, int> > labels;
+  std::vector<SortBy> orders = CSmartPlaylistRule::GetOrders(m_playlist.GetType());
+  for (unsigned int i = 0; i < orders.size(); i++)
+    labels.push_back(make_pair(g_localizeStrings.Get(SortUtils::GetSortLabel(orders[i])), orders[i]));
+  SET_CONTROL_LABELS(CONTROL_ORDER_FIELD, m_playlist.m_orderField, &labels);
 
   // setup groups
+  labels.clear();
   std::vector<Field> groups = CSmartPlaylistRule::GetGroups(m_playlist.GetType());
   Field currentGroup = CSmartPlaylistRule::TranslateGroup(m_playlist.GetGroup().c_str());
-  SET_CONTROL_LABEL2(CONTROL_GROUP_BY, CSmartPlaylistRule::GetLocalizedGroup(currentGroup));
+  for (unsigned int i = 0; i < groups.size(); i++)
+    labels.push_back(make_pair(CSmartPlaylistRule::GetLocalizedGroup(groups[i]), groups[i]));
+  SET_CONTROL_LABELS(CONTROL_GROUP_BY, currentGroup, &labels);
+
   if (m_playlist.IsGroupMixed())
     CONTROL_SELECT(CONTROL_GROUP_MIXED);
   else
@@ -481,22 +420,73 @@ void CGUIDialogSmartPlaylistEditor::UpdateRuleControlButtons()
                               m_playlist.m_ruleCombination.m_rules[iItem]->m_field != FieldNone); // and it is not be empty
 }
 
+void CGUIDialogSmartPlaylistEditor::OnWindowLoaded()
+{
+  CGUIDialog::OnWindowLoaded();
+
+  SendMessage(GUI_MSG_SET_TYPE, CONTROL_NAME, 0, 16012);
+  // setup the match spinner
+  std::vector< std::pair<std::string, int> > labels;
+  labels.push_back(make_pair(g_localizeStrings.Get(21425), 0));
+  labels.push_back(make_pair(g_localizeStrings.Get(21426), 1));
+  SET_CONTROL_LABELS(CONTROL_MATCH, m_playlist.m_ruleCombination.GetType() == CSmartPlaylistRuleCombination::CombinationAnd ? 0 : 1, &labels);
+
+  // and now the limit spinner
+  labels.clear();
+  labels.push_back(make_pair(g_localizeStrings.Get(21428), 0));
+  const int limits[] = { 10, 25, 50, 100, 250, 500, 1000 };
+  for (unsigned int i = 0; i < sizeof(limits) / sizeof(int); i++)
+    labels.push_back(make_pair(StringUtils::Format(g_localizeStrings.Get(21436).c_str(), limits[i]), limits[i]));
+  SET_CONTROL_LABELS(CONTROL_LIMIT, 0, &labels);
+}
+
 void CGUIDialogSmartPlaylistEditor::OnInitWindow()
 {
   m_cancelled = false;
 
-  std::vector<PLAYLIST_TYPE> allowedTypes = GetAllowedTypes(m_mode);
-  // check if our playlist type is allowed
+  SendMessage(GUI_MSG_ITEM_SELECT, CONTROL_LIMIT, m_playlist.m_limit);
+
+  std::vector<PLAYLIST_TYPE> allowedTypes;
+  if (m_mode == "partymusic")
+  {
+    allowedTypes.push_back(TYPE_SONGS);
+    allowedTypes.push_back(TYPE_MIXED);
+  }
+  else if (m_mode == "partyvideo")
+  {
+    allowedTypes.push_back(TYPE_MUSICVIDEOS);
+    allowedTypes.push_back(TYPE_MIXED);
+  }
+  else if (m_mode == "music")
+  { // music types + mixed
+    allowedTypes.push_back(TYPE_SONGS);
+    allowedTypes.push_back(TYPE_ALBUMS);
+    allowedTypes.push_back(TYPE_ARTISTS);
+    allowedTypes.push_back(TYPE_MIXED);
+  }
+  else if (m_mode == "video")
+  { // general category for videos
+    allowedTypes.push_back(TYPE_MOVIES);
+    allowedTypes.push_back(TYPE_TVSHOWS);
+    allowedTypes.push_back(TYPE_EPISODES);
+    allowedTypes.push_back(TYPE_MUSICVIDEOS);
+    allowedTypes.push_back(TYPE_MIXED);
+  }
+  // add to the spinner
+  std::vector< std::pair<std::string, int> > labels;
+  for (unsigned int i = 0; i < allowedTypes.size(); i++)
+    labels.push_back(make_pair(GetLocalizedType(allowedTypes[i]), allowedTypes[i]));
+  // check our playlist type is allowed
   PLAYLIST_TYPE type = ConvertType(m_playlist.GetType());
   bool allowed = false;
-  for (auto allowedType: allowedTypes)
-  {
-    if (type == allowedType)
+  for (unsigned int i = 0; i < allowedTypes.size(); i++)
+    if (type == allowedTypes[i])
       allowed = true;
-  }
   if (!allowed && allowedTypes.size())
-    m_playlist.SetType(ConvertType(allowedTypes[0]));
+    type = allowedTypes[0];
 
+  SET_CONTROL_LABELS(CONTROL_TYPE, type, &labels);
+  m_playlist.SetType(ConvertType(type));
   UpdateButtons();
 
   SET_CONTROL_LABEL(CONTROL_HEADING, 21432);
@@ -556,37 +546,6 @@ void CGUIDialogSmartPlaylistEditor::HighlightItem(int item)
   OnMessage(msg);
 }
 
-std::vector<CGUIDialogSmartPlaylistEditor::PLAYLIST_TYPE> CGUIDialogSmartPlaylistEditor::GetAllowedTypes(const std::string& mode)
-{
-  std::vector<PLAYLIST_TYPE> allowedTypes;
-  if (mode == "partymusic")
-  {
-    allowedTypes.push_back(TYPE_SONGS);
-    allowedTypes.push_back(TYPE_MIXED);
-  }
-  else if (mode == "partyvideo")
-  {
-    allowedTypes.push_back(TYPE_MUSICVIDEOS);
-    allowedTypes.push_back(TYPE_MIXED);
-  }
-  else if (mode == "music")
-  { // music types + mixed
-    allowedTypes.push_back(TYPE_SONGS);
-    allowedTypes.push_back(TYPE_ALBUMS);
-    allowedTypes.push_back(TYPE_ARTISTS);
-    allowedTypes.push_back(TYPE_MIXED);
-  }
-  else if (mode == "video")
-  { // general category for videos
-    allowedTypes.push_back(TYPE_MOVIES);
-    allowedTypes.push_back(TYPE_TVSHOWS);
-    allowedTypes.push_back(TYPE_EPISODES);
-    allowedTypes.push_back(TYPE_MUSICVIDEOS);
-    allowedTypes.push_back(TYPE_MIXED);
-  }
-  return allowedTypes;
-}
-
 void CGUIDialogSmartPlaylistEditor::OnRuleRemove(int item)
 {
   if (item < 0 || item >= (int)m_playlist.m_ruleCombination.m_rules.size()) return;
@@ -597,19 +556,28 @@ void CGUIDialogSmartPlaylistEditor::OnRuleRemove(int item)
     HighlightItem(m_ruleLabels->Size() - 1);
   else
     HighlightItem(item);
+  if (m_ruleLabels->Size() <= 1)
+  {
+    SET_CONTROL_FOCUS(CONTROL_RULE_ADD, 0);
+  }
 }
 
 void CGUIDialogSmartPlaylistEditor::OnRuleAdd()
 {
   CSmartPlaylistRule rule;
   if (CGUIDialogSmartPlaylistRule::EditRule(rule,m_playlist.GetType()))
-    m_playlist.m_ruleCombination.AddRule(rule);
+  {
+    if (m_playlist.m_ruleCombination.m_rules.size() == 1 && m_playlist.m_ruleCombination.m_rules[0]->m_field == FieldNone)
+      *m_playlist.m_ruleCombination.m_rules[0] = rule;
+    else
+      m_playlist.m_ruleCombination.AddRule(rule);
+  }
   UpdateButtons();
 }
 
 bool CGUIDialogSmartPlaylistEditor::NewPlaylist(const std::string &type)
 {
-  CGUIDialogSmartPlaylistEditor *editor = g_windowManager.GetWindow<CGUIDialogSmartPlaylistEditor>(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
+  CGUIDialogSmartPlaylistEditor *editor = (CGUIDialogSmartPlaylistEditor *)g_windowManager.GetWindow(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
   if (!editor) return false;
 
   editor->m_path = "";
@@ -622,7 +590,7 @@ bool CGUIDialogSmartPlaylistEditor::NewPlaylist(const std::string &type)
 
 bool CGUIDialogSmartPlaylistEditor::EditPlaylist(const std::string &path, const std::string &type)
 {
-  CGUIDialogSmartPlaylistEditor *editor = g_windowManager.GetWindow<CGUIDialogSmartPlaylistEditor>(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
+  CGUIDialogSmartPlaylistEditor *editor = (CGUIDialogSmartPlaylistEditor *)g_windowManager.GetWindow(WINDOW_DIALOG_SMART_PLAYLIST_EDITOR);
   if (!editor) return false;
 
   editor->m_mode = type;
@@ -637,7 +605,7 @@ bool CGUIDialogSmartPlaylistEditor::EditPlaylist(const std::string &path, const 
   { // failed to load
     if (!StringUtils::StartsWithNoCase(editor->m_mode, "party"))
       return false; // only edit normal playlists that exist
-    // party mode playlists can be edited even if they don't exist
+    // party mode playlists can be editted even if they don't exist
     playlist.SetType(editor->m_mode == "partymusic" ? "songs" : "musicvideos");
   }
 

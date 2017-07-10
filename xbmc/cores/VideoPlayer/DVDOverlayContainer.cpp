@@ -22,7 +22,9 @@
 #include "DVDInputStreams/DVDInputStreamNavigator.h"
 #include "threads/SingleLock.h"
 
-CDVDOverlayContainer::CDVDOverlayContainer() = default;
+CDVDOverlayContainer::CDVDOverlayContainer()
+{
+}
 
 CDVDOverlayContainer::~CDVDOverlayContainer()
 {

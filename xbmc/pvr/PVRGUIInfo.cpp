@@ -19,7 +19,6 @@
  */
 
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "GUIInfoManager.h"
 #include "epg/EpgInfoTag.h"
 #include "guiinfo/GUIInfoLabels.h"
@@ -39,6 +38,7 @@
 #include "PVRGUIInfo.h"
 
 using namespace PVR;
+using namespace EPG;
 
 CPVRGUIInfo::CPVRGUIInfo(void) :
     CThread("PVRGUIInfo")
@@ -88,7 +88,6 @@ void CPVRGUIInfo::ResetProperties(void)
 
   ResetPlayingTag();
   ClearQualityInfo(m_qualityInfo);
-  ClearDescrambleInfo(m_descrambleInfo);
 
   m_updateBackendCacheRequested = false;
 }
@@ -98,11 +97,6 @@ void CPVRGUIInfo::ClearQualityInfo(PVR_SIGNAL_STATUS &qualityInfo)
   memset(&qualityInfo, 0, sizeof(qualityInfo));
   strncpy(qualityInfo.strAdapterName, g_localizeStrings.Get(13106).c_str(), PVR_ADDON_NAME_STRING_LENGTH - 1);
   strncpy(qualityInfo.strAdapterStatus, g_localizeStrings.Get(13106).c_str(), PVR_ADDON_NAME_STRING_LENGTH - 1);
-}
-
-void CPVRGUIInfo::ClearDescrambleInfo(PVR_DESCRAMBLE_INFO &descrambleInfo)
-{
-  descrambleInfo = {0};
 }
 
 void CPVRGUIInfo::Start(void)
@@ -115,7 +109,7 @@ void CPVRGUIInfo::Start(void)
 void CPVRGUIInfo::Stop(void)
 {
   StopThread();
-  CServiceBroker::GetPVRManager().UnregisterObserver(this);
+  g_PVRManager.UnregisterObserver(this);
 }
 
 void CPVRGUIInfo::Notify(const Observable &obs, const ObservableMessage msg)
@@ -149,7 +143,7 @@ void CPVRGUIInfo::ToggleShowInfo(void)
     lock.Leave();
 
     g_infoManager.SetShowInfo(false);
-    CServiceBroker::GetPVRManager().UpdateCurrentChannel();
+    g_PVRManager.UpdateCurrentChannel();
   }
   else if (!g_infoManager.GetShowInfo()) // channel infos (no longer) displayed?
   {
@@ -157,7 +151,7 @@ void CPVRGUIInfo::ToggleShowInfo(void)
        their own locks) to avoid deadlocks */
     lock.Leave();
 
-    CServiceBroker::GetPVRManager().UpdateCurrentChannel();
+    g_PVRManager.UpdateCurrentChannel();
   }
 }
 
@@ -167,7 +161,7 @@ void CPVRGUIInfo::Process(void)
   int toggleInterval = g_advancedSettings.m_iPVRInfoToggleInterval / 1000;
 
   /* updated on request */
-  CServiceBroker::GetPVRManager().RegisterObserver(this);
+  g_PVRManager.RegisterObserver(this);
   UpdateTimersCache();
 
   /* update the backend cache once initially */
@@ -181,10 +175,6 @@ void CPVRGUIInfo::Process(void)
 
     if (!m_bStop)
       UpdateQualityData();
-    Sleep(0);
-
-    if (!m_bStop)
-      UpdateDescrambleData();
     Sleep(0);
 
     if (!m_bStop)
@@ -228,8 +218,8 @@ void CPVRGUIInfo::UpdateQualityData(void)
   ClearQualityInfo(qualityInfo);
 
   PVR_CLIENT client;
-  if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_SIGNALQUALITY) &&
-      CServiceBroker::GetPVRManager().Clients()->GetPlayingClient(client))
+  if (CSettings::GetInstance().GetBool(CSettings::SETTING_PVRPLAYBACK_SIGNALQUALITY) &&
+      g_PVRClients->GetPlayingClient(client))
   {
     client->SignalQuality(qualityInfo);
   }
@@ -237,31 +227,20 @@ void CPVRGUIInfo::UpdateQualityData(void)
   memcpy(&m_qualityInfo, &qualityInfo, sizeof(m_qualityInfo));
 }
 
-void CPVRGUIInfo::UpdateDescrambleData(void)
-{
-  PVR_DESCRAMBLE_INFO descrambleInfo;
-  ClearDescrambleInfo(descrambleInfo);
-
-  PVR_CLIENT client;
-  if (CServiceBroker::GetPVRManager().Clients()->GetPlayingClient(client) &&
-      client->GetDescrambleInfo(descrambleInfo))
-    memcpy(&m_descrambleInfo, &descrambleInfo, sizeof(m_descrambleInfo));
-}
-
 void CPVRGUIInfo::UpdateMisc(void)
 {
-  bool bStarted = CServiceBroker::GetPVRManager().IsStarted();
+  bool bStarted = g_PVRManager.IsStarted();
   /* safe to fetch these unlocked, since they're updated from the same thread as this one */
-  std::string strPlayingClientName     = bStarted ? CServiceBroker::GetPVRManager().Clients()->GetPlayingClientName() : "";
-  bool       bHasTVRecordings          = bStarted && CServiceBroker::GetPVRManager().Recordings()->GetNumTVRecordings() > 0;
-  bool       bHasRadioRecordings       = bStarted && CServiceBroker::GetPVRManager().Recordings()->GetNumRadioRecordings() > 0;
-  bool       bIsPlayingTV              = bStarted && CServiceBroker::GetPVRManager().Clients()->IsPlayingTV();
-  bool       bIsPlayingRadio           = bStarted && CServiceBroker::GetPVRManager().Clients()->IsPlayingRadio();
-  bool       bIsPlayingRecording       = bStarted && CServiceBroker::GetPVRManager().Clients()->IsPlayingRecording();
-  bool       bIsPlayingEncryptedStream = bStarted && CServiceBroker::GetPVRManager().Clients()->IsEncrypted();
-  bool       bHasTVChannels            = bStarted && CServiceBroker::GetPVRManager().ChannelGroups()->GetGroupAllTV()->HasChannels();
-  bool       bHasRadioChannels         = bStarted && CServiceBroker::GetPVRManager().ChannelGroups()->GetGroupAllRadio()->HasChannels();
-  std::string strPlayingTVGroup        = (bStarted && bIsPlayingTV) ? CServiceBroker::GetPVRManager().GetPlayingGroup(false)->GroupName() : "";
+  std::string strPlayingClientName     = bStarted ? g_PVRClients->GetPlayingClientName() : "";
+  bool       bHasTVRecordings          = bStarted && g_PVRRecordings->GetNumTVRecordings() > 0;
+  bool       bHasRadioRecordings       = bStarted && g_PVRRecordings->GetNumRadioRecordings() > 0;
+  bool       bIsPlayingTV              = bStarted && g_PVRClients->IsPlayingTV();
+  bool       bIsPlayingRadio           = bStarted && g_PVRClients->IsPlayingRadio();
+  bool       bIsPlayingRecording       = bStarted && g_PVRClients->IsPlayingRecording();
+  bool       bIsPlayingEncryptedStream = bStarted && g_PVRClients->IsEncrypted();
+  bool       bHasTVChannels            = bStarted && g_PVRChannelGroups->GetGroupAllTV()->HasChannels();
+  bool       bHasRadioChannels         = bStarted && g_PVRChannelGroups->GetGroupAllRadio()->HasChannels();
+  std::string strPlayingTVGroup        = (bStarted && bIsPlayingTV) ? g_PVRManager.GetPlayingGroup(false)->GroupName() : "";
 
   CSingleLock lock(m_critSection);
   m_strPlayingClientName      = strPlayingClientName;
@@ -278,19 +257,19 @@ void CPVRGUIInfo::UpdateMisc(void)
 
 void CPVRGUIInfo::UpdateTimeshift(void)
 {
-  bool bStarted = CServiceBroker::GetPVRManager().IsStarted();
+  bool bStarted = g_PVRManager.IsStarted();
 
-  bool bIsTimeshifting = bStarted && CServiceBroker::GetPVRManager().Clients()->IsTimeshifting();
+  bool bIsTimeshifting = bStarted && g_PVRClients->IsTimeshifting();
   CDateTime tmp;
-  time_t iTimeshiftStartTime = CServiceBroker::GetPVRManager().Clients()->GetBufferTimeStart();
+  time_t iTimeshiftStartTime = g_PVRClients->GetBufferTimeStart();
   tmp.SetFromUTCDateTime(iTimeshiftStartTime);
   std::string strTimeshiftStartTime = tmp.GetAsLocalizedTime("", false);
 
-  time_t iTimeshiftEndTime = CServiceBroker::GetPVRManager().Clients()->GetBufferTimeEnd();
+  time_t iTimeshiftEndTime = g_PVRClients->GetBufferTimeEnd();
   tmp.SetFromUTCDateTime(iTimeshiftEndTime);
   std::string strTimeshiftEndTime = tmp.GetAsLocalizedTime("", false);
 
-  time_t iTimeshiftPlayTime = CServiceBroker::GetPVRManager().Clients()->GetPlayingTime();
+  time_t iTimeshiftPlayTime = g_PVRClients->GetPlayingTime();
   tmp.SetFromUTCDateTime(iTimeshiftPlayTime);
   std::string strTimeshiftPlayTime = tmp.GetAsLocalizedTime("", true);
 
@@ -592,7 +571,7 @@ void CPVRGUIInfo::CharInfoBackendNumber(std::string &strValue) const
   size_t numBackends = m_backendProperties.size();
 
   if (numBackends > 0)
-    strValue = StringUtils::Format("{0} {1} {2}", m_iCurrentActiveClient + 1, g_localizeStrings.Get(20163).c_str(), numBackends);
+    strValue = StringUtils::Format("%u %s %" PRIuS, m_iCurrentActiveClient + 1, g_localizeStrings.Get(20163).c_str(), numBackends);
   else
     strValue = g_localizeStrings.Get(14023);
 }
@@ -707,23 +686,11 @@ void CPVRGUIInfo::CharInfoPlayingClientName(std::string &strValue) const
 
 void CPVRGUIInfo::CharInfoEncryption(std::string &strValue) const
 {
-  if (m_descrambleInfo.iCaid != PVR_DESCRAMBLE_INFO_NOT_AVAILABLE)
-  {
-    // prefer dynamically updated info, if available
-    strValue = CPVRChannel::GetEncryptionName(m_descrambleInfo.iCaid);
-    return;
-  }
+  CPVRChannelPtr channel(g_PVRClients->GetPlayingChannel());
+  if (channel)
+    strValue = channel->EncryptionName();
   else
-  {
-    const CPVRChannelPtr channel(CServiceBroker::GetPVRManager().Clients()->GetPlayingChannel());
-    if (channel)
-    {
-      strValue = channel->EncryptionName();
-      return;
-    }
-  }
-
-  strValue.clear();
+    strValue.clear();
 }
 
 void CPVRGUIInfo::CharInfoService(std::string &strValue) const
@@ -761,7 +728,7 @@ void CPVRGUIInfo::UpdateBackendCache(void)
     std::vector<SBackend> backendProperties;
     {
       CSingleExit exit(m_critSection);
-      backendProperties = CServiceBroker::GetPVRManager().Clients()->GetBackendProperties();
+      backendProperties = g_PVRClients->GetBackendProperties();
     }
 
     m_backendProperties = backendProperties;
@@ -865,7 +832,7 @@ void CPVRGUIInfo::ResetPlayingTag(void)
   m_iDuration = 0;
 }
 
-CPVREpgInfoTagPtr CPVRGUIInfo::GetPlayingTag() const
+CEpgInfoTagPtr CPVRGUIInfo::GetPlayingTag() const
 {
   CSingleLock lock(m_critSection);
   return m_playingEpgTag;
@@ -873,10 +840,10 @@ CPVREpgInfoTagPtr CPVRGUIInfo::GetPlayingTag() const
 
 void CPVRGUIInfo::UpdatePlayingTag(void)
 {
-  CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().GetCurrentChannel());
+  CPVRChannelPtr currentChannel(g_PVRManager.GetCurrentChannel());
   if (currentChannel)
   {
-    CPVREpgInfoTagPtr epgTag(GetPlayingTag());
+    CEpgInfoTagPtr epgTag(GetPlayingTag());
     CPVRChannelPtr channel;
     if (epgTag)
       channel = epgTag->ChannelTag();
@@ -887,7 +854,7 @@ void CPVRGUIInfo::UpdatePlayingTag(void)
       {
         CSingleLock lock(m_critSection);
         ResetPlayingTag();
-        CPVREpgInfoTagPtr newTag(currentChannel->GetEPGNow());
+        CEpgInfoTagPtr newTag(currentChannel->GetEPGNow());
         if (newTag)
         {
           m_playingEpgTag = newTag;
@@ -898,12 +865,12 @@ void CPVRGUIInfo::UpdatePlayingTag(void)
           m_iDuration = (m_iTimeshiftEndTime - m_iTimeshiftStartTime) * 1000;
         }
       }
-      CServiceBroker::GetPVRManager().UpdateCurrentFile();
+      g_PVRManager.UpdateCurrentFile();
     }
   }
   else
   {
-    CPVRRecordingPtr recording(CServiceBroker::GetPVRManager().Clients()->GetPlayingRecording());
+    CPVRRecordingPtr recording(g_PVRClients->GetPlayingRecording());
     if (recording)
     {
       ResetPlayingTag();
@@ -1043,60 +1010,60 @@ void CPVRGUIInfo::TimerInfo::UpdateNextTimer()
 
 int CPVRGUIInfo::AnyTimerInfo::AmountActiveTimers()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveTimers();
+  return g_PVRTimers->AmountActiveTimers();
 }
 
 int CPVRGUIInfo::AnyTimerInfo::AmountActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveRecordings();
+  return g_PVRTimers->AmountActiveRecordings();
 }
 
 std::vector<CFileItemPtr> CPVRGUIInfo::AnyTimerInfo::GetActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetActiveRecordings();
+  return g_PVRTimers->GetActiveRecordings();
 }
 
 CFileItemPtr CPVRGUIInfo::AnyTimerInfo::GetNextActiveTimer()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetNextActiveTimer();
+  return g_PVRTimers->GetNextActiveTimer();
 }
 
 int CPVRGUIInfo::TVTimerInfo::AmountActiveTimers()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveTVTimers();
+  return g_PVRTimers->AmountActiveTVTimers();
 }
 
 int CPVRGUIInfo::TVTimerInfo::AmountActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveTVRecordings();
+  return g_PVRTimers->AmountActiveTVRecordings();
 }
 
 std::vector<CFileItemPtr> CPVRGUIInfo::TVTimerInfo::GetActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetActiveTVRecordings();
+  return g_PVRTimers->GetActiveTVRecordings();
 }
 
 CFileItemPtr CPVRGUIInfo::TVTimerInfo::GetNextActiveTimer()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetNextActiveTVTimer();
+  return g_PVRTimers->GetNextActiveTVTimer();
 }
 
 int CPVRGUIInfo::RadioTimerInfo::AmountActiveTimers()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveRadioTimers();
+  return g_PVRTimers->AmountActiveRadioTimers();
 }
 
 int CPVRGUIInfo::RadioTimerInfo::AmountActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->AmountActiveRadioRecordings();
+  return g_PVRTimers->AmountActiveRadioRecordings();
 }
 
 std::vector<CFileItemPtr> CPVRGUIInfo::RadioTimerInfo::GetActiveRecordings()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetActiveRadioRecordings();
+  return g_PVRTimers->GetActiveRadioRecordings();
 }
 
 CFileItemPtr CPVRGUIInfo::RadioTimerInfo::GetNextActiveTimer()
 {
-  return CServiceBroker::GetPVRManager().Timers()->GetNextActiveRadioTimer();
+  return g_PVRTimers->GetNextActiveRadioTimer();
 }

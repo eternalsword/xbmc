@@ -19,15 +19,13 @@
  *
  */
 
-#include <functional>
-
 #include "Event.h"
 #include "Thread.h"
 
 class ITimerCallback
 {
 public:
-  virtual ~ITimerCallback() = default;
+  virtual ~ITimerCallback() { }
   
   virtual void OnTimeout() = 0;
 };
@@ -36,8 +34,7 @@ class CTimer : protected CThread
 {
 public:
   CTimer(ITimerCallback *callback);
-  explicit CTimer(std::function<void()> const& callback);
-  ~CTimer() override;
+  virtual ~CTimer();
 
   bool Start(uint32_t timeout, bool interval = false);
   bool Stop(bool wait = false);
@@ -50,10 +47,10 @@ public:
   float GetElapsedMilliseconds() const;
   
 protected:
-  void Process() override;
+  virtual void Process();
   
 private:
-  std::function<void()> m_callback;
+  ITimerCallback *m_callback;
   uint32_t m_timeout;
   bool m_interval;
   uint32_t m_endTime;

@@ -18,12 +18,12 @@
  *
  */
 #include "system.h"
+#ifdef HAVE_LIBVA
 #include "VAAPI.h"
-#include "ServiceBroker.h"
 #include "windowing/WindowingFactory.h"
 #include "DVDVideoCodec.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDCodecUtils.h"
-#include "cores/VideoPlayer/TimingConstants.h"
+#include "cores/VideoPlayer/DVDClock.h"
 #include "cores/VideoPlayer/Process/ProcessInfo.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -32,7 +32,7 @@
 #include "guilib/GraphicContext.h"
 #include "settings/MediaSettings.h"
 #include "settings/AdvancedSettings.h"
-#include <va/va_drm.h>
+#include <va/va_x11.h>
 #include <va/va_drmcommon.h>
 #include <drm_fourcc.h>
 #include "linux/XTimeUtils.h"
@@ -45,12 +45,7 @@ extern "C" {
 #include "libavfilter/buffersrc.h"
 }
 
-#ifdef HAVE_X11
-#include <va/va_x11.h>
-#endif
-
 #include <va/va_vpp.h>
-#include <xf86drm.h>
 
 using namespace VAAPI;
 #define NUM_RENDER_PICS 7
@@ -60,10 +55,7 @@ using namespace VAAPI;
 
 CVAAPIContext *CVAAPIContext::m_context = 0;
 CCriticalSection CVAAPIContext::m_section;
-
-#ifdef HAVE_X11
 Display *CVAAPIContext::m_X11dpy = 0;
-#endif
 
 CVAAPIContext::CVAAPIContext()
 {
@@ -94,11 +86,6 @@ void CVAAPIContext::Release(CDecoder *decoder)
 void CVAAPIContext::Close()
 {
   CLog::Log(LOGNOTICE, "VAAPI::Close - closing decoder context");
-  if (m_renderNodeFD >= 0)
-  {
-    close(m_renderNodeFD);
-  }
-
   DestroyContext();
 }
 
@@ -136,68 +123,14 @@ bool CVAAPIContext::EnsureContext(CVAAPIContext **ctx, CDecoder *decoder)
   return true;
 }
 
-void CVAAPIContext::SetValidDRMVaDisplayFromRenderNode()
-{
-  int const buf_size{128};
-  char name[buf_size];
-  int fd{-1};
-
-  // 128 is the start of the NUM in renderD<NUM>
-  for (int i = 128; i < (128 + 16); i++)
-  {
-    snprintf(name, buf_size, "/dev/dri/renderD%u", i);
-
-    fd = open(name, O_RDWR);
-
-    if (fd < 0)
-    {
-      continue;
-    }
-
-    auto display = vaGetDisplayDRM(fd);
-
-    if (display != nullptr)
-    {
-      m_renderNodeFD = fd;
-      m_display = display;
-      return;
-    }
-    close(fd);
-  }
-
-  CLog::Log(LOGERROR, "Failed to find any open render nodes in /dev/dri/renderD<num>");
-}
-
-void CVAAPIContext::SetVaDisplayForSystem()
-{
-  auto win_system = g_Windowing.GetWinSystem();
-  if (win_system == WINDOW_SYSTEM_X11)
-  {
-#if HAVE_X11
-    { CSingleLock lock(g_graphicsContext);
-      if (m_X11dpy == nullptr)
-        m_X11dpy = XOpenDisplay(nullptr);
-    }
-
-    m_display = vaGetDisplay(m_X11dpy);
-#endif
-  }
-  else
-  {
-    // Render nodes depends on kernel >= 3.15
-    SetValidDRMVaDisplayFromRenderNode();
-  }
-}
-
 bool CVAAPIContext::CreateContext()
 {
-  SetVaDisplayForSystem();
-
-  if (m_display == nullptr)
-  {
-    CLog::Log(LOGERROR, "Failed to find any VaDisplays for this system");
-    return false;
+  { CSingleLock lock(g_graphicsContext);
+    if (!m_X11dpy)
+      m_X11dpy = XOpenDisplay(NULL);
   }
+
+  m_display = vaGetDisplay(m_X11dpy);
 
   int major_version, minor_version;
   if (!CheckSuccess(vaInitialize(m_display, &major_version, &minor_version)))
@@ -315,6 +248,11 @@ bool CVAAPIContext::CheckSuccess(VAStatus status)
 VADisplay CVAAPIContext::GetDisplay()
 {
   return m_display;
+}
+
+Display *CVAAPIContext::GetX11Display()
+{
+  return m_X11dpy;
 }
 
 bool CVAAPIContext::IsValidDecoder(CDecoder *decoder)
@@ -504,11 +442,6 @@ bool CVideoSurfaces::HasRefs()
 // VAAPI
 //-----------------------------------------------------------------------------
 
-// @TODO
-// temporarily disabled runtime check
-bool CDecoder::m_capGeneral = true;
-bool CDecoder::m_capHevc = true;
-
 CDecoder::CDecoder(CProcessInfo& processInfo) :
   m_vaapiOutput(&m_inMsgEvent),
   m_processInfo(processInfo)
@@ -532,8 +465,23 @@ CDecoder::~CDecoder()
 
 bool CDecoder::Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum AVPixelFormat fmt, unsigned int surfaces)
 {
-  if (!m_capGeneral)
-    return false;
+  // don't support broken wrappers by default
+  // nvidia cards with a vaapi to vdpau wrapper
+  // fglrx cards with xvba-va-driver
+  std::string gpuvendor = g_Windowing.GetRenderVendor();
+  std::transform(gpuvendor.begin(), gpuvendor.end(), gpuvendor.begin(), ::tolower);
+  if (gpuvendor.compare(0, 5, "intel") != 0)
+  {
+    // user might force VAAPI enabled, cause he might know better
+    if (g_advancedSettings.m_videoVAAPIforced)
+    {
+      CLog::Log(LOGWARNING, "VAAPI was not tested on your hardware / driver stack: %s. If it will crash and burn complain with your gpu vendor.", gpuvendor.c_str());
+    }
+    else
+    {
+      return false;
+    }
+  }
 
   // check if user wants to decode this format with VAAPI
   std::map<AVCodecID, std::string> settings_map = {
@@ -552,8 +500,8 @@ bool CDecoder::Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum A
   if (!CVAAPIContext::EnsureContext(&m_vaapiConfig.context, this))
     return false;
 
-  if(avctx->coded_width  == 0 ||
-     avctx->coded_height == 0)
+  if(avctx->coded_width  == 0
+  || avctx->coded_height == 0)
   {
     CLog::Log(LOGWARNING,"VAAPI::Open: no width/height available, can't init");
     return false;
@@ -610,15 +558,7 @@ bool CDecoder::Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum A
     }
     case AV_CODEC_ID_HEVC:
     {
-      if (!m_capHevc)
-        return false;
-
-      if (avctx->profile == FF_PROFILE_HEVC_MAIN_10)
-        profile = VAProfileHEVCMain10;
-      else if (avctx->profile == FF_PROFILE_HEVC_MAIN)
-        profile = VAProfileHEVCMain;
-      else
-        profile = VAProfileNone;
+      profile = VAProfileHEVCMain;
       if (!m_vaapiConfig.context->SupportsProfile(profile))
         return false;
       break;
@@ -648,7 +588,7 @@ bool CDecoder::Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum A
 
   m_vaapiConfig.profile = profile;
   m_vaapiConfig.attrib = m_vaapiConfig.context->GetAttrib(profile);
-  if ((m_vaapiConfig.attrib.value & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP)) == 0)
+  if ((m_vaapiConfig.attrib.value & VA_RT_FORMAT_YUV420) == 0)
   {
     CLog::Log(LOGERROR, "VAAPI - invalid yuv format %x", m_vaapiConfig.attrib.value);
     return false;
@@ -719,7 +659,6 @@ long CDecoder::Release()
     if (g_advancedSettings.CanLogComponent(LOGVIDEO))
       CLog::Log(LOGDEBUG,"VAAPI::Release pre-cleanup");
 
-    CSingleLock lock1(g_graphicsContext);
     Message *reply;
     if (m_vaapiOutput.m_controlPort.SendOutMessageSync(COutputControlProtocol::PRECLEANUP,
                                                    &reply,
@@ -755,8 +694,8 @@ long CDecoder::ReleasePicReference()
 
 int CDecoder::FFGetBuffer(AVCodecContext *avctx, AVFrame *pic, int flags)
 {
-  ICallbackHWAccel* cb = static_cast<ICallbackHWAccel*>(avctx->opaque);
-  CDecoder* va = static_cast<CDecoder*>(cb->GetHWAccel());
+  CDVDVideoCodecFFmpeg* ctx = (CDVDVideoCodecFFmpeg*)avctx->opaque;
+  CDecoder*             va  = (CDecoder*)ctx->GetHardware();
 
   // while we are waiting to recover we can't do anything
   CSingleLock lock(va->m_DecoderSection);
@@ -819,16 +758,16 @@ void CDecoder::SetCodecControl(int flags)
   m_codecControl = flags & (DVD_CODEC_CTRL_DRAIN | DVD_CODEC_CTRL_HURRY);
 }
 
-CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame)
+int CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame)
 {
-  CDVDVideoCodec::VCReturn result = Check(avctx);
-  if (result != CDVDVideoCodec::VC_NOBUFFER && result != CDVDVideoCodec::VC_NONE)
+  int result = Check(avctx);
+  if (result && result != VC_NOBUFFER)
     return result;
 
   CSingleLock lock(m_DecoderSection);
 
   if (!m_vaapiConfigured)
-    return CDVDVideoCodec::VC_ERROR;
+    return VC_ERROR;
 
   if (pFrame)
   { // we have a new frame from decoder
@@ -838,14 +777,14 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame
     if (!m_videoSurfaces.IsValid(surf))
     {
       CLog::Log(LOGWARNING, "VAAPI::Decode - ignoring invalid buffer");
-      return CDVDVideoCodec::VC_BUFFER;
+      return VC_BUFFER;
     }
     m_videoSurfaces.MarkRender(surf);
 
     // send frame to output for processing
     CVaapiDecodedPicture pic;
     memset(&pic.DVDPic, 0, sizeof(pic.DVDPic));
-    ((ICallbackHWAccel*)avctx->opaque)->GetPictureCommon(&pic.DVDPic);
+    ((CDVDVideoCodecFFmpeg*)avctx->opaque)->GetPictureCommon(&pic.DVDPic);
     pic.videoSurface = surf;
     pic.DVDPic.color_matrix = avctx->colorspace;
     m_bufferStats.IncDecoded();
@@ -854,6 +793,7 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame
     m_codecControl = pic.DVDPic.iFlags & (DVD_CODEC_CTRL_HURRY | DVD_CODEC_CTRL_NO_POSTPROC);
   }
 
+  int retval = 0;
   uint16_t decoded, processed, render;
   bool vpp;
   Message *msg;
@@ -862,25 +802,24 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame
     if (msg->signal == COutputControlProtocol::ERROR)
     {
       m_DisplayState = VAAPI_ERROR;
-      msg->Release();
-      return CDVDVideoCodec::VC_ERROR;
+      retval |= VC_ERROR;
     }
     msg->Release();
   }
 
-  bool drain = (m_codecControl & DVD_CODEC_CTRL_DRAIN);
-
   m_bufferStats.Get(decoded, processed, render, vpp);
-  // if all pics are drained, break the loop by setting VC_EOF
-  if (drain && decoded <= 0 && processed <= 0 && render <= 0)
-    return CDVDVideoCodec::VC_EOF;
 
-  while (true)
+  while (!retval)
   {
+    bool drain = (m_codecControl & DVD_CODEC_CTRL_DRAIN);
+    // if all pics are drained, break the loop by setting VC_BUFFER
+    if (drain && decoded <= 0 && processed <= 0 && render <= 0)
+      drain = false;
+
     // first fill the buffers to keep vaapi busy
-    if (!drain && decoded < 2 && processed < 3 && m_videoSurfaces.HasFree())
+    if (decoded < 2 && processed < 3 && m_videoSurfaces.HasFree() && !drain)
     {
-      return CDVDVideoCodec::VC_BUFFER;
+      retval |= VC_BUFFER;
     }
     else if (m_vaapiOutput.m_dataPort.ReceiveInMessage(&msg))
     {
@@ -895,9 +834,10 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame
         m_presentPicture = *(CVaapiRenderPicture**)msg->data;
         m_presentPicture->vaapi = this;
         m_bufferStats.DecRender();
-        m_bufferStats.SetParams(0, m_codecControl);
+        m_bufferStats.Get(decoded, processed, render, vpp);
+        retval |= VC_PICTURE;
         msg->Release();
-        return CDVDVideoCodec::VC_PICTURE;
+        break;
       }
       msg->Release();
     }
@@ -905,34 +845,43 @@ CDVDVideoCodec::VCReturn CDecoder::Decode(AVCodecContext* avctx, AVFrame* pFrame
     {
       if (msg->signal == COutputControlProtocol::STATS)
       {
-        msg->Release();
         m_bufferStats.Get(decoded, processed, render, vpp);
-        if (!drain && decoded < 2 && processed < 3)
-        {
-          return CDVDVideoCodec::VC_BUFFER;
-        }
       }
       else
       {
-        msg->Release();
         m_DisplayState = VAAPI_ERROR;
-        return CDVDVideoCodec::VC_ERROR;
+        retval |= VC_ERROR;
       }
+      msg->Release();
     }
 
-    if (!m_inMsgEvent.WaitMSec(2000))
+    if (decoded < 2 && processed < 3)
+    {
+      retval |= VC_BUFFER;
+    }
+
+    if (!retval && !m_inMsgEvent.WaitMSec(2000))
       break;
   }
+  if (retval & VC_PICTURE)
+  {
+    m_bufferStats.SetParams(0, m_codecControl);
+  }
 
-  CLog::Log(LOGERROR, "VAAPI::%s - timed out waiting for output message - decoded: %d, proc: %d, has free surface: %s",
-                      __FUNCTION__, decoded, processed, m_videoSurfaces.HasFree() ? "yes" : "no");
-  m_DisplayState = VAAPI_ERROR;
+  if (!retval)
+  {
+    CLog::Log(LOGERROR, "VAAPI::%s - timed out waiting for output message - decoded: %d, proc: %d, has free surface: %s",
+                        __FUNCTION__, decoded, processed, m_videoSurfaces.HasFree() ? "yes" : "no");
+    m_DisplayState = VAAPI_ERROR;
+    retval |= VC_ERROR;
+  }
 
-  return CDVDVideoCodec::VC_ERROR;
+  return retval;
 }
 
-CDVDVideoCodec::VCReturn CDecoder::Check(AVCodecContext* avctx)
+int CDecoder::Check(AVCodecContext* avctx)
 {
+  int ret = 0;
   EDisplayState state;
 
   { CSingleLock lock(m_DecoderSection);
@@ -970,24 +919,25 @@ CDVDVideoCodec::VCReturn CDecoder::Check(AVCodecContext* avctx)
     }
 
     if (state == VAAPI_RESET)
-      return CDVDVideoCodec::VC_FLUSHED;
+      return VC_FLUSHED;
     else
-      return CDVDVideoCodec::VC_ERROR;
+      return VC_ERROR;
   }
 
   if (m_getBufferError > 0 && m_getBufferError < 5)
   {
     // if there is no other error, sleep for a short while
     // in order not to drain player's message queue
-    Sleep(10);
+    if (!ret)
+      Sleep(20);
 
-    return CDVDVideoCodec::VC_NOBUFFER;
+    ret |= VC_NOBUFFER;
   }
 
-  return CDVDVideoCodec::VC_NONE;
+  return ret;
 }
 
-bool CDecoder::GetPicture(AVCodecContext* avctx, VideoPicture* picture)
+bool CDecoder::GetPicture(AVCodecContext* avctx, AVFrame* frame, DVDVideoPicture* picture)
 {
   CSingleLock lock(m_DecoderSection);
 
@@ -995,7 +945,7 @@ bool CDecoder::GetPicture(AVCodecContext* avctx, VideoPicture* picture)
     return false;
 
   *picture = m_presentPicture->DVDPic;
-  picture->hwPic = m_presentPicture;
+  picture->vaapi = m_presentPicture;
 
   return true;
 }
@@ -1060,8 +1010,9 @@ bool CDecoder::ConfigVAAPI()
   memset(&m_hwContext, 0, sizeof(vaapi_context));
 
   m_vaapiConfig.dpy = m_vaapiConfig.context->GetDisplay();
+  m_vaapiConfig.x11dsp = m_vaapiConfig.context->GetX11Display();
   m_vaapiConfig.attrib = m_vaapiConfig.context->GetAttrib(m_vaapiConfig.profile);
-  if ((m_vaapiConfig.attrib.value & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP)) == 0)
+  if ((m_vaapiConfig.attrib.value & VA_RT_FORMAT_YUV420) == 0)
   {
     CLog::Log(LOGERROR, "VAAPI - invalid yuv format %x", m_vaapiConfig.attrib.value);
     return false;
@@ -1074,12 +1025,9 @@ bool CDecoder::ConfigVAAPI()
 
   // create surfaces
   VASurfaceID surfaces[32];
-  unsigned int format = VA_RT_FORMAT_YUV420;
-  if (m_vaapiConfig.profile == VAProfileHEVCMain10)
-    format = VA_RT_FORMAT_YUV420_10BPP;
   int nb_surfaces = m_vaapiConfig.maxReferences;
   if (!CheckSuccess(vaCreateSurfaces(m_vaapiConfig.dpy,
-                                     format,
+                                     VA_RT_FORMAT_YUV420,
                                      m_vaapiConfig.surfaceWidth,
                                      m_vaapiConfig.surfaceHeight,
                                      surfaces,
@@ -1164,7 +1112,7 @@ void CDecoder::FiniVAAPIOutput()
     CheckSuccess(vaDestroyContext(m_vaapiConfig.dpy, m_vaapiConfig.contextId));
   m_vaapiConfig.contextId = VA_INVALID_ID;
 
-  // destroy surfaces
+  // detroy surfaces
   if (g_advancedSettings.CanLogComponent(LOGVIDEO))
     CLog::Log(LOGDEBUG, "VAAPI::FiniVAAPIOutput destroying %d video surfaces", m_videoSurfaces.Size());
   VASurfaceID surf;
@@ -1188,145 +1136,6 @@ void CDecoder::ReturnRenderPicture(CVaapiRenderPicture *renderPic)
 void CDecoder::ReturnProcPicture(int id)
 {
   m_vaapiOutput.m_dataPort.SendOutMessage(COutputDataProtocol::RETURNPROCPIC, &id, sizeof(int));
-}
-
-void CDecoder::CheckCaps(EGLDisplay eglDisplay)
-{
-  CVaapiConfig config;
-  if (!CVAAPIContext::EnsureContext(&config.context, nullptr))
-    return;
-
-  config.dpy = config.context->GetDisplay();
-  config.surfaceWidth = 1920;
-  config.surfaceHeight = 1080;
-  config.profile = VAProfileH264Main;
-  config.attrib = config.context->GetAttrib(config.profile);
-  if ((config.attrib.value & (VA_RT_FORMAT_YUV420 | VA_RT_FORMAT_YUV420_10BPP)) == 0)
-  {
-    config.context->Release(nullptr);
-    return;
-  }
-
-  config.configId = config.context->CreateConfig(config.profile, config.attrib);
-  if (config.configId == VA_INVALID_ID)
-  {
-    config.context->Release(nullptr);
-    return;
-  }
-
-  // create surfaces
-  VASurfaceID surface;
-  VAStatus status;
-  VAImage image;
-  VABufferInfo bufferInfo;
-
-  if (vaCreateSurfaces(config.dpy,  VA_RT_FORMAT_YUV420,
-                       config.surfaceWidth, config.surfaceHeight,
-                       &surface, 1, NULL, 0) != VA_STATUS_SUCCESS)
-  {
-    config.context->Release(nullptr);
-    return;
-  }
-
-  // check interop
-  PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
-  PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR = (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
-  if (!eglCreateImageKHR || !eglDestroyImageKHR)
-  {
-    config.context->Release(nullptr);
-    return;
-  }
-
-  status = vaDeriveImage(config.dpy, surface, &image);
-  if (status == VA_STATUS_SUCCESS)
-  {
-    memset(&bufferInfo, 0, sizeof(bufferInfo));
-    bufferInfo.mem_type = VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
-    status = vaAcquireBufferHandle(config.dpy, image.buf, &bufferInfo);
-    if (status == VA_STATUS_SUCCESS)
-    {
-      EGLImageKHR eglImage;
-      GLint attribs[23], *attrib;
-
-      attrib = attribs;
-      *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
-      *attrib++ = fourcc_code('R', '8', ' ', ' ');
-      *attrib++ = EGL_WIDTH;
-      *attrib++ = image.width;
-      *attrib++ = EGL_HEIGHT;
-      *attrib++ = image.height;
-      *attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
-      *attrib++ = (intptr_t)bufferInfo.handle;
-      *attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-      *attrib++ = image.offsets[0];
-      *attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-      *attrib++ = image.pitches[0];
-      *attrib++ = EGL_NONE;
-      eglImage = eglCreateImageKHR(eglDisplay,
-                                   EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, (EGLClientBuffer)NULL,
-                                   attribs);
-      if (eglImage)
-      {
-        eglDestroyImageKHR(eglDisplay, eglImage);
-        m_capGeneral = true;
-      }
-
-    }
-    vaDestroyImage(config.dpy, image.image_id);
-  }
-  vaDestroySurfaces(config.dpy, &surface, 1);
-
-  // check hevc
-  // create surfaces
-  if (vaCreateSurfaces(config.dpy,  VA_RT_FORMAT_YUV420_10BPP,
-                       config.surfaceWidth, config.surfaceHeight,
-                       &surface, 1, NULL, 0) != VA_STATUS_SUCCESS)
-  {
-    config.context->Release(nullptr);
-    return;
-  }
-
-  // check interop
-  status = vaDeriveImage(config.dpy, surface, &image);
-  if (status == VA_STATUS_SUCCESS)
-  {
-    memset(&bufferInfo, 0, sizeof(bufferInfo));
-    bufferInfo.mem_type = VA_SURFACE_ATTRIB_MEM_TYPE_DRM_PRIME;
-    status = vaAcquireBufferHandle(config.dpy, image.buf, &bufferInfo);
-    if (status == VA_STATUS_SUCCESS)
-    {
-      EGLImageKHR eglImage;
-      GLint attribs[23], *attrib;
-
-      attrib = attribs;
-      *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
-      *attrib++ = fourcc_code('G', 'R', '3', '2');
-      *attrib++ = EGL_WIDTH;
-      *attrib++ = (image.width +1) >> 1;
-      *attrib++ = EGL_HEIGHT;
-      *attrib++ = (image.height +1) >> 1;
-      *attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
-      *attrib++ = (intptr_t)bufferInfo.handle;
-      *attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-      *attrib++ = image.offsets[1];
-      *attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-      *attrib++ = image.pitches[1];
-      *attrib++ = EGL_NONE;
-      eglImage = eglCreateImageKHR(eglDisplay,
-                                   EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, (EGLClientBuffer)NULL,
-                                   attribs);
-      if (eglImage)
-      {
-        eglDestroyImageKHR(eglDisplay, eglImage);
-        m_capHevc = true;
-      }
-
-    }
-    vaDestroyImage(config.dpy, image.image_id);
-  }
-  vaDestroySurfaces(config.dpy, &surface, 1);
-
-  config.context->Release(nullptr);
 }
 
 //-----------------------------------------------------------------------------
@@ -1463,83 +1272,6 @@ bool CVaapiRenderPicture::GLMapSurface()
       {
         EGLint err = eglGetError();
         CLog::Log(LOGERROR, "failed to import VA buffer NV12 into EGL image: %d", err);
-        return false;
-      }
-
-      GLint format;
-
-      glGenTextures(1, &textureY);
-      glEnable(glInterop.textureTarget);
-      glBindTexture(glInterop.textureTarget, textureY);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glInterop.glEGLImageTargetTexture2DOES(glInterop.textureTarget, glInterop.eglImageY);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-
-      glGenTextures(1, &textureVU);
-      glEnable(glInterop.textureTarget);
-      glBindTexture(glInterop.textureTarget, textureVU);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-      glTexParameteri(glInterop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-      glInterop.glEGLImageTargetTexture2DOES(glInterop.textureTarget, glInterop.eglImageVU);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-
-      glBindTexture(glInterop.textureTarget, 0);
-      glDisable(glInterop.textureTarget);
-
-      break;
-    }
-    case VA_FOURCC('P','0','1','0'):
-    {
-      attrib = attribs;
-      *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
-      *attrib++ = fourcc_code('R', '1', '6', ' ');
-      *attrib++ = EGL_WIDTH;
-      *attrib++ = glInterop.vaImage.width;
-      *attrib++ = EGL_HEIGHT;
-      *attrib++ = glInterop.vaImage.height;
-      *attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
-      *attrib++ = (intptr_t)glInterop.vBufInfo.handle;
-      *attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-      *attrib++ = glInterop.vaImage.offsets[0];
-      *attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-      *attrib++ = glInterop.vaImage.pitches[0];
-      *attrib++ = EGL_NONE;
-      glInterop.eglImageY = glInterop.eglCreateImageKHR(glInterop.eglDisplay,
-                                          EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, (EGLClientBuffer)NULL,
-                                          attribs);
-      if (!glInterop.eglImageY)
-      {
-        EGLint err = eglGetError();
-        CLog::Log(LOGERROR, "failed to import VA buffer P010 into EGL image: %d", err);
-        return false;
-      }
-
-      attrib = attribs;
-      *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
-      *attrib++ = fourcc_code('G', 'R', '3', '2');
-      *attrib++ = EGL_WIDTH;
-      *attrib++ = (glInterop.vaImage.width + 1) >> 1;
-      *attrib++ = EGL_HEIGHT;
-      *attrib++ = (glInterop.vaImage.height + 1) >> 1;
-      *attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
-      *attrib++ = (intptr_t)glInterop.vBufInfo.handle;
-      *attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
-      *attrib++ = glInterop.vaImage.offsets[1];
-      *attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
-      *attrib++ = glInterop.vaImage.pitches[1];
-      *attrib++ = EGL_NONE;
-      glInterop.eglImageVU = glInterop.eglCreateImageKHR(glInterop.eglDisplay,
-                                          EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, (EGLClientBuffer)NULL,
-                                          attribs);
-      if (!glInterop.eglImageVU)
-      {
-        EGLint err = eglGetError();
-        CLog::Log(LOGERROR, "failed to import VA buffer P010 into EGL image: %d", err);
         return false;
       }
 
@@ -2168,7 +1900,6 @@ void COutput::Flush()
       pic = *((CVaapiRenderPicture**)msg->data);
       QueueReturnPicture(pic);
     }
-    msg->Release();
   }
 
   for (unsigned int i = 0; i < m_bufferPool.decodedPics.size(); i++)
@@ -2297,7 +2028,7 @@ void COutput::InitCycle()
     if (!m_pp)
     {
       m_config.stats->SetVpp(false);
-      if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_PREFERVAAPIRENDER))
+      if (!CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_PREFERVAAPIRENDER))
         m_pp = new CFFmpegPostproc();
       else
       {
@@ -2346,8 +2077,7 @@ CVaapiRenderPicture* COutput::ProcessPicture(CVaapiProcessedPicture &pic)
   {
     av_frame_move_ref(retPic->avFrame, pic.frame);
     av_frame_free(&pic.frame);
-    retPic->DVDPic.format = RENDER_FMT_VAAPI;
-    retPic->textureY = GL_NONE;
+    retPic->DVDPic.format = RENDER_FMT_VAAPINV12;
   }
   else
     return NULL;
@@ -2609,7 +2339,7 @@ void COutput::ReleaseBufferPool(bool precleanup)
     if (pic->texture)
     {
       glDeleteTextures(1, &pic->texture);
-      pic->texture = 0;
+      pic->texture = None;
     }
     av_frame_free(&pic->avFrame);
     pic->valid = false;
@@ -2638,16 +2368,12 @@ bool COutput::GLInit()
   }
 #endif
 
-// GL_TEXTURE_RECTANGLE_ARB is not available in GLES
-// ref: http://stackoverflow.com/questions/6883160/opengl-es-gl-texture-rectangle
-#ifdef HAS_GL
   if (!g_Windowing.IsExtSupported("GL_ARB_texture_non_power_of_two") &&
        g_Windowing.IsExtSupported("GL_ARB_texture_rectangle"))
   {
     m_textureTarget = GL_TEXTURE_RECTANGLE_ARB;
   }
   else
-#endif
     m_textureTarget = GL_TEXTURE_2D;
 
   eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
@@ -2669,6 +2395,7 @@ bool COutput::CheckSuccess(VAStatus status)
 
 bool COutput::CreateEGLContext()
 {
+  m_Display = g_Windowing.GetDisplay();
   EGLDisplay eglDisplay = g_Windowing.GetEGLDisplay();
   EGLContext eglMainContext = g_Windowing.GetEGLContext();
   EGLConfig eglMainConfig = g_Windowing.GetEGLConfig();
@@ -2819,15 +2546,9 @@ bool CVppPostproc::PreInit(CVaapiConfig &config, SDiMethods *methods)
 
   // create surfaces
   VASurfaceID surfaces[32];
-  unsigned int format = VA_RT_FORMAT_YUV420;
-  if (m_config.profile == VAProfileHEVCMain10)
-  {
-    format = VA_RT_FORMAT_YUV420_10BPP;
-    attrib->value.value.i = VA_FOURCC_P010;
-  }
   int nb_surfaces = NUM_RENDER_PICS;
   if (!CheckSuccess(vaCreateSurfaces(m_config.dpy,
-                                     format,
+                                     VA_RT_FORMAT_YUV420,
                                      m_config.surfaceWidth,
                                      m_config.surfaceHeight,
                                      surfaces,
@@ -3480,9 +3201,9 @@ bool CFFmpegPostproc::AddPicture(CVaapiDecodedPicture &inPic)
   m_pFilterFrameIn->top_field_first = (inPic.DVDPic.iFlags & DVP_FLAG_TOP_FIELD_FIRST) ? 1 : 0;
 
   if (inPic.DVDPic.pts == DVD_NOPTS_VALUE)
-    m_pFilterFrameIn->pts = AV_NOPTS_VALUE;
+    m_pFilterFrameIn->pkt_pts = AV_NOPTS_VALUE;
   else
-    m_pFilterFrameIn->pts = (inPic.DVDPic.pts / DVD_TIME_BASE) * AV_TIME_BASE;
+    m_pFilterFrameIn->pkt_pts = (inPic.DVDPic.pts / DVD_TIME_BASE) * AV_TIME_BASE;
 
   av_frame_get_buffer(m_pFilterFrameIn, 64);
 
@@ -3610,7 +3331,7 @@ bool CFFmpegPostproc::Compatible(EINTERLACEMETHOD method)
   else if (method == VS_INTERLACEMETHOD_RENDER_BOB)
     return true;
   else if (method == VS_INTERLACEMETHOD_NONE &&
-           !CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_PREFERVAAPIRENDER))
+           !CSettings::GetInstance().GetBool(CSettings::SETTING_VIDEOPLAYER_PREFERVAAPIRENDER))
     return true;
 
   return false;
@@ -3630,3 +3351,5 @@ bool CFFmpegPostproc::CheckSuccess(VAStatus status)
   }
   return true;
 }
+
+#endif

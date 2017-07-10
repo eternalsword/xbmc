@@ -18,6 +18,7 @@
  *
  */
 #include "system.h"
+#ifdef HAS_DBUS
 #include "DBusReserve.h"
 
 #include <dbus/dbus.h>
@@ -25,7 +26,6 @@
 #include <algorithm>
 
 #include "utils/log.h"
-#include "DBusUtil.h"
 
 /* This implements the code to exclusively acquire                  *
  * a device on the system describe at:                              *
@@ -33,9 +33,14 @@
 
 CDBusReserve::CDBusReserve()
 {
-  CDBusError error;
+  DBusError error;
+  dbus_error_init(&error);
   
-  m_conn.Connect(DBUS_BUS_SESSION);
+  m_conn = dbus_bus_get (DBUS_BUS_SESSION, &error);
+  if (!m_conn)
+    CLog::Log(LOGERROR, "CDBusReserve::CDBusReserve: Failed to get dbus conn");
+
+  dbus_error_free(&error);
 }
 
 CDBusReserve::~CDBusReserve()
@@ -45,13 +50,17 @@ CDBusReserve::~CDBusReserve()
     std::string buf = *m_devs.begin();
     ReleaseDevice(buf);
   }
+
+  if(m_conn)
+    dbus_connection_unref(m_conn);
 }
 
 bool CDBusReserve::AcquireDevice(const std::string& device)
 {
-  DBusMessagePtr msg, reply;
+  DBusMessage* msg, *reply;
   DBusMessageIter args;
-  CDBusError error;
+  DBusError error;
+  dbus_error_init (&error);
   int res;
 
   // currently only max prio is supported since 
@@ -67,15 +76,15 @@ bool CDBusReserve::AcquireDevice(const std::string& device)
 
   res = dbus_bus_request_name(m_conn, service.c_str()
                                   , DBUS_NAME_FLAG_DO_NOT_QUEUE | (prio == INT_MAX ? 0 : DBUS_NAME_FLAG_ALLOW_REPLACEMENT)
-                                  , error);
+                                  , &error);
   if(res == -1)
   {
-    CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Request name failed: %s - %s", device.c_str(), error.Name().c_str(), error.Message().c_str());
+    CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Request name failed", device.c_str());
     return false;
   }
   else if(res == DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER)
   {
-    CLog::Log(LOGDEBUG, "CDBusReserve::AcquireDevice(%s): Request name succeeded", device.c_str());
+    CLog::Log(LOGDEBUG, "CDBusReserve::AcquireDevice(%s): Request name succeded", device.c_str());
     m_devs.push_back(device);
     return true;
   }
@@ -85,39 +94,42 @@ bool CDBusReserve::AcquireDevice(const std::string& device)
     return false;
   }
 
-  msg.reset(dbus_message_new_method_call(service.c_str(), object.c_str(), interface, "RequestRelease"));
+  msg = dbus_message_new_method_call(service.c_str(), object.c_str(), interface, "RequestRelease");
   if (!msg)
   {
     CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Failed to get function", device.c_str());
     return false;
   }
 
-  dbus_message_iter_init_append(msg.get(), &args);
+  dbus_message_iter_init_append(msg, &args);
   if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &prio))
   {
     CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Failed to append arguments", device.c_str());
-    return false;
+    dbus_message_unref(msg);
   }
 
-  reply.reset(dbus_connection_send_with_reply_and_block(m_conn, msg.get(), 5000, error));
+  reply = dbus_connection_send_with_reply_and_block(m_conn, msg, 5000, &error);
   if(!reply)
   {
-    if(error.Name() == DBUS_ERROR_TIMED_OUT
-    || error.Name() == DBUS_ERROR_UNKNOWN_METHOD
-	  || error.Name() == DBUS_ERROR_NO_REPLY)
+    if(dbus_error_has_name(&error, DBUS_ERROR_TIMED_OUT)
+    || dbus_error_has_name(&error, DBUS_ERROR_UNKNOWN_METHOD)
+	  || dbus_error_has_name(&error, DBUS_ERROR_NO_REPLY))
       CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): RequestRelease was denied on call", device.c_str());
     else
-      CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): RequestRelease call failed: %s - %s", device.c_str(), error.Name().c_str(), error.Message().c_str());
+      CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): RequestRelease call failed", device.c_str());
 
+    dbus_message_unref(msg);
     return false;
   }
+  dbus_message_unref(msg);
 
   dbus_bool_t allowed;
-  if(!dbus_message_get_args(reply.get(), error, DBUS_TYPE_BOOLEAN, &allowed, DBUS_TYPE_INVALID))
+  if(!dbus_message_get_args(reply, &error, DBUS_TYPE_BOOLEAN, &allowed, DBUS_TYPE_INVALID))
   {
     CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Failed to get reply arguments", device.c_str());
-    return false;
+    dbus_message_unref(reply);
   }
+  dbus_message_unref(reply);
 
   if(!allowed)
   {
@@ -129,10 +141,10 @@ bool CDBusReserve::AcquireDevice(const std::string& device)
                                   , DBUS_NAME_FLAG_DO_NOT_QUEUE 
                                   | (prio == INT_MAX ? 0 : DBUS_NAME_FLAG_ALLOW_REPLACEMENT)
                                   | DBUS_NAME_FLAG_REPLACE_EXISTING
-                                  , error);
+                                  , &error);
   if(res == -1)
   {
-    CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Request name failed after release: %s - %s", device.c_str(), error.Name().c_str(), error.Message().c_str());
+    CLog::Log(LOGERROR, "CDBusReserve::AcquireDevice(%s): Request name failed after release", device.c_str());
     return false;
   }
 
@@ -144,17 +156,20 @@ bool CDBusReserve::AcquireDevice(const std::string& device)
 
 bool CDBusReserve::ReleaseDevice(const std::string& device)
 {
+  DBusError error;
+  dbus_error_init (&error);
+
   std::vector<std::string>::iterator it = find(m_devs.begin(), m_devs.end(), device);
   if(it == m_devs.end())
   {
-    CLog::Log(LOGDEBUG, "CDBusReserve::ReleaseDevice(%s): device wasn't acquired here", device.c_str());
+    CLog::Log(LOGDEBUG, "CDBusReserve::ReleaseDevice(%s): device wasn't aquired here", device.c_str());
     return false;
   }
   m_devs.erase(it);
 
   std::string service = "org.freedesktop.ReserveDevice1." + device;
 
-  int res = dbus_bus_release_name(m_conn, service.c_str(), nullptr);
+  int res = dbus_bus_release_name(m_conn, service.c_str(), &error);
   if(res == DBUS_RELEASE_NAME_REPLY_RELEASED)
     CLog::Log(LOGDEBUG, "CDBusReserve::ReleaseDevice(%s): Released", device.c_str());
   else if(res == DBUS_RELEASE_NAME_REPLY_NON_EXISTENT)
@@ -164,3 +179,5 @@ bool CDBusReserve::ReleaseDevice(const std::string& device)
 
   return res == DBUS_RELEASE_NAME_REPLY_RELEASED;
 }
+
+#endif

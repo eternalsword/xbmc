@@ -20,31 +20,26 @@
 
 #include "platform/MessagePrinter.h"
 #include "CompileInfo.h"
-#include "platform/win32/CharsetConverter.h"
 
 #include <windows.h>
 
 void CMessagePrinter::DisplayMessage(const std::string& message)
 {
-  using KODI::PLATFORM::WINDOWS::ToW;
-  MessageBox(nullptr, ToW(message).c_str(), ToW(CCompileInfo::GetAppName()).c_str(), MB_OK | MB_ICONINFORMATION);
+  MessageBox(NULL, message.c_str(), CCompileInfo::GetAppName(), MB_OK | MB_ICONINFORMATION);
 }
 
 void CMessagePrinter::DisplayWarning(const std::string& warning)
 {
-  using KODI::PLATFORM::WINDOWS::ToW;
-  MessageBox(nullptr, ToW(warning).c_str(), ToW(CCompileInfo::GetAppName()).c_str(), MB_OK | MB_ICONWARNING);
+  MessageBox(NULL, warning.c_str(), CCompileInfo::GetAppName(), MB_OK | MB_ICONWARNING);
 }
 
 void CMessagePrinter::DisplayError(const std::string& error)
 {
-  using KODI::PLATFORM::WINDOWS::ToW;
-  MessageBox(nullptr, ToW(error).c_str(), ToW(CCompileInfo::GetAppName()).c_str(), MB_OK | MB_ICONERROR);
+  MessageBox(NULL, error.c_str(), CCompileInfo::GetAppName(), MB_OK | MB_ICONERROR);
 }
 
 void CMessagePrinter::DisplayHelpMessage(const std::vector<std::pair<std::string, std::string>>& help)
 {
-  using KODI::PLATFORM::WINDOWS::ToW;
   //very crude implementation, pretty it up when possible
   std::string message;
   for (const auto& line : help)
@@ -52,5 +47,5 @@ void CMessagePrinter::DisplayHelpMessage(const std::vector<std::pair<std::string
     message.append(line.first + "\t" + line.second + "\r\n");
   }
 
-  MessageBox(nullptr, ToW(message).c_str(), ToW(CCompileInfo::GetAppName()).c_str(), MB_OK | MB_ICONINFORMATION);
+  MessageBox(NULL, message.c_str(), CCompileInfo::GetAppName(), MB_OK | MB_ICONINFORMATION);
 }

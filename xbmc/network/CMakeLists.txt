@@ -1,4 +1,5 @@
-set(SOURCES DNSNameCache.cpp
+set(SOURCES cddb.cpp
+            DNSNameCache.cpp
             EventClient.cpp
             EventPacket.cpp
             EventServer.cpp
@@ -14,7 +15,8 @@ set(SOURCES DNSNameCache.cpp
             ZeroconfBrowser.cpp
             Zeroconf.cpp)
 
-set(HEADERS DNSNameCache.h
+set(HEADERS cddb.h
+            DNSNameCache.h
             EventClient.h
             EventPacket.h
             EventServer.h
@@ -30,11 +32,6 @@ set(HEADERS DNSNameCache.h
             Zeroconf.h
             ZeroconfBrowser.h)
 
-if(ENABLE_OPTICAL)
-  list(APPEND SOURCES cddb.cpp)
-  list(APPEND HEADERS cddb.h)
-endif()
-
 if(PLIST_FOUND)
   list(APPEND SOURCES AirPlayServer.cpp)
   list(APPEND HEADERS AirPlayServer.h
@@ -48,6 +45,3 @@ if(SHAIRPLAY_FOUND)
 endif()
 
 core_add_library(network)
-if(BLUETOOTH_FOUND)
-  target_compile_definitions(${CORE_LIBRARY} PRIVATE -DHAVE_LIBBLUETOOTH=1)
-endif()

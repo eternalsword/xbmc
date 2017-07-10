@@ -42,31 +42,31 @@ class CPipeFile : public IFile, public IPipeListener
 {
 public:
   CPipeFile();
-  ~CPipeFile() override;
-  int64_t GetPosition() override;
-  int64_t GetLength() override;
+  virtual ~CPipeFile();
+  virtual int64_t GetPosition();
+  virtual int64_t GetLength();
   virtual void SetLength(int64_t len);
-  bool Open(const CURL& url) override;
-  bool Exists(const CURL& url) override;
-  int Stat(const CURL& url, struct __stat64* buffer) override;
-  int Stat(struct __stat64* buffer) override;
-  ssize_t Read(void* lpBuf, size_t uiBufSize) override;
-  ssize_t Write(const void* lpBuf, size_t uiBufSize) override;
-  int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET) override;
-  void Close() override;
-  void Flush() override;
-  virtual int64_t GetAvailableRead();
+  virtual bool Open(const CURL& url);
+  virtual bool Exists(const CURL& url);
+  virtual int Stat(const CURL& url, struct __stat64* buffer);
+  virtual int Stat(struct __stat64* buffer);
+  virtual ssize_t Read(void* lpBuf, size_t uiBufSize);
+  virtual ssize_t Write(const void* lpBuf, size_t uiBufSize);
+  virtual int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET);
+  virtual void Close();
+  virtual void Flush();
+  virtual int64_t	GetAvailableRead();
 
-  bool OpenForWrite(const CURL& url, bool bOverWrite = false) override;
+  virtual bool OpenForWrite(const CURL& url, bool bOverWrite = false);
 
-  bool Delete(const CURL& url) override;
-  bool Rename(const CURL& url, const CURL& urlnew) override;
-  int IoControl(EIoControl request, void* param) override;
+  virtual bool Delete(const CURL& url);
+  virtual bool Rename(const CURL& url, const CURL& urlnew);
+  virtual int IoControl(int request, void* param);
   
   std::string GetName() const;
   
-  void OnPipeOverFlow() override;
-  void OnPipeUnderFlow() override;
+  virtual void OnPipeOverFlow();
+  virtual void OnPipeUnderFlow();
 
   void AddListener(IPipeListener *l);
   void RemoveListener(IPipeListener *l);
@@ -76,7 +76,7 @@ public:
   bool IsEmpty();
   bool IsClosed();
   
-  void SetOpenThreshold(int threshold);
+  void SetOpenThreashold(int threashold);
 
 protected:
   int64_t m_pos;

@@ -23,7 +23,10 @@
 #include <libxslt/xslt.h>
 #include <libxslt/transform.h>
 
-#ifndef TARGET_WINDOWS
+#ifdef TARGET_WINDOWS
+#pragma comment(lib, "libxslt.lib")
+#pragma comment(lib, "libxml2.lib")
+#else
 #include <iostream>
 #endif
 

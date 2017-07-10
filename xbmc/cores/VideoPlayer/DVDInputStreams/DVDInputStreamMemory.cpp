@@ -48,7 +48,7 @@ bool CDVDInputStreamMemory::Open()
   return true;
 }
 
-// close file and reset everything
+// close file and reset everyting
 void CDVDInputStreamMemory::Close()
 {
   if (m_pData) delete[] m_pData;

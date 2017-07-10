@@ -61,7 +61,7 @@ class CGUIPassword : public ISettingCallback
 {
 public:
   CGUIPassword(void);
-  ~CGUIPassword(void) override;
+  virtual ~CGUIPassword(void);
   bool IsItemUnlocked(CFileItem* pItem, const std::string &strType);
   bool IsItemUnlocked(CMediaSource* pItem, const std::string &strType);
   bool CheckLock(LockType btnType, const std::string& strPassword, int iHeading);
@@ -87,7 +87,7 @@ public:
   void RemoveSourceLocks();
   bool IsDatabasePathUnlocked(const std::string& strPath, VECSOURCES& vecSources);
 
-  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingAction(const CSetting *setting) override;
 
   bool bMasterUser;
   int iMasterLockRetriesLeft;

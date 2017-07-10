@@ -27,19 +27,19 @@ class CPosixMountProvider : public IStorageProvider
 {
 public:
   CPosixMountProvider();
-  ~CPosixMountProvider() override = default;
+  virtual ~CPosixMountProvider() { }
 
-  void Initialize() override;
-  void Stop() override { }
+  virtual void Initialize();
+  virtual void Stop() { }
 
-  void GetLocalDrives(VECSOURCES &localDrives) override { GetDrives(localDrives); }
-  void GetRemovableDrives(VECSOURCES &removableDrives) override { /*GetDrives(removableDrives);*/ }
+  virtual void GetLocalDrives(VECSOURCES &localDrives) { GetDrives(localDrives); }
+  virtual void GetRemovableDrives(VECSOURCES &removableDrives) { /*GetDrives(removableDrives);*/ }
 
-  std::vector<std::string> GetDiskUsage() override;
+  virtual std::vector<std::string> GetDiskUsage();
 
-  bool Eject(const std::string& mountpath) override;
+  virtual bool Eject(const std::string& mountpath);
 
-  bool PumpDriveChangeEvents(IStorageEventsCallback *callback) override;
+  virtual bool PumpDriveChangeEvents(IStorageEventsCallback *callback);
 private:
   void GetDrives(VECSOURCES &drives);
 

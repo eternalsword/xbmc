@@ -98,39 +98,37 @@ void CGUITextureGLES::Begin(color_t color)
 
 void CGUITextureGLES::End()
 {
-  if (m_packedVertices.size())
+  GLint posLoc  = g_Windowing.GUIShaderGetPos();
+  GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
+  GLint tex1Loc = g_Windowing.GUIShaderGetCoord1();
+  GLint uniColLoc = g_Windowing.GUIShaderGetUniCol();
+
+  if(uniColLoc >= 0)
   {
-    GLint posLoc  = g_Windowing.GUIShaderGetPos();
-    GLint tex0Loc = g_Windowing.GUIShaderGetCoord0();
-    GLint tex1Loc = g_Windowing.GUIShaderGetCoord1();
-    GLint uniColLoc = g_Windowing.GUIShaderGetUniCol();
-
-    if(uniColLoc >= 0)
-    {
-      glUniform4f(uniColLoc,(m_col[0] / 255.0f), (m_col[1] / 255.0f), (m_col[2] / 255.0f), (m_col[3] / 255.0f));
-    }
-
-    if(m_diffuse.size())
-    {
-      glVertexAttribPointer(tex1Loc, 2, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, u2));
-      glEnableVertexAttribArray(tex1Loc);
-    }
-    glVertexAttribPointer(posLoc, 3, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, x));
-    glEnableVertexAttribArray(posLoc);
-    glVertexAttribPointer(tex0Loc, 2, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, u1));
-    glEnableVertexAttribArray(tex0Loc);
-
-    glDrawElements(GL_TRIANGLES, m_packedVertices.size()*6 / 4, GL_UNSIGNED_SHORT, m_idx.data());
-
-    if (m_diffuse.size())
-      glDisableVertexAttribArray(tex1Loc);
-
-    glDisableVertexAttribArray(posLoc);
-    glDisableVertexAttribArray(tex0Loc);
+    glUniform4f(uniColLoc,(m_col[0] / 255.0f), (m_col[1] / 255.0f), (m_col[2] / 255.0f), (m_col[3] / 255.0f));
   }
 
+  if(m_diffuse.size())
+  {
+    glVertexAttribPointer(tex1Loc, 2, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, u2));
+    glEnableVertexAttribArray(tex1Loc);
+  }
+  glVertexAttribPointer(posLoc, 3, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, x));
+  glEnableVertexAttribArray(posLoc);
+  glVertexAttribPointer(tex0Loc, 2, GL_FLOAT, 0, sizeof(PackedVertex), (char*)&m_packedVertices[0] + offsetof(PackedVertex, u1));
+  glEnableVertexAttribArray(tex0Loc);
+
+  glDrawElements(GL_TRIANGLES, m_packedVertices.size()*6 / 4, GL_UNSIGNED_SHORT, m_idx.data());
+
   if (m_diffuse.size())
+  {
+    glDisableVertexAttribArray(tex1Loc);
     glActiveTexture(GL_TEXTURE0);
+  }
+
+  glDisableVertexAttribArray(posLoc);
+  glDisableVertexAttribArray(tex0Loc);
+
   glEnable(GL_BLEND);
   g_Windowing.DisableGUIShader();
 }

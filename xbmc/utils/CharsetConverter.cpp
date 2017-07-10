@@ -20,6 +20,7 @@
 
 #include "CharsetConverter.h"
 
+#include <cerrno>
 #include <algorithm>
 
 #include <iconv.h>
@@ -31,8 +32,13 @@
 #include "settings/lib/Setting.h"
 #include "settings/Settings.h"
 #include "system.h"
+#include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 #include "utils/Utf8Utils.h"
+
+#if !defined(TARGET_WINDOWS) && defined(HAVE_CONFIG_H)
+  #include "config.h"
+#endif
 
 #ifdef WORDS_BIGENDIAN
   #define ENDIAN_SUFFIX "BE"
@@ -53,8 +59,10 @@
   #define UTF8_SOURCE "UTF-8"
   #define WCHAR_CHARSET UTF16_CHARSET 
 #if _DEBUG
+  #pragma comment(lib, "libfribidi.lib")
   #pragma comment(lib, "libiconvd.lib")
 #else
+  #pragma comment(lib, "libfribidi.lib")
   #pragma comment(lib, "libiconv.lib")
 #endif
 #elif defined(TARGET_ANDROID)
@@ -551,7 +559,7 @@ static struct SCharsetMapping
   , { "CP1255", "Hebrew (Windows)" }
   , { "CP1256", "Arabic (Windows)" }
   , { "CP1257", "Baltic (Windows)" }
-  , { "CP1258", "Vietnamese (Windows)" }
+  , { "CP1258", "Vietnamesse (Windows)" }
   , { "CP874", "Thai (Windows)" }
   , { "BIG5", "Chinese Traditional (Big5)" }
   , { "GBK", "Chinese Simplified (GBK)" }
@@ -561,9 +569,11 @@ static struct SCharsetMapping
   , { NULL, NULL }
 };
 
-CCharsetConverter::CCharsetConverter() = default;
+CCharsetConverter::CCharsetConverter()
+{
+}
 
-void CCharsetConverter::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CCharsetConverter::OnSettingChanged(const CSetting* setting)
 {
   if (setting == NULL)
     return;
@@ -852,7 +862,7 @@ bool CCharsetConverter::utf8logicalToVisualBiDi(const std::string& utf8StringSrc
   return CInnerConverter::stdConvert(Utf32ToUtf8, utf32flipped, utf8StringDst, failOnBadString);
 }
 
-void CCharsetConverter::SettingOptionsCharsetsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> >& list, std::string& current, void *data)
+void CCharsetConverter::SettingOptionsCharsetsFiller(const CSetting* setting, std::vector< std::pair<std::string, std::string> >& list, std::string& current, void *data)
 {
   std::vector<std::string> vecCharsets = g_charsetConverter.getCharsetLabels();
   sort(vecCharsets.begin(), vecCharsets.end(), sortstringbyname());

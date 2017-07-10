@@ -27,47 +27,53 @@
 
 #include <vector>
 
-#include "GUIControlLookup.h"
+#include "GUIControl.h"
 
 /*!
  \ingroup controls
  \brief group of controls, useful for remembering last control + animating/hiding together
  */
-class CGUIControlGroup : public CGUIControlLookup
+class CGUIControlGroup : public CGUIControl
 {
 public:
   CGUIControlGroup();
   CGUIControlGroup(int parentID, int controlID, float posX, float posY, float width, float height);
   CGUIControlGroup(const CGUIControlGroup &from);
-  ~CGUIControlGroup(void) override;
-  CGUIControlGroup *Clone() const override { return new CGUIControlGroup(*this); };
+  virtual ~CGUIControlGroup(void);
+  virtual CGUIControlGroup *Clone() const { return new CGUIControlGroup(*this); };
 
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  void RenderEx() override;
-  bool OnAction(const CAction &action) override;
-  bool OnMessage(CGUIMessage& message) override;
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual void RenderEx();
+  virtual bool OnAction(const CAction &action);
+  virtual bool OnMessage(CGUIMessage& message);
   virtual bool SendControlMessage(CGUIMessage& message);
-  bool HasFocus() const override;
-  void AllocResources() override;
-  void FreeResources(bool immediately = false) override;
-  void DynamicResourceAlloc(bool bOnOff) override;
-  bool CanFocus() const override;
+  virtual bool HasFocus() const;
+  virtual void AllocResources();
+  virtual void FreeResources(bool immediately = false);
+  virtual void DynamicResourceAlloc(bool bOnOff);
+  virtual bool CanFocus() const;
 
-  EVENT_RESULT SendMouseEvent(const CPoint &point, const CMouseEvent &event) override;
-  void UnfocusFromPoint(const CPoint &point) override;
+  virtual EVENT_RESULT SendMouseEvent(const CPoint &point, const CMouseEvent &event);
+  virtual void UnfocusFromPoint(const CPoint &point);
 
-  void SetInitialVisibility() override;
+  virtual void SetInitialVisibility();
 
-  bool IsAnimating(ANIMATION_TYPE anim) override;
-  bool HasAnimation(ANIMATION_TYPE anim) override;
-  void QueueAnimation(ANIMATION_TYPE anim) override;
-  void ResetAnimation(ANIMATION_TYPE anim) override;
-  void ResetAnimations() override;
+  virtual bool IsAnimating(ANIMATION_TYPE anim);
+  virtual bool HasAnimation(ANIMATION_TYPE anim);
+  virtual void QueueAnimation(ANIMATION_TYPE anim);
+  virtual void ResetAnimation(ANIMATION_TYPE anim);
+  virtual void ResetAnimations();
+
+  virtual bool HasID(int id) const;
+  virtual bool HasVisibleID(int id) const;
 
   int GetFocusedControlID() const;
   CGUIControl *GetFocusedControl() const;
+  const CGUIControl *GetControl(int id) const;
+  CGUIControl *GetControl(int id);
   virtual CGUIControl *GetFirstFocusableControl(int id);
+  void GetContainers(std::vector<CGUIControl *> &containers) const;
 
   virtual void AddControl(CGUIControl *control, int position = -1);
   bool InsertControl(CGUIControl *control, const CGUIControl *insertPoint);
@@ -76,20 +82,36 @@ public:
   void SetDefaultControl(int id, bool always) { m_defaultControl = id; m_defaultAlways = always; };
   void SetRenderFocusedLast(bool renderLast) { m_renderFocusedLast = renderLast; };
 
-  void SaveStates(std::vector<CControlState> &states) override;
+  virtual void SaveStates(std::vector<CControlState> &states);
 
-  bool IsGroup() const override { return true; };
+  virtual bool IsGroup() const { return true; };
 
 #ifdef _DEBUG
-  void DumpTextureUse() override;
+  virtual void DumpTextureUse();
 #endif
 protected:
+  /*!
+   \brief Check whether a given control is valid
+   Runs through controls and returns whether this control is valid.  Only functional
+   for controls with non-zero id.
+   \param control to check
+   \return true if the control is valid, false otherwise.
+   */
+  bool IsValidControl(const CGUIControl *control) const;
+
   // sub controls
-  std::vector<CGUIControl *> m_children, m_idCollector;
+  std::vector<CGUIControl *> m_children;
   typedef std::vector<CGUIControl *>::iterator iControls;
   typedef std::vector<CGUIControl *>::const_iterator ciControls;
   typedef std::vector<CGUIControl *>::reverse_iterator rControls;
   typedef std::vector<CGUIControl *>::const_reverse_iterator crControls;
+
+  // fast lookup by id
+  typedef std::multimap<int, CGUIControl *> LookupMap;
+  void AddLookup(CGUIControl *control);
+  void RemoveLookup(CGUIControl *control);
+  const LookupMap &GetLookup() const { return m_lookup; };
+  LookupMap m_lookup;
 
   int  m_defaultControl;
   bool m_defaultAlways;

@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2016-2017 Team Kodi
+ *      Copyright (C) 2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -25,8 +25,6 @@
 
 #include <string>
 
-namespace KODI
-{
 namespace GAME
 {
   class CGUIFeatureButton : public CGUIButtonControl,
@@ -39,7 +37,7 @@ namespace GAME
                       const CControllerFeature& feature,
                       unsigned int index);
 
-    virtual ~CGUIFeatureButton() = default;
+    virtual ~CGUIFeatureButton(void) { }
 
     // implementation of CGUIControl via CGUIButtonControl
     virtual void OnUnFocus(void) override;
@@ -63,5 +61,4 @@ namespace GAME
   private:
     IConfigurationWizard* const  m_wizard;
   };
-}
 }

@@ -54,17 +54,6 @@ public:
   int m_data;
 };
 
-struct GUICONTROLSTATS
-{
-  unsigned int nCountTotal;
-  unsigned int nCountVisible;
-
-  void Reset()
-  {
-    nCountTotal = nCountVisible = 0;
-  };
-};
-
 /*!
  \brief Results of OnMouseEvent()
  Any value not equal to EVENT_RESULT_UNHANDLED indicates that the event was handled.
@@ -164,6 +153,8 @@ public:
   virtual bool OnMessage(CGUIMessage& message);
   virtual int GetID(void) const;
   virtual void SetID(int id) { m_controlID = id; };
+  virtual bool HasID(int id) const;
+  virtual bool HasVisibleID(int id) const;
   int GetParentID() const;
   virtual bool HasFocus() const;
   virtual void AllocResources();
@@ -185,8 +176,7 @@ public:
   virtual float GetWidth() const;
   virtual float GetHeight() const;
 
-  void MarkDirtyRegion(const unsigned int dirtyState = DIRTY_STATE_CONTROL);
-  bool IsControlDirty() const { return m_controlDirtyState != 0; };
+  void MarkDirtyRegion();
 
   /*! \brief return the render region in screen coordinates of this control
    */
@@ -205,7 +195,7 @@ public:
 
   /*! \brief Set actions to perform on navigation
    Navigations are set if replace is true or if there is no previously set action
-   \param actionID id of the navigation action
+   \param actionID id of the nagivation action
    \param action CGUIAction to set
    \param replace Actions are set only if replace is true or there is no previously set action.  Defaults to true
    \sa SetNavigationActions
@@ -227,7 +217,7 @@ public:
   void SetVisibleCondition(const std::string &expression, const std::string &allowHiddenFocus = "");
   bool HasVisibleCondition() const { return m_visibleCondition != NULL; };
   void SetEnableCondition(const std::string &expression);
-  virtual void UpdateVisibility(const CGUIListItem *item);
+  virtual void UpdateVisibility(const CGUIListItem *item = NULL);
   virtual void SetInitialVisibility();
   virtual void SetEnabled(bool bEnable);
   virtual void SetInvalid() { m_bInvalidated = true; };
@@ -256,11 +246,6 @@ public:
   void SetParentControl(CGUIControl *control) { m_parentControl = control; };
   CGUIControl *GetParentControl(void) const { return m_parentControl; };
   virtual void SaveStates(std::vector<CControlState> &states);
-  virtual CGUIControl *GetControl(int id, std::vector<CGUIControl*> *idCollector = nullptr);
-
-
-  void SetControlStats(GUICONTROLSTATS *controlStats) { m_controlStats = controlStats; };
-  virtual void UpdateControlStats();
 
   enum GUICONTROLTYPES {
     GUICONTROL_UNKNOWN,
@@ -350,7 +335,6 @@ protected:
   bool m_bAllocated;
   bool m_pulseOnSelect;
   GUICONTROLTYPES ControlType;
-  GUICONTROLSTATS *m_controlStats;
 
   CGUIControl *m_parentControl;   // our parent control if we're part of a group
 
@@ -375,10 +359,7 @@ protected:
   TransformMatrix m_transform;
   TransformMatrix m_cachedTransform; // Contains the absolute transform the control
 
-  static const unsigned int DIRTY_STATE_CONTROL = 1; //This control is dirty
-  static const unsigned int DIRTY_STATE_CHILD = 2; //One / more children are dirty
-
-  unsigned int  m_controlDirtyState;
+  bool  m_controlIsDirty;
   CRect m_renderRegion;         // In screen coordinates
 };
 

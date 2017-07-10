@@ -48,7 +48,9 @@ CGUIDialogSelect::CGUIDialogSelect(int windowId)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogSelect::~CGUIDialogSelect(void) = default;
+CGUIDialogSelect::~CGUIDialogSelect(void)
+{
+}
 
 bool CGUIDialogSelect::OnMessage(CGUIMessage& message)
 {

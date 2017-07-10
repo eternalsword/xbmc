@@ -34,28 +34,27 @@ class CProcessInfo;
 class CDVDAudioCodecPassthrough : public CDVDAudioCodec
 {
 public:
-  CDVDAudioCodecPassthrough(CProcessInfo &processInfo, CAEStreamInfo::DataType streamType);
+  CDVDAudioCodecPassthrough(CProcessInfo &processInfo);
   virtual ~CDVDAudioCodecPassthrough();
 
-  virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) override;
-  virtual void Dispose() override;
-  virtual bool AddData(const DemuxPacket &packet) override;
-  virtual void GetData(DVDAudioFrame &frame) override;
-  virtual int GetData(uint8_t** dst) override;
-  virtual void Reset() override;
-  virtual AEAudioFormat GetFormat() override{ return m_format; }
-  virtual bool NeedPassthrough() override { return true; }
-  virtual const char* GetName() override { return "passthrough"; }
-  virtual int GetBufferSize() override;
-
+  virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
+  virtual void Dispose();
+  virtual int Decode(uint8_t* pData, int iSize, double dts, double pts);
+  virtual void GetData(DVDAudioFrame &frame);
+  virtual int GetData(uint8_t** dst);
+  virtual void Reset();
+  virtual AEAudioFormat GetFormat() { return m_format; }
+  virtual bool NeedPassthrough() { return true; }
+  virtual const char* GetName() { return "passthrough"; }
+  virtual int GetBufferSize();
 private:
   CAEStreamParser m_parser;
   uint8_t* m_buffer;
   unsigned int m_bufferSize;
-  unsigned int m_dataSize = 0;
+  unsigned int m_dataSize;
   AEAudioFormat m_format;
   uint8_t m_backlogBuffer[61440];
-  unsigned int m_backlogSize = 0;
+  unsigned int m_backlogSize;
   double m_currentPts;
   double m_nextPts;
 

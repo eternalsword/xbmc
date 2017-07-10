@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,23 +19,17 @@
  */
 
 #include "FeatureHandling.h"
-#include "games/controllers/Controller.h"
-#include "games/controllers/ControllerManager.h"
 #include "input/joysticks/DriverPrimitive.h"
 #include "input/joysticks/IButtonMap.h"
 #include "input/joysticks/IInputHandler.h"
 #include "threads/SystemClock.h"
 #include "utils/log.h"
-#include "ServiceBroker.h"
 
 #include <vector>
 
-using namespace KODI;
 using namespace JOYSTICK;
 
 #define ANALOG_DIGITAL_THRESHOLD  0.5f
-#define DISCRETE_ANALOG_RAMPUP_TIME_MS  1500
-#define DISCRETE_ANALOG_START_VALUE     0.3f
 
 // --- CJoystickFeature --------------------------------------------------------
 
@@ -53,7 +47,11 @@ bool CJoystickFeature::AcceptsInput(bool bActivation)
 
   if (m_bEnabled)
   {
-    if (m_handler->AcceptsInput(m_name))
+    if (m_handler->AcceptsInput())
+      bAcceptsInput = true;
+
+    // Avoid sticking
+    if (!bActivation)
       bAcceptsInput = true;
   }
 
@@ -64,135 +62,90 @@ bool CJoystickFeature::AcceptsInput(bool bActivation)
 
 CScalarFeature::CScalarFeature(const FeatureName& name, IInputHandler* handler, IButtonMap* buttonMap) :
   CJoystickFeature(name, handler, buttonMap),
-  m_inputType(INPUT_TYPE::UNKNOWN),
+  m_inputType(handler->GetInputType(name)),
   m_bDigitalState(false),
-  m_motionStartTimeMs(0),
-  m_analogState(0.0f),
-  m_bActivated(false),
-  m_bDiscrete(true)
+  m_bDigitalHandled(false),
+  m_holdStartTimeMs(0),
+  m_analogState(0.0f)
 {
-  GAME::ControllerPtr controller = CServiceBroker::GetGameControllerManager().GetController(handler->ControllerID());
-  if (controller)
-    m_inputType = controller->GetInputType(name);
 }
 
 bool CScalarFeature::OnDigitalMotion(const CDriverPrimitive& source, bool bPressed)
 {
-  bool bHandled = false;
+  if (!AcceptsInput(bPressed))
+    return false;
 
   if (m_inputType == INPUT_TYPE::DIGITAL)
-    bHandled = OnDigitalMotion(bPressed);
+    OnDigitalMotion(bPressed);
   else if (m_inputType == INPUT_TYPE::ANALOG)
-    bHandled = OnAnalogMotion(bPressed ? 1.0f : 0.0f);
-
-  return bHandled && AcceptsInput(bPressed);
-}
-
-bool CScalarFeature::OnAnalogMotion(const CDriverPrimitive& source, float magnitude)
-{
-  // Update activated status
-  if (magnitude > 0.0f)
-    m_bActivated = true;
-
-  // Update discrete status
-  if (magnitude != 0.0f && magnitude != 1.0f)
-    m_bDiscrete = false;
-
-  bool bHandled = false;
-
-  if (m_inputType == INPUT_TYPE::DIGITAL)
-    bHandled = OnDigitalMotion(magnitude >= ANALOG_DIGITAL_THRESHOLD);
-  else if (m_inputType == INPUT_TYPE::ANALOG)
-    bHandled = OnAnalogMotion(magnitude);
-
-  return bHandled && AcceptsInput(magnitude > 0.0f);
-}
-
-void CScalarFeature::ProcessMotions(void)
-{
-  if (m_inputType == INPUT_TYPE::DIGITAL && m_bDigitalState)
-    ProcessDigitalMotion();
-  else if (m_inputType == INPUT_TYPE::ANALOG)
-    ProcessAnalogMotion();
-}
-
-bool CScalarFeature::OnDigitalMotion(bool bPressed)
-{
-  if (m_bDigitalState != bPressed)
-  {
-    m_bDigitalState = bPressed;
-    m_motionStartTimeMs = 0; // This is set in ProcessMotions()
-
-    CLog::Log(LOGDEBUG, "FEATURE [ %s ] on %s %s", m_name.c_str(), m_handler->ControllerID().c_str(),
-              bPressed ? "pressed" : "released");
-
-    return m_handler->OnButtonPress(m_name, bPressed);
-  }
-
-  return false;
-}
-
-bool CScalarFeature::OnAnalogMotion(float magnitude)
-{
-  const bool bActivated = (magnitude != 0.0f);
-
-  // Update analog state
-  m_analogState = magnitude;
-
-  // Update motion time
-  if (!bActivated)
-    m_motionStartTimeMs = 0;
-  else if (m_motionStartTimeMs == 0)
-    m_motionStartTimeMs = XbmcThreads::SystemClockMillis();
-
-  // Log activation/deactivation
-  if (m_bDigitalState != bActivated)
-  {
-    m_bDigitalState = bActivated;
-    CLog::Log(LOGDEBUG, "FEATURE [ %s ] on %s %s", m_name.c_str(), m_handler->ControllerID().c_str(),
-              bActivated ? "activated" : "deactivated");
-  }
+    OnAnalogMotion(bPressed ? 1.0f : 0.0f);
 
   return true;
 }
 
-void CScalarFeature::ProcessDigitalMotion()
+bool CScalarFeature::OnAnalogMotion(const CDriverPrimitive& source, float magnitude)
 {
-  if (m_motionStartTimeMs == 0)
+  if (!AcceptsInput(magnitude != 0.0f))
+    return false;
+
+  if (m_inputType == INPUT_TYPE::DIGITAL)
+    OnDigitalMotion(magnitude >= ANALOG_DIGITAL_THRESHOLD);
+  else if (m_inputType == INPUT_TYPE::ANALOG)
+    OnAnalogMotion(magnitude);
+
+  return true;
+}
+
+void CScalarFeature::ProcessMotions(void)
+{
+  if (m_bDigitalState && m_bDigitalHandled)
   {
-    // Button was just pressed, record start time and exit (button press event
-    // was already sent this frame)
-    m_motionStartTimeMs = XbmcThreads::SystemClockMillis();
-  }
-  else
-  {
-    // Button has been pressed more than one event frame
-    const unsigned int elapsed = XbmcThreads::SystemClockMillis() - m_motionStartTimeMs;
-    m_handler->OnButtonHold(m_name, elapsed);
+    if (m_holdStartTimeMs == 0)
+    {
+      // Button was just pressed, record start time and exit
+      m_holdStartTimeMs = XbmcThreads::SystemClockMillis();
+    }
+    else
+    {
+      // Button has been pressed more than one event frame
+      const unsigned int elapsed = XbmcThreads::SystemClockMillis() - m_holdStartTimeMs;
+      m_handler->OnButtonHold(m_name, elapsed);
+    }
   }
 }
 
-void CScalarFeature::ProcessAnalogMotion()
+void CScalarFeature::OnDigitalMotion(bool bPressed)
 {
-  float magnitude = m_analogState;
-
-  // Calculate time elapsed since motion began
-  unsigned int elapsed = 0;
-  if (m_motionStartTimeMs > 0)
-    elapsed = XbmcThreads::SystemClockMillis() - m_motionStartTimeMs;
-
-  // If analog value is discrete, ramp up magnitude
-  if (m_bActivated && m_bDiscrete)
+  if (m_bDigitalState != bPressed)
   {
-    if (elapsed < DISCRETE_ANALOG_RAMPUP_TIME_MS)
-    {
-      magnitude *= static_cast<float>(elapsed) / DISCRETE_ANALOG_RAMPUP_TIME_MS;
-      if (magnitude < DISCRETE_ANALOG_START_VALUE)
-        magnitude = DISCRETE_ANALOG_START_VALUE;
-    }
-  }
+    m_bDigitalState = bPressed;
+    m_holdStartTimeMs = 0; // This is set in ProcessMotions()
 
-  m_handler->OnButtonMotion(m_name, magnitude, elapsed);
+    CLog::Log(LOGDEBUG, "Feature [ %s ] on %s %s", m_name.c_str(), m_handler->ControllerID().c_str(),
+              bPressed ? "pressed" : "released");
+
+    m_bDigitalHandled = m_handler->OnButtonPress(m_name, bPressed);
+  }
+}
+
+void CScalarFeature::OnAnalogMotion(float magnitude)
+{
+  const bool bActivated = (magnitude != 0.0f);
+
+  if (m_analogState != 0.0f || magnitude != 0.0f)
+  {
+    m_analogState = magnitude;
+
+    if (m_bDigitalState != bActivated)
+    {
+      m_bDigitalState = bActivated;
+
+      CLog::Log(LOGDEBUG, "Feature [ %s ] on %s %s", m_name.c_str(), m_handler->ControllerID().c_str(),
+                bActivated ? "activated" : "deactivated");
+    }
+
+    m_handler->OnButtonMotion(m_name, magnitude);
+  }
 }
 
 // --- CAnalogStick ------------------------------------------------------------
@@ -212,6 +165,9 @@ bool CAnalogStick::OnDigitalMotion(const CDriverPrimitive& source, bool bPressed
 
 bool CAnalogStick::OnAnalogMotion(const CDriverPrimitive& source, float magnitude)
 {
+  if (!AcceptsInput(magnitude != 0.0f))
+    return false;
+
   ANALOG_STICK_DIRECTION direction = ANALOG_STICK_DIRECTION::UNKNOWN;
 
   std::vector<ANALOG_STICK_DIRECTION> dirs = {
@@ -231,25 +187,19 @@ bool CAnalogStick::OnAnalogMotion(const CDriverPrimitive& source, float magnitud
     }
   }
 
-  bool bHandled = false;
-
   switch (direction)
   {
   case ANALOG_STICK_DIRECTION::UP:
     m_vertAxis.SetPositiveDistance(magnitude);
-    bHandled = true;
     break;
   case ANALOG_STICK_DIRECTION::DOWN:
     m_vertAxis.SetNegativeDistance(magnitude);
-    bHandled = true;
     break;
   case ANALOG_STICK_DIRECTION::RIGHT:
     m_horizAxis.SetPositiveDistance(magnitude);
-    bHandled = true;
     break;
   case ANALOG_STICK_DIRECTION::LEFT:
     m_horizAxis.SetNegativeDistance(magnitude);
-    bHandled = true;
     break;
   default:
     // Just in case, avoid sticking
@@ -258,7 +208,7 @@ bool CAnalogStick::OnAnalogMotion(const CDriverPrimitive& source, float magnitud
     break;
   }
 
-  return bHandled && AcceptsInput(magnitude != 0.0f);
+  return true;
 }
 
 void CAnalogStick::ProcessMotions(void)
@@ -319,7 +269,8 @@ bool CAccelerometer::OnDigitalMotion(const CDriverPrimitive& source, bool bPress
 
 bool CAccelerometer::OnAnalogMotion(const CDriverPrimitive& source, float magnitude)
 {
-  bool bHandled = false;
+  if (!AcceptsInput(magnitude != 0.0f))
+    return false;
 
   CDriverPrimitive positiveX;
   CDriverPrimitive positiveY;
@@ -328,20 +279,11 @@ bool CAccelerometer::OnAnalogMotion(const CDriverPrimitive& source, float magnit
   m_buttonMap->GetAccelerometer(m_name, positiveX, positiveY, positiveZ);
 
   if (source == positiveX)
-  {
     m_xAxis.SetPositiveDistance(magnitude);
-    bHandled = true;
-  }
   else if (source == positiveY)
-  {
     m_yAxis.SetPositiveDistance(magnitude);
-    bHandled = true;
-  }
   else if (source == positiveZ)
-  {
     m_zAxis.SetPositiveDistance(magnitude);
-    bHandled = true;
-  }
   else
   {
     // Just in case, avoid sticking
@@ -350,7 +292,7 @@ bool CAccelerometer::OnAnalogMotion(const CDriverPrimitive& source, float magnit
     m_yAxis.Reset();
   }
 
-  return bHandled && AcceptsInput(true);
+  return true;
 }
 
 void CAccelerometer::ProcessMotions(void)

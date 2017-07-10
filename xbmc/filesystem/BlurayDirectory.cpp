@@ -17,6 +17,8 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#include "system.h"
+#ifdef HAVE_LIBBLURAY
 #include "BlurayDirectory.h"
 #include "utils/log.h"
 #include "utils/URIUtils.h"
@@ -32,7 +34,7 @@
 namespace XFILE
 {
 
-#define MAIN_TITLE_LENGTH_PERCENT 70 /** Minimum length of main titles, based on longest title */
+#define MAIN_TITLE_LENGTH_PERCENT 70 /** Minumum length of main titles, based on longest title */
 
 CBlurayDirectory::CBlurayDirectory()
   : m_dll(NULL)
@@ -66,7 +68,7 @@ CFileItemPtr CBlurayDirectory::GetTitle(const BLURAY_TITLE_INFO* title, const st
   path.SetFileName(buf);
   item->SetPath(path.Get());
   int duration = (int)(title->duration / 90000);
-  item->GetVideoInfoTag()->SetDuration(duration);
+  item->GetVideoInfoTag()->m_duration = duration;
   item->GetVideoInfoTag()->m_iTrack = title->playlist;
   buf = StringUtils::Format(label.c_str(), title->playlist);
   item->m_strTitle = buf;
@@ -136,7 +138,7 @@ void CBlurayDirectory::GetRoot(CFileItemList &items)
     item->SetIconImage("DefaultVideoPlaylists.png");
     items.Add(item);
 
-    path.SetFileName("menu");
+    path.SetFileName("BDMV/MovieObject.bdmv");
     item.reset(new CFileItem());
     item->SetPath(path.Get());
     item->m_bIsFolder = false;
@@ -161,12 +163,12 @@ bool CBlurayDirectory::GetDirectory(const CURL& url, CFileItemList &items)
     return false;
   }
 
+  m_dll->bd_register_dir(DllLibbluray::dir_open);
+  m_dll->bd_register_file(DllLibbluray::file_open);
   m_dll->bd_set_debug_handler(DllLibbluray::bluray_logger);
   m_dll->bd_set_debug_mask(DBG_CRIT | DBG_BLURAY | DBG_NAV);
 
-  m_bd = m_dll->bd_init();
-  std::unique_ptr<std::string> rootPath(new std::string(root));
-  m_dll->bd_open_files(m_bd, rootPath.get(), DllLibbluray::dir_open, DllLibbluray::file_open);
+  m_bd = m_dll->bd_open(root.c_str(), NULL);
 
   if(!m_bd)
   {
@@ -202,3 +204,4 @@ CURL CBlurayDirectory::GetUnderlyingCURL(const CURL& url)
 }
 
 } /* namespace XFILE */
+#endif

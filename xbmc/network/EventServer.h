@@ -42,10 +42,10 @@ namespace EVENTSERVER
   public:
     static void RemoveInstance();
     static CEventServer* GetInstance();
-    ~CEventServer() override = default;
+    virtual ~CEventServer() {}
 
     // IRunnable entry point for thread
-    void  Process() override;
+    virtual void  Process();
 
     bool Running()
     {

@@ -28,18 +28,19 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "FileItem.h"
-#include "ServiceBroker.h"
 
-#include "addons/binary-addons/BinaryAddonBase.h"
+#include "addons/AddonManager.h"
 #include "addons/AudioDecoder.h"
 
 using namespace ADDON;
 
 using namespace MUSIC_INFO;
 
-CMusicInfoTagLoaderFactory::CMusicInfoTagLoaderFactory() = default;
+CMusicInfoTagLoaderFactory::CMusicInfoTagLoaderFactory()
+{}
 
-CMusicInfoTagLoaderFactory::~CMusicInfoTagLoaderFactory() = default;
+CMusicInfoTagLoaderFactory::~CMusicInfoTagLoaderFactory()
+{}
 
 IMusicInfoTagLoader* CMusicInfoTagLoaderFactory::CreateLoader(const CFileItem& item)
 {
@@ -57,29 +58,26 @@ IMusicInfoTagLoader* CMusicInfoTagLoaderFactory::CreateLoader(const CFileItem& i
   if (strExtension.empty())
     return NULL;
 
-  BinaryAddonBaseList addonInfos;
-  CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
-  for (const auto& addonInfo : addonInfos)
+  VECADDONS codecs;
+  CAddonMgr::GetInstance().GetAddons(codecs, ADDON_AUDIODECODER);
+  for (size_t i=0;i<codecs.size();++i)
   {
-    if (CAudioDecoder::HasTags(addonInfo) &&
-        CAudioDecoder::GetExtensions(addonInfo).find("."+strExtension) != std::string::npos)
+    std::shared_ptr<CAudioDecoder> dec(std::static_pointer_cast<CAudioDecoder>(codecs[i]));
+    if (dec->HasTags() && dec->GetExtensions().find("."+strExtension) != std::string::npos)
     {
-      CAudioDecoder* result = new CAudioDecoder(addonInfo);
-      if (!result->CreateDecoder())
-      {
-        delete result;
-        return nullptr;
-      }
+      CAudioDecoder* result = new CAudioDecoder(*dec);
+      static_cast<AudioDecoderDll&>(*result).Create();
       return result;
     }
   }
+
 
   if (strExtension == "aac" ||
       strExtension == "ape" || strExtension == "mac" ||
       strExtension == "mp3" || 
       strExtension == "wma" || 
       strExtension == "flac" || 
-      strExtension == "m4a" || strExtension == "mp4" || strExtension == "m4b" ||
+      strExtension == "m4a" || strExtension == "mp4" ||
       strExtension == "mpc" || strExtension == "mpp" || strExtension == "mp+" ||
       strExtension == "ogg" || strExtension == "oga" || strExtension == "oggstream" ||
       strExtension == "opus" ||

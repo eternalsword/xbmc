@@ -22,6 +22,8 @@
 
 #include "system.h"
 
+#ifdef HAVE_X11
+
 #include <string>
 #include <vector>
 #include <map>
@@ -124,3 +126,6 @@ private:
 };
 
 extern CXRandR g_xrandr;
+
+#endif
+

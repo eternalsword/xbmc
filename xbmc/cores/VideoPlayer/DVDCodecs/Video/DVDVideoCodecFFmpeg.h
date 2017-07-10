@@ -24,7 +24,6 @@
 #include "cores/VideoPlayer/DVDStreamInfo.h"
 #include "DVDVideoCodec.h"
 #include "DVDResource.h"
-#include "DVDVideoPPFFmpeg.h"
 #include <string>
 #include <vector>
 
@@ -37,24 +36,44 @@ extern "C" {
 #include "libpostproc/postprocess.h"
 }
 
-class CDVDVideoCodecFFmpeg : public CDVDVideoCodec, public ICallbackHWAccel
+class CCriticalSection;
+
+class CDVDVideoCodecFFmpeg : public CDVDVideoCodec
 {
 public:
+  class IHardwareDecoder : public IDVDResourceCounted<IHardwareDecoder>
+  {
+    public:
+    IHardwareDecoder() {}
+    virtual ~IHardwareDecoder() {};
+    virtual bool Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum AVPixelFormat, unsigned int surfaces) = 0;
+    virtual int  Decode(AVCodecContext* avctx, AVFrame* frame) = 0;
+    virtual bool GetPicture(AVCodecContext* avctx, AVFrame* frame, DVDVideoPicture* picture) = 0;
+    virtual int  Check(AVCodecContext* avctx) = 0;
+    virtual void Reset() {}
+    virtual unsigned GetAllowedReferences() { return 0; }
+    virtual bool CanSkipDeint() {return false; }
+    virtual const std::string Name() = 0;
+    virtual void SetCodecControl(int flags) {};
+  };
+
   CDVDVideoCodecFFmpeg(CProcessInfo &processInfo);
   virtual ~CDVDVideoCodecFFmpeg();
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) override;
-  virtual bool AddData(const DemuxPacket &packet) override;
+  virtual int Decode(uint8_t* pData, int iSize, double dts, double pts) override;
   virtual void Reset() override;
   virtual void Reopen() override;
-  virtual CDVDVideoCodec::VCReturn GetPicture(VideoPicture* pVideoPicture) override;
+  bool GetPictureCommon(DVDVideoPicture* pDvdVideoPicture);
+  virtual bool GetPicture(DVDVideoPicture* pDvdVideoPicture) override;
+  virtual void SetDropState(bool bDrop) override;
   virtual const char* GetName() override { return m_name.c_str(); }; // m_name is never changed after open
   virtual unsigned GetConvergeCount() override;
   virtual unsigned GetAllowedReferences() override;
   virtual bool GetCodecStats(double &pts, int &droppedFrames, int &skippedPics) override;
   virtual void SetCodecControl(int flags) override;
 
-  virtual IHardwareDecoder* GetHWAccel() override;
-  virtual bool GetPictureCommon(VideoPicture* pVideoPicture) override;
+  IHardwareDecoder * GetHardware() { return m_pHardware; };
+  void SetHardware(IHardwareDecoder* hardware);
 
 protected:
   void Dispose();
@@ -62,37 +81,28 @@ protected:
 
   int  FilterOpen(const std::string& filters, bool scale);
   void FilterClose();
-  CDVDVideoCodec::VCReturn FilterProcess(AVFrame* frame);
+  int  FilterProcess(AVFrame* frame);
   void SetFilters();
   void UpdateName();
-  bool SetPictureParams(VideoPicture* pVideoPicture);
-
-  IHardwareDecoder* CreateVideoDecoderHW(AVPixelFormat pixfmt, CProcessInfo &processInfo);
-  bool HasHardware() { return m_pHardware != nullptr; };
-  void SetHardware(IHardwareDecoder *hardware);
-
 
   AVFrame* m_pFrame;
   AVFrame* m_pDecodedFrame;
   AVCodecContext* m_pCodecContext;
 
-  std::string m_filters;
-  std::string m_filters_next;
-  AVFilterGraph* m_pFilterGraph;
+  std::string       m_filters;
+  std::string       m_filters_next;
+  AVFilterGraph*   m_pFilterGraph;
   AVFilterContext* m_pFilterIn;
   AVFilterContext* m_pFilterOut;
-  AVFrame* m_pFilterFrame;
-  bool m_filterEof = false;
-  bool m_eof;
-
-  CDVDVideoPPFFmpeg m_postProc;
+  AVFrame*         m_pFilterFrame;
+  bool m_filterEof;
 
   int m_iPictureWidth;
   int m_iPictureHeight;
 
   int m_iScreenWidth;
   int m_iScreenHeight;
-  int m_iOrientation;// orientation of the video in degrees counter clockwise
+  int m_iOrientation;// orientation of the video in degress counter clockwise
 
   unsigned int m_uSurfacesCount;
 

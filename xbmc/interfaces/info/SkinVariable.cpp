@@ -55,7 +55,9 @@ const CSkinVariableString* CSkinVariable::CreateFromXML(const TiXmlElement& node
   return NULL;
 }
 
-CSkinVariableString::CSkinVariableString() = default;
+CSkinVariableString::CSkinVariableString()
+{
+}
 
 int CSkinVariableString::GetContext() const
 {

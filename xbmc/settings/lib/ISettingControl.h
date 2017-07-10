@@ -26,8 +26,10 @@ class TiXmlNode;
 class ISettingControl
 {
 public:
-  ISettingControl() = default;
-  virtual ~ISettingControl() = default;
+  ISettingControl()
+    : m_delayed(false)
+  { }
+  virtual ~ISettingControl() { }
 
   virtual std::string GetType() const = 0;
   const std::string& GetFormat() const { return m_format; }
@@ -38,6 +40,6 @@ public:
   virtual bool SetFormat(const std::string &format) { return true; }
 
 protected:
-  bool m_delayed = false;
+  bool m_delayed;
   std::string m_format;
 };

@@ -32,8 +32,8 @@ using namespace XFILE;
 class TestURIUtils : public testing::Test
 {
 protected:
-  TestURIUtils() = default;
-  ~TestURIUtils() override
+  TestURIUtils(){}
+  ~TestURIUtils()
   {
     g_advancedSettings.m_pathSubstitutions.clear();
   }
@@ -121,12 +121,6 @@ TEST_F(TestURIUtils, Split)
   URIUtils::Split("/path/to/movie.avi", varpath, varfile);
   EXPECT_STREQ(refpath.c_str(), varpath.c_str());
   EXPECT_STREQ(reffile.c_str(), varfile.c_str());
-
-  std::string varpathOptional, varfileOptional;
-
-  URIUtils::Split("/path/to/movie.avi?showinfo=true", varpathOptional, varfileOptional);
-  EXPECT_STREQ(refpath.c_str(), varpathOptional.c_str());
-  EXPECT_STREQ(reffile.c_str(), varfileOptional.c_str());
 }
 
 TEST_F(TestURIUtils, SplitPath)
@@ -458,7 +452,7 @@ TEST_F(TestURIUtils, CreateArchivePath)
 {
   std::string ref, var;
 
-  ref = "zip://%2fpath%2fto%2f/file";
+  ref = "zip://%2Fpath%2Fto%2F/file";
   var = URIUtils::CreateArchivePath("zip", CURL("/path/to/"), "file").Get();
   EXPECT_STREQ(ref.c_str(), var.c_str());
 }
@@ -552,8 +546,8 @@ TEST_F(TestURIUtils, GetRealPath)
   EXPECT_STRCASEEQ(ref.c_str(), URIUtils::GetRealPath("rar://%2fpath%2fto%2fsome%2f..%2frar/subpath/to/file").c_str());
 
   // test rar/zip path in rar/zip path
-  ref ="zip://rar%3a%2f%2f%252Fpath%252Fto%252Frar%2fpath%2fto%2fzip/subpath/to/file";
-  EXPECT_STRCASEEQ(ref.c_str(), URIUtils::GetRealPath("zip://rar%3a%2f%2f%252Fpath%252Fto%252Fsome%252F..%252Frar%2fpath%2fto%2fsome%2f..%2fzip/subpath/to/some/../file").c_str());
+  ref ="zip://rar%3A%2F%2F%252Fpath%252Fto%252Frar%2Fpath%2Fto%2Fzip/subpath/to/file";
+  EXPECT_STRCASEEQ(ref.c_str(), URIUtils::GetRealPath("zip://rar%3A%2F%2F%252Fpath%252Fto%252Fsome%252F..%252Frar%2Fpath%2Fto%2Fsome%2F..%2Fzip/subpath/to/some/../file").c_str());
 }
 
 TEST_F(TestURIUtils, UpdateUrlEncoding)

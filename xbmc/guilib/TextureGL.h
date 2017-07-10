@@ -33,12 +33,12 @@ class CGLTexture : public CBaseTexture
 {
 public:
   CGLTexture(unsigned int width = 0, unsigned int height = 0, unsigned int format = XB_FMT_A8R8G8B8);
-  ~CGLTexture() override;
+  virtual ~CGLTexture();
 
-  void CreateTextureObject() override;
-  void DestroyTextureObject() override;
-  void LoadToGPU() override;
-  void BindToUnit(unsigned int unit) override;
+  void CreateTextureObject();
+  virtual void DestroyTextureObject();
+  void LoadToGPU();
+  void BindToUnit(unsigned int unit);
 
 protected:
   GLuint m_texture;

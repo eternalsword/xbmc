@@ -27,7 +27,6 @@
 #include "dbwrappers/Database.h"
 #include "dbwrappers/DatabaseQuery.h"
 #include "settings/dialogs/GUIDialogSettingsManualBase.h"
-#include "settings/lib/SettingType.h"
 #include "utils/DatabaseUtils.h"
 
 class CDbUrl;
@@ -39,10 +38,10 @@ class CGUIDialogMediaFilter : public CGUIDialogSettingsManualBase
 {
 public:
   CGUIDialogMediaFilter();
-  ~CGUIDialogMediaFilter() override;
+  virtual ~CGUIDialogMediaFilter();
 
   // specializations of CGUIControl
-  bool OnMessage(CGUIMessage &message) override;
+  virtual bool OnMessage(CGUIMessage &message);
 
   static void ShowAndEditMediaFilter(const std::string &path, CSmartPlaylist &filter);
 
@@ -50,31 +49,31 @@ public:
     std::string mediaType;
     Field field;
     uint32_t label;
-    SettingType settingType;
+    int settingType;
     std::string controlType;
     std::string controlFormat;
     CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator;
-    std::shared_ptr<CSetting> setting;
+    CSetting *setting;
     CSmartPlaylistRule *rule;
     void *data;
   } Filter;
 
 protected:
   // specializations of CGUIWindow
-  void OnWindowLoaded() override;
-  void OnInitWindow() override;
+  virtual void OnWindowLoaded();
+  virtual void OnInitWindow();
 
   // implementations of ISettingCallback
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting *setting);
 
   // specialization of CGUIDialogSettingsBase
-  bool AllowResettingSettings() const override { return false; }
-  void Save() override { }
-  unsigned int GetDelayMs() const override { return 500; }
+  virtual bool AllowResettingSettings() const { return false; }
+  virtual void Save() { }
+  virtual unsigned int GetDelayMs() const { return 500; }
 
   // specialization of CGUIDialogSettingsManualBase
-  void SetupView() override;
-  void InitializeSettings() override;
+  virtual void SetupView();
+  virtual void InitializeSettings();
 
   bool SetPath(const std::string &path);
   void UpdateControls();
@@ -89,7 +88,7 @@ protected:
   CSmartPlaylistRule* AddRule(Field field, CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator = CDatabaseQueryRule::OPERATOR_CONTAINS);
   void DeleteRule(Field field);
 
-  static void GetStringListOptions(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void GetStringListOptions(const CSetting *setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
 
   CDbUrl* m_dbUrl;
   std::string m_mediaType;

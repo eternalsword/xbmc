@@ -51,7 +51,7 @@ void CWHelper::OnStartup()
   if(m_hwnd != NULL)
     ShowWindow(m_hwnd,SW_RESTORE);
 
-  OutputDebugString(L"WindowHelper thread started\n");
+  OutputDebugString("WindowHelper thread started\n");
 }
 
 void CWHelper::OnExit()
@@ -66,7 +66,7 @@ void CWHelper::OnExit()
     m_hProcess = NULL;
   }
   LockSetForegroundWindow(LSFW_LOCK);
-  OutputDebugString(L"WindowHelper thread ended\n");
+  OutputDebugString("WindowHelper thread ended\n");
 }
 
 void CWHelper::Process()

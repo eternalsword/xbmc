@@ -44,11 +44,11 @@ class CDetectDVDMedia : public CThread
 {
 public:
   CDetectDVDMedia();
-  ~CDetectDVDMedia() override;
+  virtual ~CDetectDVDMedia();
 
-  void OnStartup() override;
-  void OnExit() override;
-  void Process() override;
+  virtual void OnStartup();
+  virtual void OnExit();
+  virtual void Process();
 
   static void WaitMediaReady();
   static bool IsDiscInDrive();

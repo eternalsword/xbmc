@@ -20,7 +20,6 @@
 
 #include "RepositoryUpdater.h"
 #include "Application.h"
-#include "ServiceBroker.h"
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
 #include "addons/AddonSystemSettings.h"
@@ -29,7 +28,6 @@
 #include "events/AddonManagementEvent.h"
 #include "events/EventLog.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/LocalizeStrings.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
@@ -41,31 +39,20 @@
 namespace ADDON
 {
 
-CRepositoryUpdater::CRepositoryUpdater(CAddonMgr& addonMgr) :
+CRepositoryUpdater::CRepositoryUpdater() :
   m_timer(this),
-  m_doneEvent(true),
-  m_addonMgr(addonMgr)
+  m_doneEvent(true)
 {}
+
+CRepositoryUpdater &CRepositoryUpdater::GetInstance()
+{
+  static CRepositoryUpdater instance;
+  return instance;
+}
 
 void CRepositoryUpdater::Start()
 {
-  CServiceBroker::GetAddonMgr().Events().Subscribe(this, &CRepositoryUpdater::OnEvent);
   ScheduleUpdate();
-}
-
-CRepositoryUpdater::~CRepositoryUpdater()
-{
-  CServiceBroker::GetAddonMgr().Events().Unsubscribe(this);
-}
-
-void CRepositoryUpdater::OnEvent(const ADDON::AddonEvent& event)
-{
-  if (auto enableEvent = dynamic_cast<const AddonEvents::Enabled*>(&event))
-  {
-    AddonPtr addon;
-    if (CAddonMgr::GetInstance().GetAddon(enableEvent->id, addon, ADDON_REPOSITORY))
-      ScheduleUpdate();
-  }
 }
 
 void CRepositoryUpdater::OnJobComplete(unsigned int jobID, bool success, CJob* job)
@@ -77,10 +64,9 @@ void CRepositoryUpdater::OnJobComplete(unsigned int jobID, bool success, CJob* j
     CLog::Log(LOGDEBUG, "CRepositoryUpdater: done.");
     m_doneEvent.Set();
 
-    VECADDONS updates = CAddonMgr::GetInstance().GetAvailableUpdates();
-
-    if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NOTIFY)
+    if (CSettings::GetInstance().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NOTIFY)
     {
+      VECADDONS updates = CAddonMgr::GetInstance().GetAvailableUpdates();
       if (!updates.empty())
       {
         if (updates.size() == 1)
@@ -97,10 +83,8 @@ void CRepositoryUpdater::OnJobComplete(unsigned int jobID, bool success, CJob* j
       }
     }
 
-    if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_ON)
-    {
+    if (CSettings::GetInstance().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_ON)
       CAddonInstaller::GetInstance().InstallUpdates();
-    }
 
     ScheduleUpdate();
 
@@ -125,7 +109,7 @@ bool CRepositoryUpdater::CheckForUpdates(bool showProgress)
 
 static void SetProgressIndicator(CRepositoryUpdateJob* job)
 {
-  auto dialog = g_windowManager.GetWindow<CGUIDialogExtendedProgressBar>(WINDOW_DIALOG_EXT_PROGRESS);
+  auto* dialog = static_cast<CGUIDialogExtendedProgressBar*>(g_windowManager.GetWindow(WINDOW_DIALOG_EXT_PROGRESS));
   if (dialog)
     job->SetProgressIndicators(dialog->GetHandle(g_localizeStrings.Get(24092)), nullptr);
 }
@@ -172,7 +156,7 @@ void CRepositoryUpdater::OnTimeout()
   CheckForUpdates();
 }
 
-void CRepositoryUpdater::OnSettingChanged(std::shared_ptr<const CSetting> setting)
+void CRepositoryUpdater::OnSettingChanged(const CSetting* setting)
 {
   if (setting->GetId() == CSettings::SETTING_ADDONS_AUTOUPDATES)
     ScheduleUpdate();
@@ -206,7 +190,7 @@ void CRepositoryUpdater::ScheduleUpdate()
   CSingleLock lock(m_criticalSection);
   m_timer.Stop(true);
 
-  if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NEVER)
+  if (CSettings::GetInstance().GetInt(CSettings::SETTING_ADDONS_AUTOUPDATES) == AUTO_UPDATES_NEVER)
     return;
 
   if (!CAddonMgr::GetInstance().HasAddons(ADDON_REPOSITORY))

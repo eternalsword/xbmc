@@ -167,6 +167,7 @@ void CGenericTouchActionHandler::touch(uint8_t type, uint8_t button, uint16_t x,
   memset(&newEvent, 0, sizeof(newEvent));
   
   newEvent.type = type;
+  newEvent.button.type = type;
   newEvent.button.button = button;
   newEvent.button.x = x;
   newEvent.button.y = y;
@@ -180,6 +181,7 @@ void CGenericTouchActionHandler::sendEvent(int actionId, float x, float y, float
   memset(&newEvent, 0, sizeof(newEvent));
   
   newEvent.type = XBMC_TOUCH;
+  newEvent.touch.type = XBMC_TOUCH;
   newEvent.touch.action = actionId;
   newEvent.touch.x = x;
   newEvent.touch.y = y;
@@ -196,6 +198,7 @@ void CGenericTouchActionHandler::focusControl(float x, float y)
   memset(&newEvent, 0, sizeof(newEvent));
 
   newEvent.type = XBMC_SETFOCUS;
+  newEvent.focus.type = XBMC_SETFOCUS;
   newEvent.focus.x = (uint16_t)x;
   newEvent.focus.y = (uint16_t)y;
 

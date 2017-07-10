@@ -1,5 +1,5 @@
-#ifndef GUI_DIALOG_ACCESS_POINTS
-#define GUI_DIALOG_ACCESS_POINTS
+#ifndef GUI_DIALOG_ACCES_POINTS
+#define GUI_DIALOG_ACCES_POINTS
 
 /*
  *      Copyright (C) 2005-2013 Team XBMC
@@ -33,9 +33,9 @@ class CGUIDialogAccessPoints : public CGUIDialog
 {
 public:
   CGUIDialogAccessPoints(void);
-  ~CGUIDialogAccessPoints(void) override;
-  void OnInitWindow() override;
-  bool OnAction(const CAction &action) override;
+  virtual ~CGUIDialogAccessPoints(void);
+  virtual void OnInitWindow();
+  virtual bool OnAction(const CAction &action);
   void SetInterfaceName(std::string interfaceName);
   std::string GetSelectedAccessPointEssId();
   EncMode GetSelectedAccessPointEncMode();

@@ -37,7 +37,9 @@ BitstreamStats::BitstreamStats(unsigned int nEstimatedBitrate)
     m_tmFreq = CurrentHostFrequency();
 }
 
-BitstreamStats::~BitstreamStats() = default;
+BitstreamStats::~BitstreamStats()
+{
+}
 
 void BitstreamStats::AddSampleBytes(unsigned int nBytes)
 {

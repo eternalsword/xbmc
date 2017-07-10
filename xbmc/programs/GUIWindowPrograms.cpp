@@ -44,7 +44,9 @@ CGUIWindowPrograms::CGUIWindowPrograms(void)
 }
 
 
-CGUIWindowPrograms::~CGUIWindowPrograms(void) = default;
+CGUIWindowPrograms::~CGUIWindowPrograms(void)
+{
+}
 
 bool CGUIWindowPrograms::OnMessage(CGUIMessage& message)
 {
@@ -59,7 +61,7 @@ bool CGUIWindowPrograms::OnMessage(CGUIMessage& message)
 
   case GUI_MSG_WINDOW_INIT:
     {
-      m_dlgProgress = g_windowManager.GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+      m_dlgProgress = (CGUIDialogProgress*)g_windowManager.GetWindow(WINDOW_DIALOG_PROGRESS);
 
       // is this the first time accessing this window?
       if (m_vecItems->GetPath() == "?" && message.GetStringParam().empty())
@@ -137,7 +139,7 @@ bool CGUIWindowPrograms::Update(const std::string &strDirectory, bool updateFilt
   return true;
 }
 
-bool CGUIWindowPrograms::OnPlayMedia(int iItem, const std::string&)
+bool CGUIWindowPrograms::OnPlayMedia(int iItem)
 {
   if ( iItem < 0 || iItem >= (int)m_vecItems->Size() ) return false;
   CFileItemPtr pItem = m_vecItems->Get(iItem);

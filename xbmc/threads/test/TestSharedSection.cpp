@@ -21,6 +21,7 @@
 #include "threads/SharedSection.h"
 #include "threads/SingleLock.h"
 #include "threads/Event.h"
+#include "threads/Atomics.h"
 #include "threads/test/TestHelpers.h"
 
 #include <stdio.h>
@@ -35,18 +36,18 @@ class locker : public IRunnable
   CSharedSection& sec;
   CEvent* wait;
 
-  std::atomic<long>* mutex;
+  volatile long* mutex;
 public:
   volatile bool haslock;
   volatile bool obtainedlock;
 
-  inline locker(CSharedSection& o, std::atomic<long>* mutex_ = NULL, CEvent* wait_ = NULL) : 
+  inline locker(CSharedSection& o, volatile long* mutex_ = NULL, CEvent* wait_ = NULL) : 
     sec(o), wait(wait_), mutex(mutex_), haslock(false), obtainedlock(false) {}
   
   inline locker(CSharedSection& o, CEvent* wait_ = NULL) : 
     sec(o), wait(wait_), mutex(NULL), haslock(false), obtainedlock(false) {}
   
-  void Run() override
+  void Run()
   {
     AtomicGuard g(mutex);
     L lock(sec);
@@ -76,7 +77,7 @@ TEST(TestSharedSection, General)
 
 TEST(TestSharedSection, GetSharedLockWhileTryingExclusiveLock)
 {
-  std::atomic<long> mutex(0L);
+  volatile long mutex = 0;
   CEvent event;
 
   CSharedSection sec;
@@ -123,7 +124,7 @@ TEST(TestSharedSection, TwoCase)
   CSharedSection sec;
 
   CEvent event;
-  std::atomic<long> mutex(0L);
+  volatile long mutex = 0;
 
   locker<CSharedLock> l1(sec,&mutex,&event);
 
@@ -166,7 +167,7 @@ TEST(TestMultipleSharedSection, General)
   CSharedSection sec;
 
   CEvent event;
-  std::atomic<long> mutex(0L);
+  volatile long mutex = 0;
 
   locker<CSharedLock> l1(sec,&mutex, &event);
 

@@ -383,13 +383,16 @@ void CD3DTexture::SaveTexture()
   }
 }
 
-void CD3DTexture::OnDestroyDevice(bool fatal)
+void CD3DTexture::OnDestroyDevice()
 {
-  if (!fatal)
-    SaveTexture();
+  SaveTexture();
   SAFE_RELEASE(m_texture);
   SAFE_RELEASE(m_textureView);
   SAFE_RELEASE(m_renderTarget);
+}
+
+void CD3DTexture::OnLostDevice()
+{
 }
 
 void CD3DTexture::RestoreTexture()
@@ -413,6 +416,10 @@ void CD3DTexture::OnCreateDevice()
   RestoreTexture();
 }
 
+void CD3DTexture::OnResetDevice()
+{
+}
+
 unsigned int CD3DTexture::GetMemoryUsage(unsigned int pitch) const
 {
   switch (m_format)
@@ -429,11 +436,7 @@ unsigned int CD3DTexture::GetMemoryUsage(unsigned int pitch) const
 void CD3DTexture::GenerateMipmaps()
 {
   if (m_mipLevels == 0)
-  {
-    ID3D11ShaderResourceView* pSRView = GetShaderResource();
-    if (pSRView != nullptr)
-      g_Windowing.Get3D11Context()->GenerateMips(pSRView);
-  }
+    g_Windowing.Get3D11Context()->GenerateMips(GetShaderResource());
 }
 
 // static methods
@@ -526,10 +529,10 @@ bool CD3DEffect::Create(const std::string &effectString, DefinesMap* defines)
 void CD3DEffect::Release()
 {
   g_Windowing.Unregister(this);
-  OnDestroyDevice(false);
+  OnDestroyDevice();
 }
 
-void CD3DEffect::OnDestroyDevice(bool fatal)
+void CD3DEffect::OnDestroyDevice()
 {
   SAFE_RELEASE(m_effect);
   m_techniquie = nullptr;
@@ -783,14 +786,8 @@ bool CD3DBuffer::Unmap()
   return false;
 }
 
-void CD3DBuffer::OnDestroyDevice(bool fatal)
+void CD3DBuffer::OnDestroyDevice()
 {
-  if (fatal)
-  {
-    SAFE_RELEASE(m_buffer);
-    return;
-  }
-
   ID3D11Device* pDevice = g_Windowing.Get3D11Device();
   ID3D11DeviceContext* pContext = g_Windowing.GetImmediateContext();
 
@@ -808,22 +805,22 @@ void CD3DBuffer::OnDestroyDevice(bool fatal)
     trgDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
     trgDesc.BindFlags = 0;
 
-    if (SUCCEEDED(pDevice->CreateBuffer(&trgDesc, NULL, &buffer)))
-      pContext->CopyResource(buffer, m_buffer);
+    if (FAILED(pDevice->CreateBuffer(&trgDesc, NULL, &buffer)))
+      return;
+
+    pContext->CopyResource(buffer, m_buffer);
   }
   else
     buffer = m_buffer;
 
-  if (buffer != nullptr)
+  D3D11_MAPPED_SUBRESOURCE res;
+  if (SUCCEEDED(pContext->Map(buffer, 0, D3D11_MAP_READ, 0, &res)))
   {
-    D3D11_MAPPED_SUBRESOURCE res;
-    if (SUCCEEDED(pContext->Map(buffer, 0, D3D11_MAP_READ, 0, &res)))
-    {
-      m_data = new unsigned char[srcDesc.ByteWidth];
-      memcpy(m_data, res.pData, srcDesc.ByteWidth);
-      pContext->Unmap(buffer, 0);
-    }
+    m_data = new unsigned char[srcDesc.ByteWidth];
+    memcpy(m_data, res.pData, srcDesc.ByteWidth);
+    pContext->Unmap(buffer, 0);
   }
+
   if (buffer != m_buffer)
     SAFE_RELEASE(buffer);
   SAFE_RELEASE(m_buffer);
@@ -1004,7 +1001,7 @@ void CD3DVertexShader::OnCreateDevice()
     m_inited = CreateInternal();
 }
 
-void CD3DVertexShader::OnDestroyDevice(bool fatal)
+void CD3DVertexShader::OnDestroyDevice()
 {
   ReleaseShader();
 }
@@ -1129,7 +1126,7 @@ void CD3DPixelShader::OnCreateDevice()
     m_inited = CreateInternal();
 }
 
-void CD3DPixelShader::OnDestroyDevice(bool fatal)
+void CD3DPixelShader::OnDestroyDevice()
 {
   ReleaseShader();
 }

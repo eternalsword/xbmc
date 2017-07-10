@@ -35,26 +35,25 @@ class CGUIControlGroupList : public CGUIControlGroup
 {
 public:
   CGUIControlGroupList(int parentID, int controlID, float posX, float posY, float width, float height, float itemGap, int pageControl, ORIENTATION orientation, bool useControlPositions, uint32_t alignment, const CScroller& scroller);
-  ~CGUIControlGroupList(void) override;
-  CGUIControlGroupList *Clone() const override { return new CGUIControlGroupList(*this); };
+  virtual ~CGUIControlGroupList(void);
+  virtual CGUIControlGroupList *Clone() const { return new CGUIControlGroupList(*this); };
 
-  float GetWidth() const override;
-  float GetHeight() const override;
+  virtual float GetWidth() const;
+  virtual float GetHeight() const;
   virtual float Size() const;
-  virtual void SetInvalid() override;
 
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
-  void Render() override;
-  bool OnMessage(CGUIMessage& message) override;
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
+  virtual void Render();
+  virtual bool OnMessage(CGUIMessage& message);
 
-  EVENT_RESULT SendMouseEvent(const CPoint &point, const CMouseEvent &event) override;
-  void UnfocusFromPoint(const CPoint &point) override;
+  virtual EVENT_RESULT SendMouseEvent(const CPoint &point, const CMouseEvent &event);
+  virtual void UnfocusFromPoint(const CPoint &point);
 
-  void AddControl(CGUIControl *control, int position = -1) override;
-  void ClearAll() override;
+  virtual void AddControl(CGUIControl *control, int position = -1);
+  virtual void ClearAll();
 
   virtual std::string GetLabel(int info) const;
-  bool GetCondition(int condition, int data) const override;
+  virtual bool GetCondition(int condition, int data) const;
   /**
    * Calculate total size of child controls area (including gaps between controls)
    */
@@ -64,7 +63,7 @@ public:
   // based on grouplist orientation pick one value as minSize;
   void SetMinSize(float minWidth, float minHeight);
 protected:
-  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
   bool IsControlOnScreen(float pos, const CGUIControl* control) const;
   bool IsFirstFocusableControl(const CGUIControl *control) const;
   bool IsLastFocusableControl(const CGUIControl *control) const;
@@ -84,7 +83,6 @@ protected:
   float m_totalSize;
 
   CScroller m_scroller;
-  int m_lastScrollerValue;
 
   bool m_useControlPositions;
   ORIENTATION m_orientation;

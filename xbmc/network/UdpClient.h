@@ -35,15 +35,15 @@ class CUdpClient : CThread
 {
 public:
   CUdpClient();
-  ~CUdpClient(void) override;
+  virtual ~CUdpClient(void);
 
 protected:
 
   bool Create();
   void Destroy();
 
-  void OnStartup() override;
-  void Process() override;
+  void OnStartup();
+  void Process();
 
   bool Broadcast(int aPort, const std::string& aMessage);
   bool Send(const std::string& aIpAddress, int aPort, const std::string& aMessage);

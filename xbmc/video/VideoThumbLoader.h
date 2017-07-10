@@ -40,19 +40,19 @@ class CThumbExtractor : public CJob
 {
 public:
   CThumbExtractor(const CFileItem& item, const std::string& listpath, bool thumb, const std::string& strTarget="", int64_t pos = -1, bool fillStreamDetails = true);
-  ~CThumbExtractor() override;
+  virtual ~CThumbExtractor();
 
   /*!
    \brief Work function that extracts thumb.
    */
-  bool DoWork() override;
+  virtual bool DoWork();
 
-  const char* GetType() const override
+  virtual const char* GetType() const
   {
     return kJobTypeMediaFlags;
   }
 
-  bool operator==(const CJob* job) const override;
+  virtual bool operator==(const CJob* job) const;
 
   std::string m_target; ///< thumbpath
   std::string m_listpath; ///< path used in fileitem list
@@ -66,14 +66,14 @@ class CVideoThumbLoader : public CThumbLoader, public CJobQueue
 {
 public:
   CVideoThumbLoader();
-  ~CVideoThumbLoader() override;
+  virtual ~CVideoThumbLoader();
 
-  void OnLoaderStart() override;
-  void OnLoaderFinish() override;
+  virtual void OnLoaderStart();
+  virtual void OnLoaderFinish();
 
-  bool LoadItem(CFileItem* pItem) override;
-  bool LoadItemCached(CFileItem* pItem) override;
-  bool LoadItemLookup(CFileItem* pItem) override;
+  virtual bool LoadItem(CFileItem* pItem);
+  virtual bool LoadItemCached(CFileItem* pItem);
+  virtual bool LoadItemLookup(CFileItem* pItem);
 
   /*! \brief Fill the thumb of a video item
    First uses a cached thumb from a previous run, then checks for a local thumb
@@ -108,7 +108,7 @@ public:
    \param item a video CFileItem
    \return true if we fill art, false otherwise
    */
- bool FillLibraryArt(CFileItem &item) override;
+ virtual bool FillLibraryArt(CFileItem &item);
 
   /*!
    \brief Callback from CThumbExtractor on completion of a generated image
@@ -117,7 +117,7 @@ public:
 
    \sa CImageLoader, IJobCallback
    */
-  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
+  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job);
 
   /*! \brief set the artwork map for an item
    In addition, sets the standard fallbacks.

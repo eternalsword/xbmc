@@ -28,7 +28,6 @@
 #include "PlatformDefs.h"
 #include "pvr/recordings/PVRRecordings.h"
 #include "pvr/PVRManager.h"
-#include "ServiceBroker.h"
 
 #define COMSKIP_HEADER "FILE PROCESSING COMPLETE"
 #define VIDEOREDO_HEADER "<Version>2"
@@ -47,7 +46,6 @@ void CEdl::Clear()
   m_vecCuts.clear();
   m_vecSceneMarkers.clear();
   m_iTotalCutTime = 0;
-  m_lastCheckASSTime = 0;
 }
 
 bool CEdl::ReadEditDecisionLists(const std::string& strMovie, const float fFrameRate, const int iHeight)
@@ -297,7 +295,7 @@ bool CEdl::ReadEdl(const std::string& strMovie, const float fFramesPerSecond)
 
   if (HasCut() || HasSceneMarker())
   {
-    CLog::Log(LOGDEBUG, "{0} - Read {1} cuts and {2} scene markers in EDL file: {3}", __FUNCTION__,
+    CLog::Log(LOGDEBUG, "%s - Read %" PRIuS" cuts and %" PRIuS" scene markers in EDL file: %s", __FUNCTION__,
               m_vecCuts.size(), m_vecSceneMarkers.size(), edlFilename.c_str());
     return true;
   }
@@ -378,7 +376,7 @@ bool CEdl::ReadComskip(const std::string& strMovie, const float fFramesPerSecond
   }
   else if (HasCut())
   {
-    CLog::Log(LOGDEBUG, "{0} - Read {1} commercial breaks from Comskip file: {2}", __FUNCTION__, m_vecCuts.size(),
+    CLog::Log(LOGDEBUG, "%s - Read %" PRIuS" commercial breaks from Comskip file: %s", __FUNCTION__, m_vecCuts.size(),
               comskipFilename.c_str());
     return true;
   }
@@ -468,7 +466,7 @@ bool CEdl::ReadVideoReDo(const std::string& strMovie)
   }
   else if (HasCut() || HasSceneMarker())
   {
-    CLog::Log(LOGDEBUG, "{0} - Read {1} cuts and {2} scene markers in VideoReDo file: {3}", __FUNCTION__,
+    CLog::Log(LOGDEBUG, "%s - Read %" PRIuS" cuts and %" PRIuS" scene markers in VideoReDo file: %s", __FUNCTION__,
               m_vecCuts.size(), m_vecSceneMarkers.size(), videoReDoFilename.c_str());
     return true;
   }
@@ -551,7 +549,7 @@ bool CEdl::ReadBeyondTV(const std::string& strMovie)
   }
   else if (HasCut())
   {
-    CLog::Log(LOGDEBUG, "{0} - Read {1} commercial breaks from Beyond TV file: {2}", __FUNCTION__, m_vecCuts.size(),
+    CLog::Log(LOGDEBUG, "%s - Read %" PRIuS" commercial breaks from Beyond TV file: %s", __FUNCTION__, m_vecCuts.size(),
               beyondTVFilename.c_str());
     return true;
   }
@@ -565,13 +563,13 @@ bool CEdl::ReadBeyondTV(const std::string& strMovie)
 
 bool CEdl::ReadPvr(const std::string &strMovie)
 {
-  if (!CServiceBroker::GetPVRManager().IsStarted())
+  if (!PVR::g_PVRManager.IsStarted())
   {
     CLog::Log(LOGERROR, "%s - PVR Manager not started, cannot read Edl for %s", __FUNCTION__, strMovie.c_str());
     return false;
   }
 
-  CFileItemPtr tag =  CServiceBroker::GetPVRManager().Recordings()->GetByPath(strMovie);
+  CFileItemPtr tag =  PVR::g_PVRRecordings->GetByPath(strMovie);
   if (tag && tag->HasPVRRecordingInfoTag())
   {
     CLog::Log(LOGDEBUG, "%s - Reading Edl for recording: %s", __FUNCTION__, tag->GetPVRRecordingInfoTag()->m_strTitle.c_str());
@@ -752,7 +750,7 @@ int CEdl::RemoveCutTime(int iSeek) const
     return iSeek;
 
   /**
-   * @todo Consider an optimization of using the (now unused) total cut time if the seek time
+   * @todo Consider an optimisation of using the (now unused) total cut time if the seek time
    * requested is later than the end of the last recorded cut. For example, when calculating the
    * total duration for display.
    */
@@ -770,19 +768,19 @@ int CEdl::RemoveCutTime(int iSeek) const
   return iSeek - iCutTime;
 }
 
-double CEdl::RestoreCutTime(double dClock) const
+int CEdl::RestoreCutTime(int iClock) const
 {
   if (!HasCut())
-    return dClock;
+    return iClock;
 
-  double dSeek = dClock;
+  int iSeek = iClock;
   for (int i = 0; i < (int)m_vecCuts.size(); i++)
   {
-    if (m_vecCuts[i].action == CUT && dSeek >= m_vecCuts[i].start)
-      dSeek += static_cast<double>(m_vecCuts[i].end - m_vecCuts[i].start);
+    if (m_vecCuts[i].action == CUT && iSeek >= m_vecCuts[i].start)
+      iSeek += m_vecCuts[i].end - m_vecCuts[i].start;
   }
 
-  return dSeek;
+  return iSeek;
 }
 
 bool CEdl::HasSceneMarker() const
@@ -819,12 +817,12 @@ std::string CEdl::GetInfo() const
       strInfo += StringUtils::Format("b%i", commBreakCount);
   }
   if (HasSceneMarker())
-    strInfo += StringUtils::Format("s{0}", m_vecSceneMarkers.size());
+    strInfo += StringUtils::Format("s%" PRIuS, m_vecSceneMarkers.size());
 
-  return strInfo;
+  return strInfo.empty() ? "-" : strInfo;
 }
 
-bool CEdl::InCut(const int iSeek, Cut *pCut)
+bool CEdl::InCut(const int iSeek, Cut *pCut) const
 {
   for (int i = 0; i < (int)m_vecCuts.size(); i++)
   {
@@ -840,16 +838,6 @@ bool CEdl::InCut(const int iSeek, Cut *pCut)
   }
 
   return false;
-}
-
-int CEdl::GetLastCheckASSTime() const
-{
-  return m_lastCheckASSTime;
-}
-
-void CEdl::SetLastCheckASSTime(const int iCheckASSTime)
-{
-  m_lastCheckASSTime = iCheckASSTime;
 }
 
 bool CEdl::GetNearestCut(bool bPlus, const int iSeek, Cut *pCut) const
@@ -897,7 +885,7 @@ bool CEdl::GetNearestCut(bool bPlus, const int iSeek, Cut *pCut) const
   }
 }
 
-bool CEdl::GetNextSceneMarker(bool bPlus, const int iClock, int *iSceneMarker)
+bool CEdl::GetNextSceneMarker(bool bPlus, const int iClock, int *iSceneMarker) const
 {
   if (!HasSceneMarker())
     return false;

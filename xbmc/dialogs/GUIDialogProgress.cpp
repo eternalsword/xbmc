@@ -34,7 +34,10 @@ CGUIDialogProgress::CGUIDialogProgress(void)
   Reset();
 }
 
-CGUIDialogProgress::~CGUIDialogProgress(void) = default;
+CGUIDialogProgress::~CGUIDialogProgress(void)
+{
+
+}
 
 void CGUIDialogProgress::Reset()
 {
@@ -43,7 +46,7 @@ void CGUIDialogProgress::Reset()
   m_iCurrent = 0;
   m_iMax = 0;
   m_percentage = 0;
-  m_showProgress = true;
+  m_showProgress = false;
   m_bCanCancel = true;
   SetInvalid();
 }
@@ -61,7 +64,7 @@ void CGUIDialogProgress::Open(const std::string &param /* = "" */)
 
   {
     CSingleLock lock(g_graphicsContext);
-    ShowProgressBar(true);
+    ShowProgressBar(false);
   }
   
   CGUIDialog::Open_Internal(false, param);
@@ -157,8 +160,7 @@ void CGUIDialogProgress::SetProgressAdvance(int nSteps/*=1*/)
   if (m_iCurrent>m_iMax)
     m_iCurrent=0;
 
-  if (m_iMax > 0)
-    SetPercentage((m_iCurrent*100)/m_iMax);
+  SetPercentage((m_iCurrent*100)/m_iMax);
 }
 
 bool CGUIDialogProgress::Abort()

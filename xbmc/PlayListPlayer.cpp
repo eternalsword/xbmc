@@ -37,7 +37,6 @@
 #include "input/Key.h"
 #include "URL.h"
 #include "messaging/ApplicationMessenger.h"
-#include "filesystem/VideoDatabaseFile.h"
 
 using namespace PLAYLIST;
 using namespace KODI::MESSAGING;
@@ -256,27 +255,6 @@ bool CPlayListPlayer::PlaySongId(int songId)
   return Play();
 }
 
-bool CPlayListPlayer::Play(const CFileItemPtr &pItem, std::string player)
-{
-  int playlist;
-  if (pItem->IsAudio())
-    playlist = PLAYLIST_MUSIC;
-  else if (pItem->IsVideo())
-    playlist = PLAYLIST_VIDEO;
-  else
-  {
-    CLog::Log(LOGWARNING,"Playlist Player: ListItem type must be audio or video, use ListItem::setInfo to specify!");
-    return false;
-  }
-
-  ClearPlaylist(playlist);
-  Reset();
-  SetCurrentPlaylist(playlist);
-  Add(playlist, pItem);
-
-  return Play(0, player);
-}
-
 bool CPlayListPlayer::Play(int iSong, std::string player, bool bAutoPlay /* = false */, bool bPlayPrevious /* = false */)
 {
   if (m_iCurrentPlayList == PLAYLIST_NONE)
@@ -301,9 +279,6 @@ bool CPlayListPlayer::Play(int iSong, std::string player, bool bAutoPlay /* = fa
 
   m_iCurrentSong = iSong;
   CFileItemPtr item = playlist[m_iCurrentSong];
-  if (item->IsVideoDb() && !item->HasVideoInfoTag())
-    *(item->GetVideoInfoTag()) = XFILE::CVideoDatabaseFile::GetVideoTag(CURL(item->GetPath()));
-
   playlist.SetPlayed(true);
 
   m_bPlaybackStarted = false;
@@ -598,7 +573,7 @@ void CPlayListPlayer::ReShuffle(int iPlaylist, int iPosition)
   {
     GetPlaylist(iPlaylist).Shuffle();
   }
-  // we're trying to shuffle new items into the currently playing playlist
+  // we're trying to shuffle new items into the curently playing playlist
   // so we shuffle starting at two positions below the current item
   else if (iPlaylist == m_iCurrentPlayList)
   {
@@ -607,18 +582,18 @@ void CPlayListPlayer::ReShuffle(int iPlaylist, int iPosition)
       (g_application.m_pPlayer->IsPlayingVideo() && iPlaylist == PLAYLIST_VIDEO)
       )
     {
-      CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).Shuffle(m_iCurrentSong + 2);
+      g_playlistPlayer.GetPlaylist(iPlaylist).Shuffle(m_iCurrentSong + 2);
     }
   }
   // otherwise, shuffle from the passed position
   // which is the position of the first new item added
   else
   {
-    CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).Shuffle(iPosition);
+    g_playlistPlayer.GetPlaylist(iPlaylist).Shuffle(iPosition);
   }
 }
 
-void CPlayListPlayer::Add(int iPlaylist, const CPlayList& playlist)
+void CPlayListPlayer::Add(int iPlaylist, CPlayList& playlist)
 {
   if (iPlaylist != PLAYLIST_MUSIC && iPlaylist != PLAYLIST_VIDEO)
     return;
@@ -640,7 +615,7 @@ void CPlayListPlayer::Add(int iPlaylist, const CFileItemPtr &pItem)
     ReShuffle(iPlaylist, iSize);
 }
 
-void CPlayListPlayer::Add(int iPlaylist, const CFileItemList& items)
+void CPlayListPlayer::Add(int iPlaylist, CFileItemList& items)
 {
   if (iPlaylist != PLAYLIST_MUSIC && iPlaylist != PLAYLIST_VIDEO)
     return;
@@ -651,7 +626,7 @@ void CPlayListPlayer::Add(int iPlaylist, const CFileItemList& items)
     ReShuffle(iPlaylist, iSize);
 }
 
-void CPlayListPlayer::Insert(int iPlaylist, const CPlayList& playlist, int iIndex)
+void CPlayListPlayer::Insert(int iPlaylist, CPlayList& playlist, int iIndex)
 {
   if (iPlaylist != PLAYLIST_MUSIC && iPlaylist != PLAYLIST_VIDEO)
     return;
@@ -677,7 +652,7 @@ void CPlayListPlayer::Insert(int iPlaylist, const CFileItemPtr &pItem, int iInde
     m_iCurrentSong++;
 }
 
-void CPlayListPlayer::Insert(int iPlaylist, const CFileItemList& items, int iIndex)
+void CPlayListPlayer::Insert(int iPlaylist, CFileItemList& items, int iIndex)
 {
   if (iPlaylist != PLAYLIST_MUSIC && iPlaylist != PLAYLIST_VIDEO)
     return;
@@ -876,14 +851,10 @@ void PLAYLIST::CPlayListPlayer::OnApplicationMessage(KODI::MESSAGING::ThreadMess
 
         ClearPlaylist(playlist);
         SetCurrentPlaylist(playlist);
+        //For single item lists try PlayMedia. This covers some more cases where a playlist is not appropriate
+        //It will fall through to PlayFile
         if (list->Size() == 1 && !(*list)[0]->IsPlayList())
-        {
-          CFileItemPtr item = (*list)[0];
-          if (item->IsAudio() || item->IsVideo())
-            Play(item, pMsg->strParam);
-          else
-            g_application.PlayMedia(*item, pMsg->strParam, playlist);
-        }
+          g_application.PlayMedia(*((*list)[0]), pMsg->strParam, playlist);
         else
         {
           // Handle "shuffled" option if present

@@ -19,6 +19,7 @@
  */
 
 #include "threads/Event.h"
+#include "threads/Atomics.h"
 
 #include "threads/test/TestHelpers.h"
 
@@ -41,7 +42,7 @@ public:
 
   waiter(CEvent& o, bool& flag) : event(o), result(flag), waiting(false) {}
   
-  void Run() override
+  void Run()
   {
     waiting = true;
     result = event.Wait();
@@ -60,7 +61,7 @@ public:
 
   timed_waiter(CEvent& o, int& flag, int waitTimeMillis) : event(o), waitTime(waitTimeMillis), result(flag), waiting(false) {}
   
-  void Run() override
+  void Run()
   {
     waiting = true;
     result = 0;
@@ -80,7 +81,7 @@ public:
   group_wait(CEventGroup& o) : event(o), timeout(-1), result(NULL), waiting(false) {}
   group_wait(CEventGroup& o, int timeout_) : event(o), timeout(timeout_), result(NULL), waiting(false) {}
 
-  void Run() override
+  void Run()
   {
     waiting = true;
     if (timeout == -1)
@@ -530,7 +531,7 @@ TEST(TestEvent, GroupTimedWait)
 #define NUMTHREADS 100l
 
 CEvent* g_event = NULL;
-std::atomic<long> g_mutex;
+volatile long g_mutex;
 
 class mass_waiter : public IRunnable
 {
@@ -542,7 +543,7 @@ public:
 
   mass_waiter() : event(*g_event), waiting(false) {}
   
-  void Run() override
+  void Run()
   {
     waiting = true;
     AtomicGuard g(&g_mutex);
@@ -561,7 +562,7 @@ public:
 
   poll_mass_waiter() : event(*g_event), waiting(false) {}
   
-  void Run() override
+  void Run()
   {
     waiting = true;
     AtomicGuard g(&g_mutex);

@@ -25,12 +25,14 @@
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
 
-CSettingAddon::CSettingAddon(const std::string &id, CSettingsManager *settingsManager /* = nullptr */)
-  : CSettingString(id, settingsManager)
+CSettingAddon::CSettingAddon(const std::string &id, CSettingsManager *settingsManager /* = NULL */)
+  : CSettingString(id, settingsManager),
+    m_addonType(ADDON::ADDON_UNKNOWN)
 { }
 
-CSettingAddon::CSettingAddon(const std::string &id, int label, const std::string &value, CSettingsManager *settingsManager /* = nullptr */)
-  : CSettingString(id, label, value, settingsManager)
+CSettingAddon::CSettingAddon(const std::string &id, int label, const std::string &value, CSettingsManager *settingsManager /* = NULL */)
+  : CSettingString(id, label, value, settingsManager),
+    m_addonType(ADDON::ADDON_UNKNOWN)
 { }
   
 CSettingAddon::CSettingAddon(const std::string &id, const CSettingAddon &setting)
@@ -39,9 +41,9 @@ CSettingAddon::CSettingAddon(const std::string &id, const CSettingAddon &setting
   copyaddontype(setting);
 }
 
-SettingPtr CSettingAddon::Clone(const std::string &id) const
+CSetting* CSettingAddon::Clone(const std::string &id) const
 {
-  return std::make_shared<CSettingAddon>(id, *this);
+  return new CSettingAddon(id, *this);
 }
 
 bool CSettingAddon::Deserialize(const TiXmlNode *node, bool update /* = false */)
@@ -51,7 +53,7 @@ bool CSettingAddon::Deserialize(const TiXmlNode *node, bool update /* = false */
   if (!CSettingString::Deserialize(node, update))
     return false;
     
-  if (m_control != nullptr &&
+  if (m_control != NULL &&
      (m_control->GetType() != "button" || m_control->GetFormat() != "addon"))
   {
     CLog::Log(LOGERROR, "CSettingAddon: invalid <control> of \"%s\"", m_id.c_str());
@@ -60,13 +62,13 @@ bool CSettingAddon::Deserialize(const TiXmlNode *node, bool update /* = false */
     
   bool ok = false;
   std::string strAddonType;
-  auto constraints = node->FirstChild("constraints");
-  if (constraints != nullptr)
+  const TiXmlNode *constraints = node->FirstChild("constraints");
+  if (constraints != NULL)
   {
     // get the addon type
     if (XMLUtils::GetString(constraints, "addontype", strAddonType) && !strAddonType.empty())
     {
-      m_addonType = ADDON::CAddonInfo::TranslateType(strAddonType);
+      m_addonType = ADDON::TranslateType(strAddonType);
       if (m_addonType != ADDON::ADDON_UNKNOWN)
         ok = true;
     }

@@ -102,7 +102,7 @@ CHTTPImageTransformationHandler::~CHTTPImageTransformationHandler()
   m_buffer = NULL;
 }
 
-bool CHTTPImageTransformationHandler::CanHandleRequest(const HTTPRequest &request) const
+bool CHTTPImageTransformationHandler::CanHandleRequest(const HTTPRequest &request)
 {
   if ((request.method != GET && request.method != HEAD) ||
     request.pathUrl.find(ImageBasePath) != 0 || request.pathUrl.size() <= ImageBasePath.size())

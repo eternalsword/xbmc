@@ -1,5 +1,5 @@
 /*
- *      Copyright (C) 2014-2017 Team Kodi
+ *      Copyright (C) 2014-2016 Team Kodi
  *      http://kodi.tv
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@
 #pragma once
 
 #include "Peripheral.h"
+#include "input/joysticks/DefaultJoystick.h"
+#include "input/joysticks/IDriverHandler.h"
 #include "input/joysticks/IDriverReceiver.h"
 #include "input/joysticks/JoystickMonitor.h"
 #include "input/joysticks/JoystickTypes.h"
@@ -31,46 +33,39 @@
 
 #define JOYSTICK_PORT_UNKNOWN  (-1)
 
-namespace KODI
-{
 namespace JOYSTICK
 {
   class CDeadzoneFilter;
-  class CKeymapHandling;
-  class CRumbleGenerator;
   class IButtonMap;
-  class IDriverHandler;
-}
 }
 
 namespace PERIPHERALS
 {
-  class CPeripherals;
-
   class CPeripheralJoystick : public CPeripheral, //! @todo extend CPeripheralHID
-                              public KODI::JOYSTICK::IDriverReceiver
+                              public JOYSTICK::IDriverHandler,
+                              public JOYSTICK::IDriverReceiver
   {
   public:
-    CPeripheralJoystick(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
+    CPeripheralJoystick(const PeripheralScanResult& scanResult, CPeripheralBus* bus);
 
-    ~CPeripheralJoystick(void) override;
+    virtual ~CPeripheralJoystick(void);
 
     // implementation of CPeripheral
-    bool InitialiseFeature(const PeripheralFeature feature) override;
-    void OnUserNotification() override;
-    bool TestFeature(PeripheralFeature feature) override;
-    void RegisterJoystickDriverHandler(KODI::JOYSTICK::IDriverHandler* handler, bool bPromiscuous) override;
-    void UnregisterJoystickDriverHandler(KODI::JOYSTICK::IDriverHandler* handler) override;
-    KODI::JOYSTICK::IDriverReceiver* GetDriverReceiver() override { return this; }
-    IKeymap *GetKeymap(const std::string &controllerId) override;
+    virtual bool InitialiseFeature(const PeripheralFeature feature) override;
+    virtual void OnUserNotification() override;
+    virtual bool TestFeature(PeripheralFeature feature) override;
+    virtual void RegisterJoystickDriverHandler(IDriverHandler* handler, bool bPromiscuous) override;
+    virtual void UnregisterJoystickDriverHandler(IDriverHandler* handler) override;
+    virtual JOYSTICK::IDriverReceiver* GetDriverReceiver() override { return this; }
 
-    bool OnButtonMotion(unsigned int buttonIndex, bool bPressed);
-    bool OnHatMotion(unsigned int hatIndex, KODI::JOYSTICK::HAT_STATE state);
-    bool OnAxisMotion(unsigned int axisIndex, float position);
-    void ProcessAxisMotions(void);
+    // implementation of IDriverHandler
+    virtual bool OnButtonMotion(unsigned int buttonIndex, bool bPressed) override;
+    virtual bool OnHatMotion(unsigned int hatIndex, JOYSTICK::HAT_STATE state) override;
+    virtual bool OnAxisMotion(unsigned int axisIndex, float position) override;
+    virtual void ProcessAxisMotions(void) override;
 
     // implementation of IDriverReceiver
-    bool SetMotorState(unsigned int motorIndex, float magnitude) override;
+    virtual bool SetMotorState(unsigned int motorIndex, float magnitude) override;
 
     /*!
      * \brief Get the name of the driver or API providing this joystick
@@ -106,17 +101,15 @@ namespace PERIPHERALS
     void SetHatCount(unsigned int hatCount)       { m_hatCount      = hatCount; }
     void SetAxisCount(unsigned int axisCount)     { m_axisCount     = axisCount; }
     void SetMotorCount(unsigned int motorCount); // specialized to update m_features
-    void SetSupportsPowerOff(bool bSupportsPowerOff); // specialized to update m_features
+    void SetSupportsPowerOff(bool supportsPowerOff) { m_supportsPowerOff = supportsPowerOff; }
 
   protected:
     void InitializeDeadzoneFiltering();
 
-    void PowerOff();
-
     struct DriverHandler
     {
-      KODI::JOYSTICK::IDriverHandler* handler;
-      bool bPromiscuous;
+      JOYSTICK::IDriverHandler* handler;
+      bool                      bPromiscuous;
     };
 
     std::string                         m_strProvider;
@@ -126,11 +119,10 @@ namespace PERIPHERALS
     unsigned int                        m_axisCount;
     unsigned int                        m_motorCount;
     bool                                m_supportsPowerOff;
-    std::unique_ptr<KODI::JOYSTICK::CKeymapHandling> m_appInput;
-    std::unique_ptr<KODI::JOYSTICK::CRumbleGenerator> m_rumbleGenerator;
-    KODI::JOYSTICK::CJoystickMonitor          m_joystickMonitor;
-    std::unique_ptr<KODI::JOYSTICK::IButtonMap>      m_buttonMap;
-    std::unique_ptr<KODI::JOYSTICK::CDeadzoneFilter> m_deadzoneFilter;
+    JOYSTICK::CDefaultJoystick          m_defaultInputHandler;
+    JOYSTICK::CJoystickMonitor          m_joystickMonitor;
+    std::unique_ptr<JOYSTICK::IButtonMap>      m_buttonMap;
+    std::unique_ptr<JOYSTICK::CDeadzoneFilter> m_deadzoneFilter;
     std::vector<DriverHandler>          m_driverHandlers;
     CCriticalSection                    m_handlerMutex;
   };

@@ -41,7 +41,8 @@ CVirtualDirectory::CVirtualDirectory(void)
   m_allowThreads = true;
 }
 
-CVirtualDirectory::~CVirtualDirectory(void) = default;
+CVirtualDirectory::~CVirtualDirectory(void)
+{}
 
 /*!
  \brief Add shares to the virtual directory
@@ -57,7 +58,7 @@ void CVirtualDirectory::SetSources(const VECSOURCES& vecSources)
  \brief Retrieve the shares or the content of a directory.
  \param strPath Specifies the path of the directory to retrieve or pass an empty string to get the shares.
  \param items Content of the directory.
- \return Returns \e true, if directory access is successful.
+ \return Returns \e true, if directory access is successfull.
  \note If \e strPath is an empty string, the share \e items have thumbnails and icons set, else the thumbnails
     and icons have to be set manually.
  */

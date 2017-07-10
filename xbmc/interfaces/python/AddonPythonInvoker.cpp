@@ -18,6 +18,10 @@
  *
  */
 
+#if (defined HAVE_CONFIG_H) && (!defined TARGET_WINDOWS)
+  #include "config.h"
+#endif
+
 // python.h should always be included first before any other includes
 #include <Python.h>
 #include <osdefs.h>
@@ -29,7 +33,7 @@
 
 #define MODULE "xbmc"
 
-#define RUNSCRIPT_PREAMBLE \
+#define RUNSCRIPT_PRAMBLE \
         "" \
         "import " MODULE "\n" \
         "xbmc.abortRequested = False\n" \
@@ -67,12 +71,12 @@
 #if defined(TARGET_ANDROID)
 
 #define RUNSCRIPT_COMPLIANT \
-  RUNSCRIPT_PREAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PRAMBLE RUNSCRIPT_SETUPTOOLS_HACK RUNSCRIPT_POSTSCRIPT
 
 #else
 
 #define RUNSCRIPT_COMPLIANT \
-  RUNSCRIPT_PREAMBLE RUNSCRIPT_POSTSCRIPT
+  RUNSCRIPT_PRAMBLE RUNSCRIPT_POSTSCRIPT
 
 #endif
 
@@ -107,7 +111,8 @@ CAddonPythonInvoker::CAddonPythonInvoker(ILanguageInvocationHandler *invocationH
   : CPythonInvoker(invocationHandler)
 { }
 
-CAddonPythonInvoker::~CAddonPythonInvoker() = default;
+CAddonPythonInvoker::~CAddonPythonInvoker()
+{ }
 
 std::map<std::string, CPythonInvoker::PythonModuleInitialization> CAddonPythonInvoker::getModules() const
 {

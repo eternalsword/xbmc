@@ -1,7 +1,5 @@
-if(OPENGLES_FOUND)
-  set(SOURCES RenderSystemGLES.cpp)
+set(SOURCES RenderSystemGLES.cpp)
 
-  set(HEADERS RenderSystemGLES.h)
+set(HEADERS RenderSystemGLES.h)
 
-  core_add_library(rendering_gles)
-endif()
+core_add_library(rendering_gles)

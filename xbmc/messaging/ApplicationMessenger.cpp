@@ -23,26 +23,14 @@
 #include <memory>
 #include <utility>
 
+#include "Application.h"
 #include "guilib/GraphicContext.h"
-#include "guilib/GUIMessage.h"
-#include "messaging/IMessageTarget.h"
 #include "threads/SingleLock.h"
 
 namespace KODI
 {
 namespace MESSAGING
 {
-
-class CDelayedMessage : public CThread
-{
-  public:
-    CDelayedMessage(ThreadMessage& msg, unsigned int delay);
-    void Process() override;
-
-  private:
-    unsigned int   m_delay;
-    ThreadMessage  m_msg;
-};
 
 CDelayedMessage::CDelayedMessage(ThreadMessage& msg, unsigned int delay) : CThread("DelayedMessage")
 {
@@ -66,7 +54,9 @@ CApplicationMessenger& CApplicationMessenger::GetInstance()
   return appMessenger;
 }
 
-CApplicationMessenger::CApplicationMessenger() = default;
+CApplicationMessenger::CApplicationMessenger()
+{
+}
 
 CApplicationMessenger::~CApplicationMessenger()
 {
@@ -111,7 +101,7 @@ int CApplicationMessenger::SendMsg(ThreadMessage&& message, bool wait)
     message.result = std::make_shared<int>(-1);
     // check that we're not being called from our application thread, else we'll be waiting
     // forever!
-    if (!CThread::IsCurrentThread(m_guiThreadId))
+    if (!g_application.IsCurrentThread())
     {
       message.waitEvent.reset(new CEvent(true));
       waitEvent = message.waitEvent;
@@ -127,7 +117,7 @@ int CApplicationMessenger::SendMsg(ThreadMessage&& message, bool wait)
   }
 
 
-  if (m_bStop)
+  if (g_application.m_bStop)
     return -1;
 
   ThreadMessage* msg = new ThreadMessage(std::move(message));
@@ -140,8 +130,8 @@ int CApplicationMessenger::SendMsg(ThreadMessage&& message, bool wait)
     m_vecMessages.push(msg);
   lock.Leave();  // this releases the lock on the vec of messages and
                  //   allows the ProcessMessage to execute and therefore
-                 //   delete the message itself. Therefore any access
-                 //   of the message itself after this point constitutes
+                 //   delete the message itself. Therefore any accesss
+                 //   of the message itself after this point consittutes
                  //   a race condition (yarc - "yet another race condition")
                  //
   if (waitEvent) // ... it just so happens we have a spare reference to the

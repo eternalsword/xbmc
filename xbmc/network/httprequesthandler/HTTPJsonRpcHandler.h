@@ -28,18 +28,18 @@
 class CHTTPJsonRpcHandler : public IHTTPRequestHandler
 {
 public:
-  CHTTPJsonRpcHandler() = default;
-  ~CHTTPJsonRpcHandler() override = default;
+  CHTTPJsonRpcHandler() { }
+  virtual ~CHTTPJsonRpcHandler() { }
   
   // implementations of IHTTPRequestHandler
-  IHTTPRequestHandler* Create(const HTTPRequest &request) const override { return new CHTTPJsonRpcHandler(request); }
-  bool CanHandleRequest(const HTTPRequest &request) const override;
+  virtual IHTTPRequestHandler* Create(const HTTPRequest &request) { return new CHTTPJsonRpcHandler(request); }
+  virtual bool CanHandleRequest(const HTTPRequest &request);
 
-  int HandleRequest() override;
+  virtual int HandleRequest();
 
-  HttpResponseRanges GetResponseData() const override;
+  virtual HttpResponseRanges GetResponseData() const;
 
-  int GetPriority() const override { return 5; }
+  virtual int GetPriority() const { return 5; }
 
 protected:
   explicit CHTTPJsonRpcHandler(const HTTPRequest &request)
@@ -47,9 +47,9 @@ protected:
   { }
 
 #if (MHD_VERSION >= 0x00040001)
-  bool appendPostData(const char *data, size_t size) override;
+  virtual bool appendPostData(const char *data, size_t size);
 #else
-  bool appendPostData(const char *data, unsigned int size) override;
+  virtual bool appendPostData(const char *data, unsigned int size);
 #endif
 
 private:
@@ -61,7 +61,7 @@ private:
   {
   public:
     CHTTPTransportLayer() = default;
-    ~CHTTPTransportLayer() override = default;
+    ~CHTTPTransportLayer() = default;
 
     // implementations of JSONRPC::ITransportLayer
     bool PrepareDownload(const char *path, CVariant &details, std::string &protocol) override;
@@ -73,14 +73,8 @@ private:
   class CHTTPClient : public JSONRPC::IClient
   {
   public:
-    CHTTPClient(HTTPMethod method);
-    ~CHTTPClient() override = default;
-
-    int GetPermissionFlags() override { return m_permissionFlags; }
-    int GetAnnouncementFlags() override;
-    bool SetAnnouncementFlags(int flags) override;
-
-  private:
-    int m_permissionFlags;
+    virtual int  GetPermissionFlags();
+    virtual int  GetAnnouncementFlags();
+    virtual bool SetAnnouncementFlags(int flags);
   };
 };

@@ -24,7 +24,6 @@
 #include "threads/Thread.h"
 #include "guilib/DispResource.h"
 #include "utils/log.h"
-#include "cores/VideoPlayer/DVDClock.h"
 
 #include <mutex>
 #include <queue>
@@ -35,8 +34,6 @@
 #include <map>
 
 #define DIFFRINGSIZE 60
-
-#define FB_DEVICE "/dev/fb0"
 
 class CIMX;
 extern CIMX g_IMX;
@@ -53,8 +50,6 @@ public:
   int           WaitVsync();
   virtual void  OnResetDisplay();
 
-  static bool   IsBlank();
-
 private:
   virtual void  Process();
   bool          UpdateDCIC();
@@ -65,7 +60,7 @@ private:
   unsigned long m_counterLast;
   CEvent        m_VblankEvent;
 
-  int           m_frameTime;
+  double        m_frameTime;
   CCriticalSection m_critSection;
 
   uint32_t      m_lastSyncFlag;
@@ -167,7 +162,7 @@ private:
   volatile bool           m_abort;
 };
 
-// General description of a buffer used by
+// Generell description of a buffer used by
 // the IMX context, e.g. for blitting
 class CIMXBuffer {
 public:
@@ -194,14 +189,19 @@ protected:
 class CIMXFps
 {
   public:
-    CIMXFps() { Flush(); }
+    CIMXFps()       { Flush(); }
     void   Add(double pts);
-    void   Flush();
-    double GetFrameDuration(bool raw = false) { return m_frameDuration; }
+    void   Flush(); //flush the saved pattern and the ringbuffer
+
+    double GetFrameDuration() { return m_frameDuration;             }
+    bool   HasFullBuffer()    { return m_ts.size() == DIFFRINGSIZE; }
+
     bool   Recalc();
 
   private:
-    std::map<unsigned long,int>  m_hgraph;
     std::deque<double>   m_ts;
+    std::map<double,int> m_hgraph;
     double               m_frameDuration;
+    bool                 m_hasPattern;
+    double               m_ptscorrection;
 };

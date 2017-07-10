@@ -39,14 +39,14 @@ namespace ActiveAE
     /*!
      * @brief Create a new instance of the audio DSP database.
      */
-    CActiveAEDSPDatabase(void) = default;
-    ~CActiveAEDSPDatabase(void) override = default;
+    CActiveAEDSPDatabase(void) {};
+    virtual ~CActiveAEDSPDatabase(void) {};
 
     /*!
      * @brief Open the database.
      * @return True if it was opened successfully, false otherwise.
      */
-    bool Open() override;
+    virtual bool Open();
 
     /*!
      * @brief Get the minimal database version that is required to operate correctly.
@@ -58,13 +58,13 @@ namespace ActiveAE
      * @brief Get the default sqlite database filename.
      * @return The default filename.
      */
-    const char *GetBaseDBName() const override { return "ADSP"; };
+    const char *GetBaseDBName() const { return "ADSP"; };
 
     /*! @name mode methods */
     //@{
     /*!
      * @brief Used to check for present mode types
-     * @param modeType The mode type identifier
+     * @param modeType The mode type identfier
      * @return True if modes present of given type
      */
     bool ContainsModes(int modeType);
@@ -77,7 +77,7 @@ namespace ActiveAE
 
     /*!
      * @brief Remove all modes from the database of a type.
-     * @param modeType The mode type identifier of functions to delete.
+     * @param modeType The mode type identfier of functions to delete.
      * @return True if the modes were deleted, false otherwise.
      */
     bool DeleteModes(int modeType);
@@ -204,15 +204,15 @@ namespace ActiveAE
     /*!
      * @brief Create the audio DSP database tables.
      */
-    void CreateTables() override;
-    void CreateAnalytics() override;
+    virtual void CreateTables();
+    virtual void CreateAnalytics();
 
     /*!
      * @brief Update an old version of the database.
      * @param version The version to update the database from.
      */
-    void UpdateTables(int version) override;
-    int GetSchemaVersion() const override { return 0; }
+    virtual void UpdateTables(int version);
+    virtual int GetSchemaVersion() const { return 0; }
 
     void SplitPath(const std::string& strFileNameAndPath, std::string& strPath, std::string& strFileName);
   };

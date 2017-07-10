@@ -21,8 +21,6 @@
 #include "ActiveAEDSPMode.h"
 #include "ActiveAEDSPDatabase.h"
 #include "ActiveAEDSP.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 
 using namespace ActiveAE;
@@ -340,7 +338,7 @@ int CActiveAEDSPMode::AddUpdate(bool force)
       return m_iModeId;
   }
 
-  CActiveAEDSPDatabase *database = nullptr;
+  CActiveAEDSPDatabase *database = CServiceBroker::GetADSP().GetADSPDatabase();
   if (!database || !database->IsOpen())
   {
     CLog::Log(LOGERROR, "ActiveAE DSP - failed to open the database");
@@ -355,7 +353,7 @@ int CActiveAEDSPMode::AddUpdate(bool force)
 
 bool CActiveAEDSPMode::Delete(void)
 {
-  CActiveAEDSPDatabase *database = nullptr;
+  CActiveAEDSPDatabase *database = CServiceBroker::GetADSP().GetADSPDatabase();
   if (!database || !database->IsOpen())
   {
     CLog::Log(LOGERROR, "ActiveAE DSP - failed to open the database");
@@ -367,7 +365,7 @@ bool CActiveAEDSPMode::Delete(void)
 
 bool CActiveAEDSPMode::IsKnown(void) const
 {
-  CActiveAEDSPDatabase *database = nullptr;
+  CActiveAEDSPDatabase *database = CServiceBroker::GetADSP().GetADSPDatabase();
   if (!database || !database->IsOpen())
   {
     CLog::Log(LOGERROR, "ActiveAE DSP - failed to open the database");

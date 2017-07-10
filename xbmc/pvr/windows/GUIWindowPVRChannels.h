@@ -19,54 +19,42 @@
  *
  */
 
-#include "pvr/PVRChannelNumberInputHandler.h"
-
 #include "GUIWindowPVRBase.h"
 
 namespace PVR
 {
-  class CGUIWindowPVRChannelsBase : public CGUIWindowPVRBase, public CPVRChannelNumberInputHandler
+  class CGUIWindowPVRChannels : public CGUIWindowPVRBase
   {
   public:
-    CGUIWindowPVRChannelsBase(bool bRadio, int id, const std::string &xmlFile);
-    ~CGUIWindowPVRChannelsBase() override;
+    CGUIWindowPVRChannels(bool bRadio);
+    virtual ~CGUIWindowPVRChannels(void) {};
 
-    bool OnMessage(CGUIMessage& message) override;
-    void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
-    bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
-    bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
-    void UpdateButtons(void) override;
-    bool OnAction(const CAction &action) override;
+    virtual bool CanBeActivated() const override;
+    virtual bool OnMessage(CGUIMessage& message) override;
+    virtual void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+    virtual bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
+    virtual bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+    virtual void UpdateButtons(void) override;
+    virtual bool OnAction(const CAction &action) override;
 
-    // CPVRChannelNumberInputHandler implementation
-    void OnInputDone() override;
+  protected:
+    virtual std::string GetDirectoryPath(void) override;
+    virtual void RegisterObservers(void) override;
+    virtual void UnregisterObservers(void) override;
 
   private:
-    bool OnContextButtonManage(const CFileItemPtr &item, CONTEXT_BUTTON button);
+    bool OnContextButtonAdd(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonGroupManager(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonInfo(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonManage(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonUpdateEpg(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonAddTimer(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonStartRecord(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonStopRecord(CFileItem *item, CONTEXT_BUTTON button);
 
     void ShowChannelManager();
-    void ShowGroupManager();
-    void UpdateEpg(const CFileItemPtr &item);
+    void ShowGroupManager(void);
 
-  protected:
     bool m_bShowHiddenChannels;
-  };
-
-  class CGUIWindowPVRTVChannels : public CGUIWindowPVRChannelsBase
-  {
-  public:
-    CGUIWindowPVRTVChannels();
-
-  protected:
-    std::string GetDirectoryPath() override;
-  };
-
-  class CGUIWindowPVRRadioChannels : public CGUIWindowPVRChannelsBase
-  {
-  public:
-    CGUIWindowPVRRadioChannels();
-
-  protected:
-    std::string GetDirectoryPath() override;
   };
 }

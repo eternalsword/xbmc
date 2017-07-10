@@ -21,11 +21,14 @@
 
 #include "JSONRPC.h"
 #include "FileItemHandler.h"
-#include "pvr/PVRTypes.h"
-
-#include <string>
 
 class CVariant;
+
+namespace EPG
+{
+  class CEpgInfoTag;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+}
 
 namespace JSONRPC
 {
@@ -77,6 +80,6 @@ namespace JSONRPC
     static int ParseRepeatState(const CVariant &repeat);
     static double ParseTimeInSeconds(const CVariant &time);
     static bool IsPVRChannel();
-    static PVR::CPVREpgInfoTagPtr GetCurrentEpg();
+    static EPG::CEpgInfoTagPtr GetCurrentEpg();
   };
 }

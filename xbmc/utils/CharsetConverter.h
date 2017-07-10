@@ -1,3 +1,6 @@
+#ifndef CCHARSET_CONVERTER
+#define CCHARSET_CONVERTER
+
 /*
  *      Copyright (C) 2005-2013 Team XBMC
  *      http://xbmc.org
@@ -18,14 +21,13 @@
  *
  */
 
-#pragma once
-
 #include <string>
 #include <utility>
 #include <vector>
 
 #include "settings/lib/ISettingCallback.h"
 #include "utils/GlobalsHandling.h"
+#include "utils/uXstrings.h"
 
 class CSetting;
 
@@ -34,7 +36,7 @@ class CCharsetConverter : public ISettingCallback
 public:
   CCharsetConverter();
 
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting* setting) override;
 
   static void reset();
   static void resetSystemCharset();
@@ -162,7 +164,7 @@ public:
   static bool toW(const std::string& stringSrc, std::wstring& wStringDst, const std::string& enc);
   static bool fromW(const std::wstring& wStringSrc, std::string& stringDst, const std::string& enc);
 
-  static void SettingOptionsCharsetsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> >& list, std::string& current, void *data);
+  static void SettingOptionsCharsetsFiller(const CSetting* setting, std::vector< std::pair<std::string, std::string> >& list, std::string& current, void *data);
 private:
   static void resetUserCharset(void);
   static void resetSubtitleCharset(void);
@@ -173,3 +175,4 @@ private:
 
 XBMC_GLOBAL_REF(CCharsetConverter,g_charsetConverter);
 #define g_charsetConverter XBMC_GLOBAL_USE(CCharsetConverter)
+#endif

@@ -19,7 +19,6 @@
  */
 
 #include "CurlFile.h"
-#include "ServiceBroker.h"
 #include "utils/URIUtils.h"
 #include "Util.h"
 #include "URL.h"
@@ -496,7 +495,7 @@ void CCurlFile::SetCommonOptions(CReadState* state)
     g_curlInterface.easy_setopt(h, CURLOPT_USERPWD, userpwd.c_str());
   }
 
-  // make sure headers are separated from the data stream
+  // make sure headers are seperated from the data stream
   g_curlInterface.easy_setopt(h, CURLOPT_WRITEHEADER, state);
   g_curlInterface.easy_setopt(h, CURLOPT_HEADERFUNCTION, header_callback);
   g_curlInterface.easy_setopt(h, CURLOPT_HEADER, FALSE);
@@ -507,8 +506,13 @@ void CCurlFile::SetCommonOptions(CReadState* state)
   g_curlInterface.easy_setopt(h, CURLOPT_FOLLOWLOCATION, TRUE);
   g_curlInterface.easy_setopt(h, CURLOPT_MAXREDIRS, 5);
 
-  // Enable cookie engine for current handle
-  g_curlInterface.easy_setopt(h, CURLOPT_COOKIEFILE, "");
+  // Enable cookie engine for current handle to re-use them in future requests
+  std::string strCookieFile;
+  std::string strTempPath = CSpecialProtocol::TranslatePath(g_advancedSettings.m_cachePath);
+  strCookieFile = URIUtils::AddFileToFolder(strTempPath, "cookies.dat");
+
+  g_curlInterface.easy_setopt(h, CURLOPT_COOKIEFILE, strCookieFile.c_str());
+  g_curlInterface.easy_setopt(h, CURLOPT_COOKIEJAR, strCookieFile.c_str());
 
   // Set custom cookie if requested
   if (!m_cookie.empty())
@@ -707,7 +711,7 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
   if( url2.IsProtocol("ftp")
    || url2.IsProtocol("ftps") )
   {
-    // we was using url options for urls, keep the old code work and warning
+    // we was using url optons for urls, keep the old code work and warning
     if (!url2.GetOptions().empty())
     {
       CLog::Log(LOGWARNING, "%s: ftp url option is deprecated, please switch to use protocol option (change '?' to '|'), url: [%s]", __FUNCTION__, url2.GetRedacted().c_str());
@@ -765,7 +769,7 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
   else if( url2.IsProtocol("http")
        ||  url2.IsProtocol("https"))
   {
-    const CSettings &s = CServiceBroker::GetSettings();
+    const CSettings &s = CSettings::GetInstance();
     if (m_proxyhost.empty()
         && s.GetBool(CSettings::SETTING_NETWORK_USEHTTPPROXY)
         && !s.GetString(CSettings::SETTING_NETWORK_HTTPPROXYSERVER).empty()
@@ -792,8 +796,7 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
       // set xbmc headers
       for (std::map<std::string,std::string>::const_iterator it = options.begin(); it != options.end(); ++it)
       {
-        std::string name = it->first;
-        StringUtils::ToLower(name);
+        std::string name = it->first; StringUtils::ToLower(name);
         const std::string &value = it->second;
 
         if (name == "auth")
@@ -826,25 +829,15 @@ void CCurlFile::ParseAndCorrectUrl(CURL &url2)
           m_postdata = Base64::Decode(value);
           m_postdataset = true;
         }
-        else if (name == "active-remote")// needed for DACP!
-        {
-          SetRequestHeader(it->first, value);
-        }
         // other standard headers (see https://en.wikipedia.org/wiki/List_of_HTTP_header_fields)
         else if (name == "accept" || name == "accept-language" || name == "accept-datetime" ||
-                 name == "authorization" || name == "cache-control" || name == "connection" ||
-                 name == "content-md5" || name == "content-type" || name == "date" ||
-                 name == "expect" || name == "forwarded" || name == "from" ||
-                 name == "if-match" || name == "if-modified-since" || name == "if-none-match" ||
-                 name == "if-range" || name == "if-unmodified-since" || name == "max-forwards" ||
-                 name == "origin" || name == "pragma" || name == "range" || name == "te" ||
-                 name == "upgrade" || name == "via" || name == "warning" ||
-                 name == "x-requested-with" || name == "dnt" || name == "x-forwarded-for" ||
-                 name == "x-forwarded-host" || name == "x-forwarded-proto" ||
-                 name == "front-end-https" || name == "x-http-method-override" ||
-                 name == "x-att-deviceid" || name == "x-wap-profile" || name == "x-uidh" ||
-                 name == "x-csrf-token" || name == "x-request-id" || name == "x-correlation-id" ||
-                 name == "icy-metadata")
+          name == "authorization" || name == "cache-control" || name == "connection" || name == "content-md5" || name == "content-type" || 
+          name == "date" || name == "expect" || name == "forwarded" || name == "from" || name == "if-match" || 
+          name == "if-modified-since" || name == "if-none-match" || name == "if-range" || name == "if-unmodified-since" || name == "max-forwards" || 
+          name == "origin" || name == "pragma" || name == "range" || name == "te" || name == "upgrade" || 
+          name == "via" || name == "warning" || name == "x-requested-with" || name == "dnt" || name == "x-forwarded-for" || name == "x-forwarded-host" || 
+          name == "x-forwarded-proto" || name == "front-end-https" || name == "x-http-method-override" || name == "x-att-deviceid" ||
+          name == "x-wap-profile" || name == "x-uidh" || name == "x-csrf-token" || name == "x-request-id" || name == "x-correlation-id")
         {
           SetRequestHeader(it->first, value);
           if (name == "authorization")
@@ -1013,7 +1006,7 @@ bool CCurlFile::Open(const CURL& url)
 
   assert(!(!m_state->m_easyHandle ^ !m_state->m_multiHandle));
   if( m_state->m_easyHandle == NULL )
-    g_curlInterface.easy_acquire(url2.GetProtocol().c_str(),
+    g_curlInterface.easy_aquire(url2.GetProtocol().c_str(),
                                 url2.GetHostName().c_str(),
                                 &m_state->m_easyHandle,
                                 &m_state->m_multiHandle);
@@ -1104,7 +1097,7 @@ bool CCurlFile::OpenForWrite(const CURL& url, bool bOverWrite)
   CLog::Log(LOGDEBUG, "CCurlFile::OpenForWrite(%p) %s", (void*)this, CURL::GetRedacted(m_url).c_str());
 
   assert(m_state->m_easyHandle == NULL);
-  g_curlInterface.easy_acquire(url2.GetProtocol().c_str(),
+  g_curlInterface.easy_aquire(url2.GetProtocol().c_str(),
                               url2.GetHostName().c_str(),
                               &m_state->m_easyHandle,
                               &m_state->m_multiHandle);
@@ -1201,12 +1194,6 @@ bool CCurlFile::CReadState::ReadString(char *szLine, int iLineLength)
   return (bool)((pLine - szLine) > 0);
 }
 
-bool CCurlFile::ReOpen(const CURL& url)
-{
-  Close();
-  return Open(url);
-}
-
 bool CCurlFile::Exists(const CURL& url)
 {
   // if file is already running, get info from it
@@ -1220,7 +1207,7 @@ bool CCurlFile::Exists(const CURL& url)
   ParseAndCorrectUrl(url2);
 
   assert(m_state->m_easyHandle == NULL);
-  g_curlInterface.easy_acquire(url2.GetProtocol().c_str(),
+  g_curlInterface.easy_aquire(url2.GetProtocol().c_str(),
                               url2.GetHostName().c_str(),
                               &m_state->m_easyHandle, NULL);
 
@@ -1300,7 +1287,7 @@ int64_t CCurlFile::Seek(int64_t iFilePosition, int iWhence)
       m_oldState          = m_state;
       m_state             = new CReadState();
       m_state->m_fileSize = m_oldState->m_fileSize;
-      g_curlInterface.easy_acquire(url.GetProtocol().c_str(),
+      g_curlInterface.easy_aquire(url.GetProtocol().c_str(),
                                   url.GetHostName().c_str(),
                                   &m_state->m_easyHandle,
                                   &m_state->m_multiHandle );
@@ -1342,7 +1329,7 @@ int64_t CCurlFile::Seek(int64_t iFilePosition, int iWhence)
         m_state     = m_oldState;
         m_oldState  = NULL;
       }
-      // Retry without multisession
+      // Retry without mutlisession
       m_multisession = false;
       return Seek(iFilePosition, iWhence);
     }
@@ -1389,7 +1376,7 @@ int CCurlFile::Stat(const CURL& url, struct __stat64* buffer)
   ParseAndCorrectUrl(url2);
 
   assert(m_state->m_easyHandle == NULL);
-  g_curlInterface.easy_acquire(url2.GetProtocol().c_str(),
+  g_curlInterface.easy_aquire(url2.GetProtocol().c_str(),
                               url2.GetHostName().c_str(),
                               &m_state->m_easyHandle, NULL);
 
@@ -1848,10 +1835,10 @@ bool CCurlFile::GetContentType(const CURL &url, std::string &content, const std:
       content = "x-directory/normal";
     else
       content = file.GetContent();
-    CLog::Log(LOGDEBUG, "CCurlFile::GetContentType - %s -> %s", redactUrl.c_str(), content.c_str());
+    CLog::Log(LOGDEBUG, "CCurlFile::GetConentType - %s -> %s", redactUrl.c_str(), content.c_str());
     return true;
   }
-  CLog::Log(LOGDEBUG, "CCurlFile::GetContentType - %s -> failed", redactUrl.c_str());
+  CLog::Log(LOGDEBUG, "CCurlFile::GetConentType - %s -> failed", redactUrl.c_str());
   content.clear();
   return false;
 }
@@ -1864,7 +1851,7 @@ bool CCurlFile::GetCookies(const CURL &url, std::string &cookies)
   XCURL::CURLM*          multiHandle;
 
   // get the cookies list
-  g_curlInterface.easy_acquire(url.GetProtocol().c_str(),
+  g_curlInterface.easy_aquire(url.GetProtocol().c_str(),
                               url.GetHostName().c_str(),
                               &easyHandle, &multiHandle);
   if (CURLE_OK == g_curlInterface.easy_getinfo(easyHandle, CURLINFO_COOKIELIST, &curlCookies))

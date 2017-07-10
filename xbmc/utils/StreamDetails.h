@@ -37,8 +37,8 @@ public:
   };
 
   CStreamDetail(StreamType type) : m_eType(type), m_pParent(NULL) {};
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
   virtual bool IsWorseThan(CStreamDetail *that) { return true; };
 
   const StreamType m_eType;
@@ -52,9 +52,9 @@ class CStreamDetailVideo : public CStreamDetail
 {
 public:
   CStreamDetailVideo();
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
-  bool IsWorseThan(CStreamDetail *that) override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
+  virtual bool IsWorseThan(CStreamDetail *that);
 
   int m_iWidth;
   int m_iHeight;
@@ -69,9 +69,9 @@ class CStreamDetailAudio : public CStreamDetail
 {
 public:
   CStreamDetailAudio();
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
-  bool IsWorseThan(CStreamDetail *that) override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
+  virtual bool IsWorseThan(CStreamDetail *that);
 
   int m_iChannels;
   std::string m_strCodec;
@@ -83,9 +83,9 @@ class CStreamDetailSubtitle : public CStreamDetail
 public:
   CStreamDetailSubtitle();
   CStreamDetailSubtitle& operator=(const CStreamDetailSubtitle &that);
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
-  bool IsWorseThan(CStreamDetail *that) override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
+  virtual bool IsWorseThan(CStreamDetail *that);
 
   std::string m_strLanguage;
 };
@@ -95,7 +95,7 @@ class CStreamDetails : public IArchivable, public ISerializable
 public:
   CStreamDetails() { Reset(); };
   CStreamDetails(const CStreamDetails &that);
-  ~CStreamDetails() override { Reset(); };
+  ~CStreamDetails() { Reset(); };
   CStreamDetails& operator=(const CStreamDetails &that);
   bool operator ==(const CStreamDetails &that) const;
   bool operator !=(const CStreamDetails &that) const;
@@ -129,8 +129,8 @@ public:
   void Reset(void);
   void DetermineBestStreams(void);
 
-  void Archive(CArchive& ar) override;
-  void Serialize(CVariant& value) const override;
+  virtual void Archive(CArchive& ar);
+  virtual void Serialize(CVariant& value) const;
 
 private:
   CStreamDetail *NewStream(CStreamDetail::StreamType type);

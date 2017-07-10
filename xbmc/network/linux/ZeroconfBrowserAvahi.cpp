@@ -20,6 +20,8 @@
 
 #include "ZeroconfBrowserAvahi.h"
 
+#ifdef HAS_AVAHI
+
 #include <utils/log.h>
 #include "guilib/GUIWindowManager.h"
 #include "guilib/GUIMessage.h"
@@ -373,3 +375,5 @@ AvahiServiceBrowser* CZeroconfBrowserAvahi::createServiceBrowser ( const std::st
   }
   return ret;
 }
+
+#endif //HAS_AVAHI

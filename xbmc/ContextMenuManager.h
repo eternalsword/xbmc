@@ -40,11 +40,12 @@ public:
   static CContextMenuManager& GetInstance();
 
   void Init();
-  void Deinit();
 
   ContextMenuView GetItems(const CFileItem& item, const CContextMenuItem& root = MAIN) const;
 
   ContextMenuView GetAddonItems(const CFileItem& item, const CContextMenuItem& root = MAIN) const;
+
+  bool Unload(const ADDON::CContextMenuAddon& addon);
 
 private:
   CContextMenuManager(const CContextMenuManager&);
@@ -73,7 +74,7 @@ namespace CONTEXTMENU
   bool ShowFor(const CFileItemPtr& fileItem, const CContextMenuItem& root=CContextMenuManager::MAIN);
 
   /*!
-   * Shortcut for continuing the context menu loop from an existing menu item.
+   * Shortcut for continuing the context menu loop from an exisiting menu item.
    */
   bool LoopFrom(const IContextMenuItem& menu, const CFileItemPtr& fileItem);
 }

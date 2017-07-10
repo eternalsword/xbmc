@@ -27,6 +27,8 @@
 #include "utils/EndianSwap.h"
 #include "ActiveAE.h"
 #include "cores/AudioEngine/AEResampleFactory.h"
+
+#include "settings/Settings.h"
 #include "utils/log.h"
 
 #include <new> // for std::bad_alloc
@@ -48,7 +50,6 @@ CActiveAESink::CActiveAESink(CEvent *inMsgEvent) :
   m_stats = nullptr;
   m_volume = 0.0;
   m_packer = nullptr;
-  m_streamNoise = true;
 }
 
 void CActiveAESink::Start()
@@ -321,14 +322,6 @@ void CActiveAESink::StateMachine(int signal, Protocol *port, Message *msg)
           m_extStreaming = *(bool*)msg->data;
           return;
 
-        case CSinkControlProtocol::SETSILENCETIMEOUT:
-          m_silenceTimeOut = *(int*)msg->data;
-          return;
-
-        case CSinkControlProtocol::SETNOISETYPE:
-          m_streamNoise = *(bool*)msg->data;
-          return;
-
         default:
           break;
         }
@@ -401,17 +394,6 @@ void CActiveAESink::StateMachine(int signal, Protocol *port, Message *msg)
           m_volume = *(float*)msg->data;
           m_sink->SetVolume(m_volume);
           return;
-
-        case CSinkControlProtocol::SETNOISETYPE:
-        {
-          bool streamNoise = *(bool*)msg->data;
-          if (streamNoise != m_streamNoise)
-          {
-            m_streamNoise = streamNoise;
-            GenerateNoise();
-          }
-        }
-        return;
         default:
           break;
         }
@@ -910,7 +892,6 @@ void CActiveAESink::ReturnBuffers()
       samples = *((CSampleBuffer**)msg->data);
       msg->Reply(CSinkDataProtocol::RETURNSAMPLE, &samples, sizeof(CSampleBuffer*));
     }
-    msg->Release();
   }
 }
 
@@ -960,9 +941,8 @@ unsigned int CActiveAESink::OutputSamples(CSampleBuffer* samples)
       }
       else if (samples->pkt->pause_burst_ms > 0)
       {
-        // construct a pause burst if we have already output valid audio
-        bool burst = m_extStreaming && (m_packer->GetBuffer()[0] != 0);
-        m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms, burst);
+        // construct a pause burst
+        m_packer->PackPause(m_sinkFormat.m_streamInfo, samples->pkt->pause_burst_ms);
       }
       else
         m_packer->Reset();
@@ -1084,28 +1064,22 @@ void CActiveAESink::GenerateNoise()
 {
   int nb_floats = m_sampleOfSilence.pkt->max_nb_samples;
   nb_floats *= m_sampleOfSilence.pkt->config.channels;
-  size_t size = nb_floats*sizeof(float);
 
-  float *noise = (float*)_aligned_malloc(size, 32);
+  float *noise = (float*)_aligned_malloc(nb_floats*sizeof(float), 16);
   if (!noise)
     throw std::bad_alloc();
 
-  if (!m_streamNoise)
-    memset(noise, 0, size);
-  else
+  float R1, R2;
+  for(int i=0; i<nb_floats;i++)
   {
-    float R1, R2;
-    for(int i = 0; i < nb_floats; i++)
+    do
     {
-      do
-      {
-        R1 = (float) rand() / (float) RAND_MAX;
-        R2 = (float) rand() / (float) RAND_MAX;
-      }
-      while(R1 == 0.0f);
-
-      noise[i] = (float) sqrt( -2.0f * log( R1 )) * cos( 2.0f * PI * R2 ) * 0.00001f;
+      R1 = (float) rand() / (float) RAND_MAX;
+      R2 = (float) rand() / (float) RAND_MAX;
     }
+    while(R1 == 0.0f);
+    
+    noise[i] = (float) sqrt( -2.0f * log( R1 )) * cos( 2.0f * PI * R2 ) * 0.00001f;
   }
 
   SampleConfig config = m_sampleOfSilence.pkt->config;
@@ -1135,9 +1109,8 @@ void CActiveAESink::SetSilenceTimer()
   if (m_extStreaming)
     m_extSilenceTimeout = XbmcThreads::EndTime::InfiniteValue;
   else if (m_extAppFocused)
-    m_extSilenceTimeout = m_silenceTimeOut;
+    m_extSilenceTimeout = CSettings::GetInstance().GetInt(CSettings::SETTING_AUDIOOUTPUT_STREAMSILENCE) * 60000;
   else
     m_extSilenceTimeout = 0;
-
   m_extSilenceTimer.Set(m_extSilenceTimeout);
 }

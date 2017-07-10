@@ -19,7 +19,7 @@
  */
 
 #include "VideoPlayerTeletext.h"
-#include "TimingConstants.h"
+#include "DVDClock.h"
 #include "DVDStreamInfo.h"
 #include "DVDDemuxers/DVDDemuxPacket.h"
 #include "utils/log.h"
@@ -118,7 +118,7 @@ bool CDVDTeletextData::CheckStream(CDVDStreamInfo &hints)
   return false;
 }
 
-bool CDVDTeletextData::OpenStream(CDVDStreamInfo hints)
+bool CDVDTeletextData::OpenStream(CDVDStreamInfo &hints)
 {
   CloseStream(true);
 
@@ -136,6 +136,9 @@ bool CDVDTeletextData::OpenStream(CDVDStreamInfo hints)
 
 void CDVDTeletextData::CloseStream(bool bWaitForBuffers)
 {
+  // wait until buffers are empty
+  if (bWaitForBuffers && m_speed > 0) m_messageQueue.WaitUntilEmpty();
+
   m_messageQueue.Abort();
 
   // wait for decode_video thread to end
@@ -274,7 +277,7 @@ void CDVDTeletextData::Process()
           if ((vtx_rowbyte[0] == 0x02 || vtx_rowbyte[0] == 0x03) && (vtx_rowbyte[1] == 0x2C))
           {
             /* clear rowbuffer */
-            /* convert row from lsb to msb (begin with magazine number) */
+            /* convert row from lsb to msb (begin with magazin number) */
             for (int i = 4; i < 46; i++)
             {
               uint8_t upper = (vtx_rowbyte[i] >> 4) & 0xf;

@@ -26,9 +26,7 @@ class CGUIDialogSeekBar : public CGUIDialog
 {
 public:
   CGUIDialogSeekBar(void);
-  ~CGUIDialogSeekBar(void) override;
-  bool OnMessage(CGUIMessage& message) override;
-  void FrameMove() override;
-private:
-  unsigned int m_lastPercent = ~0U;
+  virtual ~CGUIDialogSeekBar(void);
+  virtual bool OnMessage(CGUIMessage& message);
+  virtual void FrameMove();
 };

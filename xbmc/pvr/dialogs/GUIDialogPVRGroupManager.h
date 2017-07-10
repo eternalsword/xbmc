@@ -32,20 +32,20 @@ namespace PVR
   {
   public:
     CGUIDialogPVRGroupManager(void);
-    ~CGUIDialogPVRGroupManager(void) override;
-    bool OnMessage(CGUIMessage& message) override;
-    void OnWindowLoaded() override;
-    void OnWindowUnload() override;
-
-    void SetRadio(bool bIsRadio);
+    virtual ~CGUIDialogPVRGroupManager(void);
+    virtual bool OnMessage(CGUIMessage& message);
+    virtual void OnWindowLoaded();
+    virtual void OnWindowUnload();
+    void SetRadio(bool IsRadio) { m_bIsRadio = IsRadio; }
 
   protected:
-    void OnInitWindow() override;
-    void OnDeinitWindow(int nextWindowID) override;
+    virtual void OnInitWindow();
+    virtual void OnDeinitWindow(int nextWindowID);
 
-  private:
     void Clear();
     void Update();
+
+  private:
     bool PersistChanges(void);
     bool CancelChanges(void);
     bool ActionButtonOk(CGUIMessage &message);
@@ -56,7 +56,6 @@ namespace PVR
     bool ActionButtonGroupMembers(CGUIMessage &message);
     bool ActionButtonChannelGroups(CGUIMessage &message);
     bool ActionButtonHideGroup(CGUIMessage &message);
-    bool ActionButtonToggleRadioTV(CGUIMessage &message);
     bool OnMessageClick(CGUIMessage &message);
 
     CPVRChannelGroupPtr m_selectedGroup;

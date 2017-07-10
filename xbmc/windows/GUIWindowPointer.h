@@ -27,12 +27,12 @@ class CGUIWindowPointer :
 {
 public:
   CGUIWindowPointer(void);
-  ~CGUIWindowPointer(void) override;
-  void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  virtual ~CGUIWindowPointer(void);
+  virtual void Process(unsigned int currentTime, CDirtyRegionList &dirtyregions);
 protected:
   void SetPointer(int pointer);
-  void OnWindowLoaded() override;
-  void UpdateVisibility() override;
+  virtual void OnWindowLoaded();
+  virtual void UpdateVisibility();
 private:
   int m_pointer;
   bool m_active;

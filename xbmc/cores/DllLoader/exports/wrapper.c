@@ -117,7 +117,11 @@ struct mntent *dll_getmntent(FILE *fp);
 
 void *__wrap_dlopen(const char *filename, int flag)
 {
+#if defined(TARGET_ANDROID)
+  return dll_dlopen(filename, flag);
+#else
   return dlopen(filename, flag);
+#endif
 }
 
 FILE *__wrap_popen(const char *command, const char *mode)
@@ -170,14 +174,14 @@ ssize_t __wrap_read(int fd, void *buf, size_t count)
   return dll_read(fd, buf, count);
 }
 
-__off_t __wrap_lseek(int filedes, __off_t offset, int whence)
+__off_t __wrap_lseek(int fildes, __off_t offset, int whence)
 {
-  return dll_lseek(filedes, offset, whence);
+  return dll_lseek(fildes, offset, whence);
 }
 
-__off64_t __wrap_lseek64(int filedes, __off64_t offset, int whence)
+__off64_t __wrap_lseek64(int fildes, __off64_t offset, int whence)
 {
-  __off64_t seekRes = dll_lseeki64(filedes, offset, whence);
+  __off64_t seekRes = dll_lseeki64(fildes, offset, whence);
   return seekRes;
 }
 
@@ -216,9 +220,9 @@ FILE *__wrap_fopen64(const char *path, const char *mode)
   return dll_fopen(path, mode);
 }
 
-FILE *__wrap_fdopen(int filedes, const char *mode)
+FILE *__wrap_fdopen(int fildes, const char *mode)
 {
-  return dll_fdopen(filedes, mode);
+  return dll_fdopen(fildes, mode);
 }
 
 FILE *__wrap_freopen(const char *path, const char *mode, FILE *stream)
@@ -456,7 +460,7 @@ struct mntent *__wrap_getmntent(FILE *fp)
 
 // GCC 4.3 in Ubuntu 8.10 defines _FORTIFY_SOURCE=2 which means, that fread, read etc 
 // are actually #defines which are inlined when compiled with -O. Those defines
-// actually call __*chk (for example, __fread_chk). We need to bypass this whole
+// actally call __*chk (for example, __fread_chk). We need to bypass this whole
 // thing to actually call our wrapped functions. 
 #if _FORTIFY_SOURCE > 1
 

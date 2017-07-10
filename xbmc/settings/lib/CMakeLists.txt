@@ -21,11 +21,9 @@ set(HEADERS ISetting.h
             SettingConditions.h
             SettingDefinitions.h
             SettingDependency.h
-            SettingLevel.h
             SettingRequirement.h
             SettingSection.h
             SettingsManager.h
-            SettingType.h
             SettingUpdate.h)
 
 core_add_library(settings_lib)

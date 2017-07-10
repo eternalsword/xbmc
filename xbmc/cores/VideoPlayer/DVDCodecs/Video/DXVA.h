@@ -21,6 +21,7 @@
 
 #include <list>
 #include <vector>
+#include "DVDCodecs/Video/DVDVideoCodecFFmpeg.h"
 #include "DVDResource.h"
 #include "guilib/D3DResource.h"
 #include "libavcodec/avcodec.h"
@@ -72,8 +73,7 @@ class CRenderPicture
 public:
   CRenderPicture(CSurfaceContext *context);
   ~CRenderPicture();
-  ID3D11View* view;
-  DXGI_FORMAT format;
+  ID3D11View*      view;
 
 protected:
   CSurfaceContext *surface_context;
@@ -112,7 +112,7 @@ private:
 };
 
 class CDecoder
-  : public IHardwareDecoder
+  : public CDVDVideoCodecFFmpeg::IHardwareDecoder
   , public ID3DResource
 {
 public:
@@ -121,9 +121,9 @@ public:
 
   // IHardwareDecoder overrides
   bool Open(AVCodecContext* avctx, AVCodecContext* mainctx, const enum AVPixelFormat, unsigned int surfaces) override;
-  CDVDVideoCodec::VCReturn Decode(AVCodecContext* avctx, AVFrame* frame) override;
-  bool GetPicture(AVCodecContext* avctx, VideoPicture* picture) override;
-  CDVDVideoCodec::VCReturn Check(AVCodecContext* avctx) override;
+  int Decode(AVCodecContext* avctx, AVFrame* frame) override;
+  bool GetPicture(AVCodecContext* avctx, AVFrame* frame, DVDVideoPicture* picture) override;
+  int Check(AVCodecContext* avctx) override;
   const std::string Name() override { return "d3d11va"; }
   unsigned GetAllowedReferences() override;
 
@@ -147,7 +147,7 @@ protected:
 
   // ID3DResource overrides
   void OnCreateDevice() override  {}
-  void OnDestroyDevice(bool fatal) override { CSingleLock lock(m_section); m_state = DXVA_LOST;  m_event.Reset(); }
+  void OnDestroyDevice() override { CSingleLock lock(m_section); m_state = DXVA_LOST;  m_event.Reset(); }
   void OnLostDevice() override    { CSingleLock lock(m_section); m_state = DXVA_LOST;  m_event.Reset(); }
   void OnResetDevice() override   { CSingleLock lock(m_section); m_state = DXVA_RESET; m_event.Set();   }
 

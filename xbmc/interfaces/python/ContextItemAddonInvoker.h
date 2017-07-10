@@ -30,10 +30,10 @@ class CContextItemAddonInvoker : public CAddonPythonInvoker
 public:
   explicit CContextItemAddonInvoker(ILanguageInvocationHandler *invocationHandler,
                                     const CFileItemPtr& item);
-  ~CContextItemAddonInvoker() override;
+  virtual ~CContextItemAddonInvoker();
 
 protected:
-  void onPythonModuleInitialization(void* moduleDict) override;
+  virtual void onPythonModuleInitialization(void* moduleDict);
 
 private:
   const CFileItemPtr m_item;

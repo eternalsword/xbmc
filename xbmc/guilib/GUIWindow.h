@@ -89,14 +89,14 @@ public:
   enum LOAD_TYPE { LOAD_EVERY_TIME, LOAD_ON_GUI_INIT, KEEP_IN_MEMORY };
 
   CGUIWindow(int id, const std::string &xmlFile);
-  ~CGUIWindow(void) override;
+  virtual ~CGUIWindow(void);
 
   bool Initialize();  // loads the window
   bool Load(const std::string& strFileName, bool bContainsPath = false);
 
   void CenterWindow();
 
-  void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions) override;
+  virtual void DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions);
   
   /*! \brief Main render function, called every frame.
    Window classes should override this only if they need to alter how something is rendered.
@@ -104,7 +104,7 @@ public:
    is not necessarily re-entrant.
    \sa FrameMove
    */
-  void DoRender() override;
+  virtual void DoRender();
 
   /*! \brief Do any post render activities.
     Check if window closing animation is finished and finalize window closing.
@@ -124,11 +124,9 @@ public:
   // unhandled messages should be dropped through to here where we send the message
   // on to the currently focused control.  Returns true if the action has been handled
   // and does not need to be passed further down the line (to our global action handlers)
-  bool OnAction(const CAction &action) override;
+  virtual bool OnAction(const CAction &action);
   
-  using CGUIControlGroup::OnBack;
   virtual bool OnBack(int actionID);
-  using CGUIControlGroup::OnInfo;
   virtual bool OnInfo(int actionID) { return false; };
 
   /*! \brief Clear the background (if necessary) prior to rendering the window
@@ -136,19 +134,18 @@ public:
   virtual void ClearBackground();
 
   bool OnMove(int fromControl, int moveAction);
-  bool OnMessage(CGUIMessage& message) override;
+  virtual bool OnMessage(CGUIMessage& message);
 
   bool ControlGroupHasFocus(int groupID, int controlID);
-  void SetID(int id) override;
+  virtual void SetID(int id);
   virtual bool HasID(int controlID) const;
   const std::vector<int>& GetIDRange() const { return m_idRange; };
   int GetPreviousWindow() { return m_previousWindow; };
   CRect GetScaledBounds() const;
-  void ClearAll() override;
-  using CGUIControlGroup::AllocResources;
+  virtual void ClearAll();
   virtual void AllocResources(bool forceLoad = false);
-  void FreeResources(bool forceUnLoad = false) override;
-  void DynamicResourceAlloc(bool bOnOff) override;
+  virtual void FreeResources(bool forceUnLoad = false);
+  virtual void DynamicResourceAlloc(bool bOnOff);
   virtual bool IsDialog() const { return false; };
   virtual bool IsDialogRunning() const { return false; };
   virtual bool IsModalDialog() const { return false; };
@@ -165,34 +162,19 @@ public:
   void SetLoadType(LOAD_TYPE loadType) { m_loadType = loadType; };
   LOAD_TYPE GetLoadType() { return m_loadType; } const
   int GetRenderOrder() { return m_renderOrder; };
-  void SetInitialVisibility() override;
-  bool IsVisible() const override { return true; }; // windows are always considered visible as they implement their own
+  virtual void SetInitialVisibility();
+  virtual bool IsVisible() const { return true; }; // windows are always considered visible as they implement their own
                                                    // versions of UpdateVisibility, and are deemed visible if they're in
                                                    // the window manager's active list.
-  virtual bool HasVisibleControls() { return true; }; //Assume that window always has visible controls
 
-  bool IsAnimating(ANIMATION_TYPE animType) override;
-
-  /*!
-   \brief Return if the window is a custom window
-   \return true if the window is an custom window otherwise false
-   */
-  bool IsCustom() const { return m_custom; };
-
-  /*!
-   \brief Mark this window as custom window
-   \param custom true if this window is a custom window, false if not
-   */
-  void SetCustom(bool custom) { m_custom = custom; };
-
+  virtual bool IsAnimating(ANIMATION_TYPE animType);
   void DisableAnimations();
 
   virtual void ResetControlStates();
-  void UpdateControlStats() override {}; // Do not count window itself
 
   void       SetRunActionsManually();
-  void       RunLoadActions() const;
-  void       RunUnloadActions() const;
+  void       RunLoadActions();
+  void       RunUnloadActions();
 
   /*! \brief Set a property
    Sets the value of a property referenced by a key.
@@ -202,7 +184,7 @@ public:
    */
   void SetProperty(const std::string &key, const CVariant &value);
 
-  /*! \brief Retrieve a property
+  /*! \brief Retreive a property
    \param key name of the property to retrieve
    \return value of the property, empty if it doesn't exist
    */
@@ -213,40 +195,20 @@ public:
    */
   void ClearProperties();
 
-#ifdef _DEBUG
-  void DumpTextureUse() override;
-#endif
+  void DumpTextureUse();
+
   bool HasSaveLastControl() const { return !m_defaultAlways; };
 
   virtual void OnDeinitWindow(int nextWindowID);
 protected:
-  EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
-
-  /*!
-   \brief Load the window XML from the given path
-   \param strPath the path to the window XML
-   \param strLowerPath a lowered path to the window XML
+  virtual EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event);
+  virtual bool LoadXML(const std::string& strPath, const std::string &strLowerPath);  ///< Loads from the given file
+  bool Load(TiXmlElement *pRootElement);                 ///< Loads from the given XML root element
+  /*! \brief Check if XML file needs (re)loading
+   XML file has to be (re)loaded when window is not loaded or include conditions values were changed
    */
-  virtual bool LoadXML(const std::string& strPath, const std::string &strLowerPath);
-
-  /*!
-   \brief Loads the window from the given XML element
-   \param pRootElement the XML element
-   \return true if the window is loaded from the given XML otherwise false.
-   */
-  virtual bool Load(TiXmlElement *pRootElement);
-
-  /*!
-   \brief Prepare the XML for load
-   \param pRootElement the original XML element
-   \return the prepared XML (resolved includes, constants and expression)
-   */
-  virtual std::unique_ptr<TiXmlElement> Prepare(TiXmlElement *pRootElement);
-
-  /*!
-   \brief Check if window needs a (re)load. The window need to be (re)loaded when window is not loaded or include conditions values were changed
-   */
-  bool NeedLoad() const;
+  bool NeedXMLReload();
+  virtual void LoadAdditionalTags(TiXmlElement *root) {}; ///< Load additional information from the XML document
 
   virtual void SetDefaults();
   virtual void OnWindowUnload() {}
@@ -254,8 +216,10 @@ protected:
   virtual void OnInitWindow();
   void Close_Internal(bool forceClose = false, int nextWindowID = 0, bool enableSound = true);
   EVENT_RESULT OnMouseAction(const CAction &action);
-  bool Animate(unsigned int currentTime) override;
-  bool CheckAnimation(ANIMATION_TYPE animType) override;
+  virtual bool Animate(unsigned int currentTime);
+  virtual bool CheckAnimation(ANIMATION_TYPE animType);
+
+  CAnimation *GetAnimation(ANIMATION_TYPE animType, bool checkConditions = true);
 
   // control state saving on window close
   virtual void SaveControlStates();
@@ -292,7 +256,7 @@ protected:
 
    \return the window's origin in skin coordinates
    */
-  CPoint GetPosition() const override;
+  virtual CPoint GetPosition() const;
   std::vector<COrigin> m_origins;  // positions of dialogs depending on base window
 
   // control states
@@ -317,7 +281,6 @@ protected:
 
   int m_menuControlID;
   int m_menuLastFocusedControlID;
-  bool m_custom;
 
 private:
   std::map<std::string, CVariant, icompare> m_mapProperties;

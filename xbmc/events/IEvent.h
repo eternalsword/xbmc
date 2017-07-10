@@ -22,8 +22,6 @@
 #include <memory>
 #include <string>
 
-#include "utils/ISortable.h"
-
 class CDateTime;
 
 enum class EventLevel
@@ -34,10 +32,10 @@ enum class EventLevel
   Error = 3,
 };
 
-class IEvent : public ISortable
+class IEvent
 {
 public:
-  ~IEvent() override = default;
+  virtual ~IEvent() { }
 
   virtual const char* GetType() const = 0;
   virtual std::string GetIdentifier() const = 0;
@@ -51,8 +49,6 @@ public:
 
   virtual bool CanExecute() const = 0;
   virtual bool Execute() const = 0;
-
-  void ToSortable(SortItem& sortable, Field field) const override = 0;
 };
 
 typedef std::shared_ptr<const IEvent> EventPtr;

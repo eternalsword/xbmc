@@ -30,7 +30,7 @@ class CUDiskDevice
 {
 public:
   CUDiskDevice(const char *DeviceKitUDI);
-  ~CUDiskDevice() = default;
+  ~CUDiskDevice() { }
 
   void Update();
 
@@ -52,19 +52,19 @@ class CUDisksProvider : public IStorageProvider
 {
 public:
   CUDisksProvider();
-  ~CUDisksProvider() override;
+  virtual ~CUDisksProvider();
 
-  void Initialize() override;
-  void Stop() override { }
+  virtual void Initialize();
+  virtual void Stop() { }
 
-  void GetLocalDrives(VECSOURCES &localDrives) override { GetDisks(localDrives, false); }
-  void GetRemovableDrives(VECSOURCES &removableDrives) override { GetDisks(removableDrives, true); }
+  virtual void GetLocalDrives(VECSOURCES &localDrives) { GetDisks(localDrives, false); }
+  virtual void GetRemovableDrives(VECSOURCES &removableDrives) { GetDisks(removableDrives, true); }
 
-  bool Eject(const std::string& mountpath) override;
+  virtual bool Eject(const std::string& mountpath);
 
-  std::vector<std::string> GetDiskUsage() override;
+  virtual std::vector<std::string> GetDiskUsage();
 
-  bool PumpDriveChangeEvents(IStorageEventsCallback *callback) override;
+  virtual bool PumpDriveChangeEvents(IStorageEventsCallback *callback);
 
   static bool HasUDisks();
 private:
@@ -83,6 +83,7 @@ private:
 
   DeviceMap m_AvailableDevices;
 
-  CDBusConnection m_connection;
+  DBusConnection *m_connection;
+  DBusError m_error;
 };
 #endif

@@ -28,7 +28,6 @@
 
 #include "threads/CriticalSection.h"
 #include "guilib/IMsgTargetCallback.h"
-#include "guilib/GUIControl.h"
 #include "messaging/IMessageTarget.h"
 #include "inttypes.h"
 #include "XBDateTime.h"
@@ -38,16 +37,20 @@
 #include "interfaces/info/SkinVariable.h"
 #include "cores/IPlayer.h"
 #include "FileItem.h"
-#include "pvr/PVRTypes.h"
 
-#include <atomic>
+#include <memory>
+#include <list>
 #include <map>
-#include <string>
 #include <vector>
 
 namespace MUSIC_INFO
 {
   class CMusicInfoTag;
+}
+namespace PVR
+{
+  class CPVRRadioRDSInfoTag;
+  typedef std::shared_ptr<PVR::CPVRRadioRDSInfoTag> CPVRRadioRDSInfoTagPtr;
 }
 class CVideoInfoTag;
 class CFileItem;
@@ -60,6 +63,13 @@ namespace INFO
 
 // forward
 class CGUIWindow;
+namespace EPG
+{
+  class CEpgInfoTag;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+}
+
+
 
 // structure to hold multiple integer data
 // for storage referenced from a single integer
@@ -101,13 +111,13 @@ friend CSetCurrentItemJob;
 
 public:
   CGUIInfoManager(void);
-  ~CGUIInfoManager(void) override;
+  virtual ~CGUIInfoManager(void);
 
   void Clear();
-  bool OnMessage(CGUIMessage &message) override;
+  virtual bool OnMessage(CGUIMessage &message) override;
 
-  int GetMessageMask() override;
-  void OnApplicationMessage(KODI::MESSAGING::ThreadMessage* pMsg) override;
+  virtual int GetMessageMask() override;
+  virtual void OnApplicationMessage(KODI::MESSAGING::ThreadMessage* pMsg) override;
 
   /*! \brief Register a boolean condition/expression
    This routine allows controls or other clients of the info manager to register
@@ -161,7 +171,6 @@ public:
   void SetCurrentSlide(CFileItem &item);
   const CFileItem &GetCurrentSlide() const;
   void ResetCurrentSlide();
-  void SetCurrentGame(CFileItem &item);
   void SetCurrentSongTag(const MUSIC_INFO::CMusicInfoTag &tag);
   void SetCurrentVideoTag(const CVideoInfoTag &tag);
 
@@ -260,7 +269,6 @@ protected:
 
   bool GetMultiInfoBool(const GUIInfo &info, int contextWindow = 0, const CGUIListItem *item = NULL);
   bool GetMultiInfoInt(int &value, const GUIInfo &info, int contextWindow = 0) const;
-  CGUIControl * GetActiveContainer(int containerId, int contextWindow) const;
   std::string GetMultiInfoLabel(const GUIInfo &info, int contextWindow = 0, std::string *fallback = NULL);
   int TranslateListItem(const Property &info);
   int TranslateMusicPlayerString(const std::string &info) const;
@@ -289,7 +297,7 @@ protected:
    * @brief Get the EPG tag that is currently active
    * @return the currently active tag or NULL if no active tag was found
    */
-  PVR::CPVREpgInfoTagPtr GetEpgInfoTag() const;
+  EPG::CEpgInfoTagPtr GetEpgInfoTag() const;
 
   void SetCurrentItemJob(const CFileItemPtr item);
 
@@ -328,9 +336,7 @@ protected:
   int m_nextWindowID;
   int m_prevWindowID;
 
-  typedef std::set<INFO::InfoPtr, bool(*)(const INFO::InfoPtr&, const INFO::InfoPtr&)> INFOBOOLTYPE;
-  INFOBOOLTYPE m_bools;
-  unsigned int m_refreshCounter;
+  std::vector<INFO::InfoPtr> m_bools;
   std::vector<INFO::CSkinVariableString> m_skinVariableStrings;
 
   int m_libraryHasMusic;
@@ -342,7 +348,7 @@ protected:
   int m_libraryHasCompilations;
   
   //Count of artists in music library contributing to song by role e.g. composers, conductors etc.
-  //For checking visibility of custom nodes for a role.
+  //For checking visibiliy of custom nodes for a role.
   std::vector<std::pair<std::string, int>> m_libraryRoleCounts; 
 
   SPlayerVideoStreamInfo m_videoInfo;

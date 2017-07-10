@@ -31,18 +31,18 @@ class CLanguageInvokerThread : public ILanguageInvoker, protected CThread
 {
 public:
   CLanguageInvokerThread(LanguageInvokerPtr invoker, CScriptInvocationManager *invocationManager);
-  ~CLanguageInvokerThread() override;
+  ~CLanguageInvokerThread();
 
   virtual InvokerState GetState();
 
 protected:
-  bool execute(const std::string &script, const std::vector<std::string> &arguments) override;
-  bool stop(bool wait) override;
+  virtual bool execute(const std::string &script, const std::vector<std::string> &arguments);
+  virtual bool stop(bool wait);
 
-  void OnStartup() override;
-  void Process() override;
-  void OnExit() override;
-  void OnException() override;
+  virtual void OnStartup();
+  virtual void Process();
+  virtual void OnExit();
+  virtual void OnException();
 
 private:
   LanguageInvokerPtr m_invoker;

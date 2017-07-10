@@ -88,7 +88,7 @@ public:
   CTemperature operator ++(int);
   CTemperature operator --(int);
 
-  void Archive(CArchive& ar) override;
+  virtual void Archive(CArchive& ar);
 
   bool IsValid() const;
   void SetValid(bool valid) { m_valid = valid; }

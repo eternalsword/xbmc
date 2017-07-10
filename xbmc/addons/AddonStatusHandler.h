@@ -29,21 +29,21 @@ namespace ADDON
 {
   /**
   * Class - CAddonStatusHandler
-  * Used to inform the user about occurred errors and
+  * Used to informate the user about occurred errors and
   * changes inside Add-on's, and ask him what to do.
   * It can executed in the same thread as the calling
-  * function or in a separate thread.
+  * function or in a seperate thread.
   */
   class CAddonStatusHandler : private CThread
   {
     public:
       CAddonStatusHandler(const std::string &addonID, ADDON_STATUS status, std::string message, bool sameThread = true);
-      ~CAddonStatusHandler() override;
+      ~CAddonStatusHandler();
 
       /* Thread handling */
-      void Process() override;
-      void OnStartup() override;
-      void OnExit() override;
+      virtual void Process();
+      virtual void OnStartup();
+      virtual void OnExit();
 
     private:
       static CCriticalSection   m_critSection;

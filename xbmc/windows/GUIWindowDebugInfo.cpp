@@ -25,7 +25,7 @@
 #include "utils/log.h"
 #include "CompileInfo.h"
 #include "filesystem/SpecialProtocol.h"
-#include "input/WindowTranslator.h"
+#include "input/ButtonTranslator.h"
 #include "guilib/GUIControlFactory.h"
 #include "guilib/GUIFontManager.h"
 #include "guilib/GUITextLayout.h"
@@ -47,7 +47,9 @@ CGUIWindowDebugInfo::CGUIWindowDebugInfo(void)
   m_renderOrder = RENDER_ORDER_WINDOW_DEBUG;
 }
 
-CGUIWindowDebugInfo::~CGUIWindowDebugInfo(void) = default;
+CGUIWindowDebugInfo::~CGUIWindowDebugInfo(void)
+{
+}
 
 void CGUIWindowDebugInfo::UpdateVisibility()
 {
@@ -134,7 +136,7 @@ void CGUIWindowDebugInfo::Process(unsigned int currentTime, CDirtyRegionList &di
       point = CPoint(pointer->GetXPosition(), pointer->GetYPosition());
     if (window)
     {
-      std::string windowName = CWindowTranslator::TranslateWindow(window->GetID());
+      std::string windowName = CButtonTranslator::TranslateWindow(window->GetID());
       if (!windowName.empty())
         windowName += " (" + std::string(window->GetProperty("xmlfile").asString()) + ")";
       else

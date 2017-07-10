@@ -19,28 +19,29 @@
  */
 #pragma once
 
-#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Screensaver.h"
-#include "addons/binary-addons/AddonInstanceHandler.h"
+#include "AddonDll.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_scr_types.h"
+
+typedef DllAddon<ScreenSaver, SCR_PROPS> DllScreenSaver;
 
 namespace ADDON
 {
 
-class CScreenSaver : public IAddonInstanceHandler
+class CScreenSaver : public ADDON::CAddonDll<DllScreenSaver, ScreenSaver, SCR_PROPS>
 {
 public:
-  CScreenSaver(BinaryAddonBasePtr addonBase);
-  ~CScreenSaver() override;
+  explicit CScreenSaver(AddonProps props) : CAddonDll<DllScreenSaver, ScreenSaver, SCR_PROPS>(std::move(props)) {};
+  explicit CScreenSaver(const char *addonID);
 
-  bool Start();
-  void Stop();
+  virtual ~CScreenSaver() {}
+  virtual bool IsInUse() const;
+
+  // Things that MUST be supplied by the child classes
+  bool CreateScreenSaver();
+  void Start();
   void Render();
-
-private:
-  std::string m_name; /*!< To add-on sended name */
-  std::string m_presets; /*!< To add-on sended preset path */
-  std::string m_profile; /*!< To add-on sended profile path */
-
-  AddonInstance_Screensaver m_struct;
+  void GetInfo(SCR_INFO *info);
+  void Destroy();
 };
 
-} /* namespace ADDON */
+} /*namespace ADDON*/

@@ -41,7 +41,7 @@
 #define XML_EVENTLOG_LEVEL_HIGHER   "showhigherlevels"
 
 CViewStateSettings::CViewStateSettings()
-  : m_settingLevel(SettingLevel::Standard),
+  : m_settingLevel(SettingLevelStandard),
     m_eventLevel(EventLevel::Basic),
     m_eventShowHigherLevels(true)
 {
@@ -62,7 +62,6 @@ CViewStateSettings::CViewStateSettings()
   AddViewState("pictures", DEFAULT_VIEW_AUTO);
   AddViewState("videofiles", DEFAULT_VIEW_AUTO);
   AddViewState("musicfiles", DEFAULT_VIEW_AUTO);
-  AddViewState("games", DEFAULT_VIEW_AUTO);
 
   Clear();
 }
@@ -126,10 +125,10 @@ bool CViewStateSettings::Load(const TiXmlNode *settings)
   if (pElement != NULL)
   {
     int settingLevel;
-    if (XMLUtils::GetInt(pElement, XML_SETTINGLEVEL, settingLevel, (const int)SettingLevel::Basic, (const int)SettingLevel::Expert))
+    if (XMLUtils::GetInt(pElement, XML_SETTINGLEVEL, settingLevel, (const int)SettingLevelBasic, (const int)SettingLevelExpert))
       m_settingLevel = (SettingLevel)settingLevel;
     else
-      m_settingLevel = SettingLevel::Standard;
+      m_settingLevel = SettingLevelStandard;
 
     const TiXmlNode* pEventLogNode = pElement->FirstChild(XML_EVENTLOG);
     if (pEventLogNode != NULL)
@@ -204,7 +203,7 @@ bool CViewStateSettings::Save(TiXmlNode *settings) const
 
 void CViewStateSettings::Clear()
 {
-  m_settingLevel = SettingLevel::Standard;
+  m_settingLevel = SettingLevelStandard;
 }
 
 const CViewState* CViewStateSettings::Get(const std::string &viewState) const
@@ -229,10 +228,10 @@ CViewState* CViewStateSettings::Get(const std::string &viewState)
 
 void CViewStateSettings::SetSettingLevel(SettingLevel settingLevel)
 {
-  if (settingLevel < SettingLevel::Basic)
-    m_settingLevel = SettingLevel::Basic;
-  if (settingLevel > SettingLevel::Expert)
-    m_settingLevel = SettingLevel::Expert;
+  if (settingLevel < SettingLevelBasic)
+    m_settingLevel = SettingLevelBasic;
+  if (settingLevel > SettingLevelExpert)
+    m_settingLevel = SettingLevelExpert;
   else
     m_settingLevel = settingLevel;
 }
@@ -245,8 +244,8 @@ void CViewStateSettings::CycleSettingLevel()
 SettingLevel CViewStateSettings::GetNextSettingLevel() const
 {
   SettingLevel level = (SettingLevel)((int)m_settingLevel + 1);
-  if (level > SettingLevel::Expert)
-    level = SettingLevel::Basic;
+  if (level > SettingLevelExpert)
+    level = SettingLevelBasic;
   return level;
 }
 

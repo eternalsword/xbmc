@@ -28,7 +28,7 @@ class CGUIDialogLockSettings : public CGUIDialogSettingsManualBase
 {
 public:
   CGUIDialogLockSettings();
-  ~CGUIDialogLockSettings() override;
+  virtual ~CGUIDialogLockSettings();
 
   static bool ShowAndGetLock(LockType &lockMode, std::string &password, int header = 20091);
   static bool ShowAndGetLock(CProfile::CLock &locks, int buttonLabel = 20091, bool conditional = false, bool details = true);
@@ -36,17 +36,17 @@ public:
 
 protected:
   // implementations of ISettingCallback
-  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
-  void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+  virtual void OnSettingChanged(const CSetting *setting);
+  virtual void OnSettingAction(const CSetting *setting);
 
   // specialization of CGUIDialogSettingsBase
-  bool AllowResettingSettings() const override { return false; }
-  void Save() override { }
-  void OnCancel() override;
-  void SetupView() override;
+  virtual bool AllowResettingSettings() const { return false; }
+  virtual void Save() { }
+  virtual void OnCancel();
+  virtual void SetupView();
 
   // specialization of CGUIDialogSettingsManualBase
-  void InitializeSettings() override;
+  virtual void InitializeSettings();
 
 private:
   void setDetailSettingsEnabled(bool enabled);

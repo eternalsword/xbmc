@@ -1,8 +1,10 @@
-set(SOURCES ConsoleUPowerSyscall.cpp
+set(SOURCES ConsoleDeviceKitPowerSyscall.cpp
+            ConsoleUPowerSyscall.cpp
             UPowerSyscall.cpp
             LogindUPowerSyscall.cpp)
 
-set(HEADERS ConsoleUPowerSyscall.h
+set(HEADERS ConsoleDeviceKitPowerSyscall.h
+            ConsoleUPowerSyscall.h
             FallbackPowerSyscall.h
             LogindUPowerSyscall.h
             UPowerSyscall.h)

@@ -29,8 +29,8 @@ public:
   class CHistoryItem
   {
   public:
-    CHistoryItem() = default;
-    virtual ~CHistoryItem() = default;
+    CHistoryItem(){};
+    virtual ~CHistoryItem(){};
     std::string m_strItem;
     std::string m_strDirectory;
   };
@@ -38,8 +38,8 @@ public:
   class CPathHistoryItem
   {
   public:
-    CPathHistoryItem() = default;
-    virtual ~CPathHistoryItem() = default;
+    CPathHistoryItem() { }
+    virtual ~CPathHistoryItem() { }
 
     const std::string& GetPath(bool filter = false) const;
 
@@ -47,7 +47,7 @@ public:
     std::string m_strFilterPath;
   };
   
-  CDirectoryHistory() = default;
+  CDirectoryHistory() { }
   virtual ~CDirectoryHistory();
 
   void SetSelectedItem(const std::string& strSelectedItem, const std::string& strDirectory);

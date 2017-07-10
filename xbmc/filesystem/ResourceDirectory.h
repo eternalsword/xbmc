@@ -27,11 +27,11 @@ namespace XFILE
   {
   public:
     CResourceDirectory();
-    ~CResourceDirectory() override;
+    virtual ~CResourceDirectory();
 
-    bool GetDirectory(const CURL& url, CFileItemList &items) override;
+    virtual bool GetDirectory(const CURL& url, CFileItemList &items);
 
   protected:
-    std::string TranslatePath(const CURL &url) override;
+    virtual std::string TranslatePath(const CURL &url);
   };
 }

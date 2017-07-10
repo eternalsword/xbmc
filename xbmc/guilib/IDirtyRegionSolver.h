@@ -29,7 +29,7 @@
 class IDirtyRegionSolver
 {
 public:
-  virtual ~IDirtyRegionSolver() = default;
+  virtual ~IDirtyRegionSolver() { }
 
   // Takes a number of dirty regions which will become a number of needed rendering passes.
   virtual void Solve(const CDirtyRegionList &input, CDirtyRegionList &output) = 0;

@@ -64,11 +64,6 @@ void print_json(ifstream &in, ofstream &out)
     closing = false;
     for (string::iterator itr = line.begin(); itr != line.end(); itr++)
     {
-      // Skip \r characters
-      if (*itr == '\r') {
-        break;
-      }
-
       // Count opening { but ignore the first one
       if (*itr == '{')
       {
